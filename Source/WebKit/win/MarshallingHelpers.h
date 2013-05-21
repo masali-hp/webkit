@@ -27,7 +27,11 @@
 #define MarshallingHelpers_H
 
 #include <wtf/Forward.h>
+#if USE(CF)
 #include <CoreFoundation/CoreFoundation.h>
+#else
+typedef double CFAbsoluteTime;
+#endif
 
 namespace WebCore {
     class IntRect;
@@ -39,6 +43,12 @@ class MarshallingHelpers
 public:
     static WebCore::KURL BSTRToKURL(BSTR);
     static BSTR KURLToBSTR(const WebCore::KURL&);
+    static SAFEARRAY* intRectToSafeArray(const WebCore::IntRect&);
+
+    static CFAbsoluteTime DATEToCFAbsoluteTime(DATE);
+    static DATE CFAbsoluteTimeToDATE(CFAbsoluteTime);
+
+#if USE(CF)
     static CFURLRef PathStringToFileCFURLRef(const WTF::String&);
     static WTF::String FileCFURLRefToPathString(CFURLRef fileURL);
     static CFURLRef BSTRToCFURLRef(BSTR);
@@ -47,11 +57,8 @@ public:
     static BSTR CFStringRefToBSTR(CFStringRef);
     static int CFNumberRefToInt(CFNumberRef);
     static CFNumberRef intToCFNumberRef(int);
-    static CFAbsoluteTime DATEToCFAbsoluteTime(DATE);
-    static DATE CFAbsoluteTimeToDATE(CFAbsoluteTime);
     static SAFEARRAY* stringArrayToSafeArray(CFArrayRef);
     static SAFEARRAY* intArrayToSafeArray(CFArrayRef);
-    static SAFEARRAY* intRectToSafeArray(const WebCore::IntRect&);
     static SAFEARRAY* iunknownArrayToSafeArray(CFArrayRef);
     static CFArrayRef safeArrayToStringArray(SAFEARRAY*);
     static CFArrayRef safeArrayToIntArray(SAFEARRAY*);
@@ -60,6 +67,7 @@ public:
     static void IUnknownReleaseCallback(CFAllocatorRef, const void*);
     static CFArrayCallBacks kIUnknownArrayCallBacks;
     static CFDictionaryValueCallBacks kIUnknownDictionaryValueCallBacks;
+#endif
 
 private:
     static CFAbsoluteTime MarshallingHelpers::windowsEpochAbsoluteTime();
@@ -68,5 +76,9 @@ private:
     MarshallingHelpers();
     ~MarshallingHelpers();
 };
+
+#if !USE(CF)
+CFAbsoluteTime CFAbsoluteTimeGetCurrent();
+#endif
 
 #endif

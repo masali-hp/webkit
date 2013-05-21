@@ -27,7 +27,9 @@
 #define WebPreferences_H
 
 #include "WebKit.h"
+#if USE(CF)
 #include <CoreFoundation/CoreFoundation.h>
+#endif
 #include <WebCore/BString.h>
 #include <wtf/RetainPtr.h>
 
@@ -508,6 +510,7 @@ public:
     HRESULT postPreferencesChangesNotification();
 
 protected:
+#if USE(CF)
     void setValueForKey(CFStringRef key, CFPropertyListRef value);
     RetainPtr<CFPropertyListRef> valueForKey(CFStringRef key);
     BSTR stringValueForKey(CFStringRef key);
@@ -520,18 +523,38 @@ protected:
     void setBoolValue(CFStringRef key, BOOL value);
     void setFloatValue(CFStringRef key, float value);
     void setLongLongValue(CFStringRef key, LONGLONG value);
+#else
+    void setValueForKey(String key, String value);
+    String valueForKey(String key);
+    BSTR stringValueForKey(String key);
+    int integerValueForKey(String key);
+    BOOL boolValueForKey(String key);
+    float floatValueForKey(String key);
+    LONGLONG longlongValueForKey(String key);
+    void setStringValue(String key, String value);
+    void setIntegerValue(String key, int value);
+    void setBoolValue(String key, BOOL value);
+    void setFloatValue(String key, float value);
+    void setLongLongValue(String key, LONGLONG value);
+#endif
     static WebPreferences* getInstanceForIdentifier(BSTR identifier);
     static void initializeDefaultSettings();
+#if USE(CF)
     void save();
     void load();
     void migrateWebKitPreferencesToCFPreferences();
     void copyWebKitPreferencesToCFPreferences(CFDictionaryRef);
+#endif
 
 protected:
     ULONG m_refCount;
+#if USE(CF)
     RetainPtr<CFMutableDictionaryRef> m_privatePrefs;
-    WebCore::BString m_identifier;
     bool m_autoSaves;
+#else
+    HashMap<WTF::String, WTF::String> m_privatePrefs;
+#endif
+    WebCore::BString m_identifier;
     bool m_automaticallyDetectsCacheModel;
     unsigned m_numWebViews;
 };

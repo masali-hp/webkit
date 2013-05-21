@@ -63,10 +63,12 @@ static const IntRect& defaultWindowRect()
     return rect;
 }
 
+#if USE(CF)
 static CFBundleRef getWebKitBundle()
 {
     return CFBundleGetBundleWithIdentifier(CFSTR("com.apple.WebKit"));
 }
+#endif
 
 WebInspectorClient::WebInspectorClient(WebView* webView)
     : m_inspectedWebView(webView)
@@ -162,6 +164,7 @@ WebCore::InspectorFrontendChannel* WebInspectorClient::openInspectorFrontend(Ins
 
     COMPtr<WebMutableURLRequest> request(AdoptCOM, WebMutableURLRequest::createInstance());
 
+#if USE(CF)
     RetainPtr<CFURLRef> htmlURLRef = adoptCF(CFBundleCopyResourceURL(getWebKitBundle(), CFSTR("inspector"), CFSTR("html"), CFSTR("inspector")));
     if (!htmlURLRef)
         return 0;
@@ -169,6 +172,9 @@ WebCore::InspectorFrontendChannel* WebInspectorClient::openInspectorFrontend(Ins
     CFStringRef urlStringRef = ::CFURLGetString(htmlURLRef.get());
     if (FAILED(request->initWithURL(BString(urlStringRef), WebURLRequestUseProtocolCachePolicy, 60)))
         return 0;
+#else
+    notImplemented();
+#endif
 
     if (FAILED(frontendWebView->topLevelFrame()->loadRequest(request.get())))
         return 0;
@@ -262,11 +268,16 @@ void WebInspectorFrontendClient::frontendLoaded()
 
 String WebInspectorFrontendClient::localizedStringsURL()
 {
+#if USE(CF)
     RetainPtr<CFURLRef> url = adoptCF(CFBundleCopyResourceURL(getWebKitBundle(), CFSTR("localizedStrings"), CFSTR("js"), 0));
     if (!url)
         return String();
 
     return CFURLGetString(url.get());
+#else
+    notImplemented();
+    return String();
+#endif
 }
 
 void WebInspectorFrontendClient::bringToFront()

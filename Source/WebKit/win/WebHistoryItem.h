@@ -28,7 +28,9 @@
 
 #include "WebKit.h"
 
+#if USE(CF)
 #include <CoreFoundation/CoreFoundation.h>
+#endif
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>

@@ -32,6 +32,10 @@
 #include <WebCore/MemoryCache.h>
 #include <WebCore/CrossOriginPreflightResultCache.h>
 
+#if !USE(CF)
+#include <WebCore/NotImplemented.h>
+#endif
+
 // WebCache ---------------------------------------------------------------------------
 
 WebCache::WebCache()
@@ -99,6 +103,7 @@ HRESULT STDMETHODCALLTYPE WebCache::statistics(
 
     WebCore::MemoryCache::Statistics stat = WebCore::memoryCache()->getStatistics();
 
+#if USE(CF)
     static CFStringRef imagesKey = CFSTR("images");
     static CFStringRef stylesheetsKey = CFSTR("style sheets");
     static CFStringRef xslKey = CFSTR("xsl");
@@ -194,7 +199,9 @@ HRESULT STDMETHODCALLTYPE WebCache::statistics(
     propBag = CFDictionaryPropertyBag::createInstance();
     propBag->setDictionary(dictionary.get());
     s[3] = propBag.leakRef();
-
+#else
+    notImplemented();
+#endif
     return S_OK;
 }
 

@@ -8,8 +8,10 @@ EXPORTS
         setUseOpenSourceWebKit
         shutDownWebKit
         progIDForClass
+#if USE(CF)
         WebLocalizedStringUTF8
         WebLocalizedLPCTSTRUTF8
+#endif
 #if USE(CG)
         WebDrawText
         FontMetrics
@@ -21,10 +23,12 @@ EXPORTS
 #endif
         WebKitCreateInstance
 
+#if USE(CF)
         ; These functions are deprecated
         WebLocalizedString
         WebLocalizedLPCTSTR
         SetWebLocalizedStringMainBundle
+#endif
 
         ; Deprecated re-exports from JavaScriptCore
         JSCheckScriptSyntax
@@ -71,9 +75,13 @@ EXPORTS
         JSPropertyNameArrayRelease
         JSPropertyNameArrayRetain
         JSStringCopyBSTR
+#if USE(CF)
         JSStringCopyCFString
+#endif
         JSStringCreateWithBSTR
+#if USE(CF)
         JSStringCreateWithCFString
+#endif
         JSStringCreateWithCharacters
         JSStringCreateWithUTF8CString
         JSStringGetCharactersPtr

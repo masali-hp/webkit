@@ -546,7 +546,7 @@
 #define WTF_USE_WEB_THREAD 1
 #endif /* PLATFORM(IOS) */
 
-#if PLATFORM(WIN) && !OS(WINCE)
+#if PLATFORM(WIN) && !defined(WTF_USE_CF)
 #define WTF_USE_CF 1
 #endif
 

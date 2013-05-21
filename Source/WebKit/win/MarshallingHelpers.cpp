@@ -32,13 +32,18 @@
 #include <WebCore/KURL.h>
 #include <wtf/MathExtras.h>
 #include <wtf/text/WTFString.h>
+#if !USE(CF)
+#include <wtf/CurrentTime.h>
+#endif
 
 using namespace WebCore;
 
 static const double secondsPerDay = 60 * 60 * 24;
 
+#if USE(CF)
 CFArrayCallBacks MarshallingHelpers::kIUnknownArrayCallBacks = {0, IUnknownRetainCallback, IUnknownReleaseCallback, 0, 0};
 CFDictionaryValueCallBacks MarshallingHelpers::kIUnknownDictionaryValueCallBacks = {0, IUnknownRetainCallback, IUnknownReleaseCallback, 0, 0};
+#endif
 
 KURL MarshallingHelpers::BSTRToKURL(BSTR urlStr)
 {
@@ -47,9 +52,10 @@ KURL MarshallingHelpers::BSTRToKURL(BSTR urlStr)
 
 BSTR MarshallingHelpers::KURLToBSTR(const KURL& url)
 {
-    return BString(url.string()).release();
+    return SysAllocStringLen(url.string().characters(), url.string().length());
 }
 
+#if USE(CF)
 CFURLRef MarshallingHelpers::PathStringToFileCFURLRef(const String& string)
 {
     CFStringRef cfPath = CFStringCreateWithCharactersNoCopy(0, (const UniChar*)string.characters(), string.length(), kCFAllocatorNull);
@@ -115,6 +121,13 @@ CFAbsoluteTime MarshallingHelpers::windowsEpochAbsoluteTime()
     return windowsEpochAbsoluteTime;
 }
 
+#else
+// This function is used to help us construct a Microsoft OLE DATE value.
+CFAbsoluteTime MarshallingHelpers::windowsEpochAbsoluteTime() {
+    return -36892.000000000000;
+}
+#endif
+
 CFAbsoluteTime MarshallingHelpers::DATEToCFAbsoluteTime(DATE date)
 {
     // <http://msdn2.microsoft.com/en-us/library/ms221627.aspx>
@@ -139,6 +152,7 @@ DATE MarshallingHelpers::CFAbsoluteTimeToDATE(CFAbsoluteTime absoluteTime)
     return (round(absoluteTime)/secondsPerDay - windowsEpochAbsoluteTime());
 }
 
+#if USE(CF)
 // utility method to store a 1-dim string vector into a newly created SAFEARRAY
 SAFEARRAY* MarshallingHelpers::stringArrayToSafeArray(CFArrayRef inArray)
 {
@@ -168,6 +182,7 @@ SAFEARRAY* MarshallingHelpers::intArrayToSafeArray(CFArrayRef inArray)
     }
     return sa;
 }
+#endif
 
 SAFEARRAY* MarshallingHelpers::intRectToSafeArray(const WebCore::IntRect& rect)
 {
@@ -194,6 +209,7 @@ SAFEARRAY* MarshallingHelpers::intRectToSafeArray(const WebCore::IntRect& rect)
     return sa;
 }
 
+#if USE(CF)
 // utility method to store a 1-dim IUnknown* vector into a newly created SAFEARRAY
 SAFEARRAY* MarshallingHelpers::iunknownArrayToSafeArray(CFArrayRef inArray)
 {
@@ -276,3 +292,17 @@ void MarshallingHelpers::IUnknownReleaseCallback(CFAllocatorRef /*allocator*/, c
 {
     ((IUnknown*) value)->Release();
 }
+#endif
+
+#if !USE(CF)
+CFAbsoluteTime CFAbsoluteTimeGetCurrent() {
+    // WTF time is based on unix epoch: Jan 1, 1970.
+    // CFAbsoluteTime: Type used to represent a specific point in time relative
+    // to the absolute reference date of 1 Jan 2001 00:00:00 GMT.
+    //
+    // 978307200 was calculated with this:
+	//   CFGregorianDate unixEpochDate = {1970, 1, 1, 0, 0, 0.0};
+    //   CFAbsoluteTime unixEpochAbsoluteTime = CFGregorianDateGetAbsoluteTime(unixEpochDate, 0);
+    return WTF::currentTime() - 978307200;
+}
+#endif

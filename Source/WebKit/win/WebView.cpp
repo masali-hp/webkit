@@ -2813,6 +2813,7 @@ HRESULT WebView::notifyDidAddIcon(IWebNotification* notification)
     if (!propertyBag)
         return E_FAIL;
 
+#if USE(CF)
     COMPtr<CFDictionaryPropertyBag> dictionaryPropertyBag;
     hr = propertyBag->QueryInterface(&dictionaryPropertyBag);
     if (FAILED(hr))
@@ -2827,12 +2828,28 @@ HRESULT WebView::notifyDidAddIcon(IWebNotification* notification)
         return E_FAIL;
     if (CFGetTypeID(value) != CFStringGetTypeID())
         return E_FAIL;
+    String frameURL = String((CFStringRef)value);
+#else
+    COMPtr<IPropertyBag> dictionaryPropertyBag;
+    hr = propertyBag->QueryInterface(&dictionaryPropertyBag);
+    if (FAILED(hr))
+        return hr;
 
+    VARIANT frameUrlVariant;
+    hr = dictionaryPropertyBag->Read(WebIconDatabase::iconDatabaseNotificationUserInfoURLKey(), &frameUrlVariant, NULL);
+    if (FAILED(hr))
+        return hr;
+
+    if (V_VT(&frameUrlVariant) != VT_BSTR)
+        return E_FAIL;
+
+    String frameURL = String(V_BSTR(&frameUrlVariant));
+#endif
     String mainFrameURL;
     if (m_mainFrame)
         mainFrameURL = m_mainFrame->url().string();
 
-    if (!mainFrameURL.isEmpty() && mainFrameURL == String((CFStringRef)value))
+    if (!mainFrameURL.isEmpty() && mainFrameURL == frameURL)
         dispatchDidReceiveIconFromWebFrame(m_mainFrame);
 
     return hr;
@@ -4741,7 +4758,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         hr = preferences->userStyleSheetLocation(&str);
         if (FAILED(hr))
             return hr;
-
+#if USE(CF)
         RetainPtr<CFURLRef> url = adoptCF(CFURLCreateWithString(kCFAllocatorDefault, toString(str).createCFString().get(), 0));
 
         // Check if the passed in string is a path and convert it to a URL.
@@ -4759,6 +4776,9 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         }
 
         settings->setUserStyleSheetLocation(url.get());
+#else
+        settings->setUserStyleSheetLocation(MarshallingHelpers::BSTRToKURL(str));
+#endif
         str.clear();
     } else
         settings->setUserStyleSheetLocation(KURL());

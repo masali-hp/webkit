@@ -7,15 +7,28 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/plugins/win"
 )
 
-list(APPEND WebCore_INCLUDE_DIRECTORIES
-    "${WEBKIT_LIBRARIES_DIR}/win/include/SQLite"
-    "${WEBKIT_LIBRARIES_DIR}/win/include/zlib"
-)
+if (WEBKIT_LIBRARIES_DIR)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${WEBKIT_LIBRARIES_DIR}/win/include/SQLite"
+        "${WEBKIT_LIBRARIES_DIR}/win/include/zlib"
+    )
+elseif (3RDPARTY_DIR)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${3RDPARTY_DIR}/libjpeg"
+        "${3RDPARTY_DIR}/libpng"
+        "${3RDPARTY_DIR}/libxml2/include"
+        "${3RDPARTY_DIR}/libxslt/include"
+        "${3RDPARTY_DIR}/sqlite"
+        "${3RDPARTY_DIR}/zlib"
+    )
+endif ()
 
-list(APPEND WebCore_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/loader/archive/cf"
-    "${WEBCORE_DIR}/platform/cf"
-)
+if (WTF_USE_CF)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/loader/archive/cf"
+        "${WEBCORE_DIR}/platform/cf"
+    )
+endif ()
 
 list(APPEND WebCore_SOURCES
     accessibility/win/AccessibilityObjectWin.cpp
@@ -44,6 +57,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/win/IntSizeWin.cpp
     platform/graphics/win/TransformationMatrixWin.cpp
 
+    platform/network/DownloadBundle.cpp
     platform/network/win/NetworkStateNotifierWin.cpp
     #platform/text/win/LocaleWin.cpp
 
@@ -88,26 +102,26 @@ list(APPEND WebCore_SOURCES
     platform/text/TextEncodingDetectorNone.cpp
 )
 
-list(APPEND WebCore_SOURCES
-    editing/SmartReplaceCF.cpp
+if (WTF_USE_CF)
+    list(APPEND WebCore_SOURCES
+        editing/SmartReplaceCF.cpp
 
-    history/cf/HistoryPropertyList.cpp
+        history/cf/HistoryPropertyList.cpp
 
-    loader/archive/cf/LegacyWebArchive.cpp
+        loader/archive/cf/LegacyWebArchive.cpp
 
-    platform/cf/BinaryPropertyList.cpp
-    platform/cf/KURLCFNet.cpp
-    platform/cf/SharedBufferCF.cpp
+        platform/cf/BinaryPropertyList.cpp
+        platform/cf/KURLCFNet.cpp
+        platform/cf/SharedBufferCF.cpp
 
-    platform/cf/win/CertificateCFWin.cpp
+        platform/cf/win/CertificateCFWin.cpp
 
-    platform/network/win/DownloadBundleWin.cpp
-
-    platform/text/cf/AtomicStringCF.cpp
-    platform/text/cf/HyphenationCF.cpp
-    platform/text/cf/StringCF.cpp
-    platform/text/cf/StringImplCF.cpp
-)
+        platform/text/cf/AtomicStringCF.cpp
+        platform/text/cf/HyphenationCF.cpp
+        platform/text/cf/StringCF.cpp
+        platform/text/cf/StringImplCF.cpp
+    )
+endif ()
 
 if (WTF_PLATFORM_WIN_CAIRO)
     list(APPEND WebCore_SOURCES
@@ -143,10 +157,15 @@ if (WTF_PLATFORM_WIN_CAIRO)
         "${WEBCORE_DIR}/platform/graphics/cairo"
     )
 
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${WEBKIT_LIBRARIES_DIR}/win/include/cairo"
-    )
-
+    if (WEBKIT_LIBRARIES_DIR)
+        list(APPEND WebCore_INCLUDE_DIRECTORIES
+            "${WEBKIT_LIBRARIES_DIR}/win/include/cairo"
+        )
+    elseif (3RDPARTY_DIR)
+        list(APPEND WebCore_INCLUDE_DIRECTORIES
+            "${3RDPARTY_DIR}/cairo/src"
+        )
+    endif ()
     list(APPEND WebCore_LIBRARIES
         cairo
     )
@@ -167,12 +186,21 @@ elseif (WTF_USE_CG)
     )
 endif ()
 
-list(APPEND WebCore_SOURCES
-    platform/text/TextBreakIteratorICU.cpp
-    platform/text/TextCodecICU.cpp
-    platform/text/TextEncodingDetectorICU.cpp
-    platform/text/win/TextBreakIteratorInternalICUWin.cpp
-)
+if (WTF_USE_ICU_UNICODE)
+    list(APPEND WebCore_SOURCES
+        platform/text/TextBreakIteratorICU.cpp
+        platform/text/TextCodecICU.cpp
+        platform/text/TextEncodingDetectorICU.cpp
+        platform/text/win/TextBreakIteratorInternalICUWin.cpp
+    )
+elseif (WTF_USE_WCHAR_UNICODE)
+    list(APPEND WebCore_SOURCES
+        platform/text/LocaleNone.cpp
+        platform/text/TextEncodingDetectorNone.cpp
+        platform/text/wchar/TextBreakIteratorWchar.cpp
+        platform/text/win/TextCodecWin.cpp
+    )
+endif ()
 
 if (ENABLE_NETSCAPE_PLUGIN_API)
     list(APPEND WebCore_SOURCES
@@ -212,9 +240,18 @@ if (WTF_USE_CFNETWORK)
         platform/network/cf/SocketStreamHandleCFNet.cpp
     )
 elseif (WTF_USE_CURL)
-    list(APPEND WebCore_LIBRARIES
-        libcurl_imp
-    )
+    if (WEBKIT_LIBRARIES_DIR)
+        list(APPEND WebCore_LIBRARIES
+            libcurl_imp
+        )
+    elseif (3RDPARTY_DIR)
+        list(APPEND WebCore_INCLUDE_DIRECTORIES
+            "${3RDPARTY_DIR}/libcurl/include"
+        )
+        list(APPEND WebCore_LIBRARIES
+            libcurl
+        )
+    endif ()
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/network/curl"
     )
@@ -256,10 +293,16 @@ list(APPEND WebCore_LIBRARIES
     iphlpapi
 )
 
-list(APPEND WebCore_LIBRARIES
-    SQLite3
-    zdll
-)
+if (WEBKIT_LIBRARIES_DIR)
+    list(APPEND WebCore_LIBRARIES
+        SQLite3
+        zdll
+    )
+elseif (3RDPARTY_DIR)
+    list(APPEND WebCore_LIBRARIES
+        sqlite
+    )
+endif ()
 
 if (NOT SHARED_CORE)
     # If we don't use this flag, we sometimes see  NK1106: invalid file or disk full: cannot seek to ....

@@ -10,6 +10,19 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_METER_ELEMENT OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_SHARED_WORKERS ON)
 WEBKIT_OPTION_END()
 
+# Using ICU unicode and Core Foundation are optional with the WinCairo CMake
+# port, but the default is to build with CF and ICU
+if (NOT DEFINED WTF_USE_ICU_UNICODE)
+    set(WTF_USE_ICU_UNICODE 1)
+endif ()
+if (NOT DEFINED WTF_USE_ICU_UNICODE)
+    set(WTF_USE_CF 1)
+endif ()
+
+if (NOT WTF_USE_ICU_UNICODE)
+    set(WTF_USE_WCHAR_UNICODE 1)
+endif ()
+
 set(WTF_PLATFORM_WIN_CAIRO 1)
 set(WTF_USE_CURL 1)
 

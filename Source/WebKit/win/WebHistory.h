@@ -27,7 +27,11 @@
 #define WebHistory_H
 
 #include "WebKit.h"
+#if USE(CF)
 #include <CoreFoundation/CoreFoundation.h>
+#else
+#include "MarshallingHelpers.h"
+#endif
 #include <WebCore/COMPtr.h>
 #include <wtf/Forward.h>
 #include <wtf/OwnArrayPtr.h>
@@ -126,7 +130,11 @@ public:
     COMPtr<IWebHistoryItem> itemForURLString(const WTF::String&) const;
 
     typedef int64_t DateKey;
+#if USE(CF)
     typedef HashMap<DateKey, RetainPtr<CFMutableArrayRef> > DateToEntriesMap;
+#else
+    typedef HashMap<DateKey, Vector<COMPtr<IWebHistoryItem>> > DateToEntriesMap;
+#endif
 
 private:
 
@@ -140,24 +148,34 @@ private:
         kWebHistorySavedNotification = 5
     };
 
+#if USE(CF)
     HRESULT loadHistoryGutsFromURL(CFURLRef url, CFMutableArrayRef discardedItems, IWebError** error);
     HRESULT saveHistoryGuts(CFURLRef url, IWebError** error);
+    HRESULT removeItemForURLString(CFStringRef urlString);
+    HRESULT itemForURLString(CFStringRef urlString, IWebHistoryItem** item) const;
+    RetainPtr<CFDataRef> data() const;
+#else
+    HRESULT removeItemForURLString(WTF::String urlString);
+#endif
+    bool findKey(DateKey*, CFAbsoluteTime forDay);
+    static CFAbsoluteTime timeToDate(CFAbsoluteTime time);
+    HRESULT ageLimitDate(CFAbsoluteTime* time);
+
     HRESULT postNotification(NotificationType notifyType, IPropertyBag* userInfo = 0);
     HRESULT removeItem(IWebHistoryItem* entry);
     HRESULT addItem(IWebHistoryItem* entry, bool discardDuplicate, bool* added);
-    HRESULT removeItemForURLString(CFStringRef urlString);
     HRESULT addItemToDateCaches(IWebHistoryItem* entry);
     HRESULT removeItemFromDateCaches(IWebHistoryItem* entry);
     HRESULT insertItem(IWebHistoryItem* entry, DateKey);
-    HRESULT ageLimitDate(CFAbsoluteTime* time);
-    bool findKey(DateKey*, CFAbsoluteTime forDay);
-    static CFAbsoluteTime timeToDate(CFAbsoluteTime time);
     BSTR getNotificationString(NotificationType notifyType);
-    HRESULT itemForURLString(CFStringRef urlString, IWebHistoryItem** item) const;
-    RetainPtr<CFDataRef> data() const;
 
     ULONG m_refCount;
+#if USE(CF)
     RetainPtr<CFMutableDictionaryRef> m_entriesByURL;
+#else
+    typedef HashMap<WTF::String, COMPtr<IWebHistoryItem>> EntriesMap;
+    EntriesMap m_entriesByURL;
+#endif
     DateToEntriesMap m_entriesByDate;
     OwnArrayPtr<DATE> m_orderedLastVisitedDays;
     COMPtr<WebPreferences> m_preferences;

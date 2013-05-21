@@ -112,7 +112,11 @@ public:
 
     static BSTR iconDatabaseDidAddIconNotification();
     static BSTR iconDatabaseDidRemoveAllIconsNotification();
+#if USE(CF)
     static CFStringRef iconDatabaseNotificationUserInfoURLKey();
+#else
+    static const LPCOLESTR iconDatabaseNotificationUserInfoURLKey();
+#endif
 protected:
     ULONG m_refCount;
     static WebIconDatabase* m_sharedWebIconDatabase;

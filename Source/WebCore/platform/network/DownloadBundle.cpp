@@ -26,7 +26,6 @@
 #include "config.h"
 #include "DownloadBundle.h"
 
-#include <CoreFoundation/CoreFoundation.h>
 #include <io.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -37,7 +36,7 @@ namespace WebCore {
 
 namespace DownloadBundle {
 
-static UInt32 magicNumber()
+static unsigned int magicNumber()
 {
     return 0xDECAF4EA;
 }
@@ -48,9 +47,9 @@ const String& fileExtension()
     return extension;
 }
 
-bool appendResumeData(CFDataRef resumeData, const String& bundlePath)
+bool appendResumeData(const Vector<unsigned char> & resumeData, const String& bundlePath)
 {
-    if (!resumeData) {
+    if (resumeData.size() < 1) {
         LOG_ERROR("Invalid resume data to write to bundle path");
         return false;
     }
@@ -67,28 +66,19 @@ bool appendResumeData(CFDataRef resumeData, const String& bundlePath)
     }
 
     bool result = false;
+    signed long resumeLength = resumeData.size();
 
-    const UInt8* resumeBytes = CFDataGetBytePtr(resumeData);
-    ASSERT(resumeBytes);
-    if (!resumeBytes)
-        goto exit;
-
-    CFIndex resumeLength = CFDataGetLength(resumeData);
-    ASSERT(resumeLength > 0);
-    if (resumeLength < 1)
-        goto exit;
-
-    if (fwrite(resumeBytes, 1, resumeLength, bundle) != resumeLength) {
+    if (fwrite(resumeData.data(), 1, resumeLength, bundle) != resumeLength) {
         LOG_ERROR("Failed to write resume data to the bundle - errno(%i)", errno);
         goto exit;
     }
-
+    
     if (fwrite(&resumeLength, 4, 1, bundle) != 1) {
         LOG_ERROR("Failed to write footer length to the bundle - errno(%i)", errno);
         goto exit;
     }
 
-    const UInt32& magic = magicNumber();
+    const unsigned int & magic = magicNumber();
     if (fwrite(&magic, 4, 1, bundle) != 1) {
         LOG_ERROR("Failed to write footer magic number to the bundle - errno(%i)", errno);
         goto exit;
@@ -100,11 +90,11 @@ exit:
     return result;
 }
 
-CFDataRef extractResumeData(const String& bundlePath)
+bool extractResumeData(const String& bundlePath, Vector<unsigned char> & resumeData)
 {
     if (bundlePath.isEmpty()) {
         LOG_ERROR("Cannot create resume data from empty download bundle path");
-        return 0;
+        return false;
     }
 
     // Open a handle to the bundle file
@@ -112,11 +102,10 @@ CFDataRef extractResumeData(const String& bundlePath)
     FILE* bundle = 0;
     if (_wfopen_s(&bundle, nullifiedPath.charactersWithNullTermination(), TEXT("r+b")) || !bundle) {
         LOG_ERROR("Failed to open file %s to get resume data", bundlePath.ascii().data());
-        return 0;
+        return false;
     }
 
-    CFDataRef result = 0;
-    Vector<UInt8> footerBuffer;
+    bool result = false;
 
     // Stat the file to get its size
     struct _stat64 fileStat;
@@ -131,7 +120,7 @@ CFDataRef extractResumeData(const String& bundlePath)
     if (fsetpos(bundle, &footerMagicNumberPosition))
         goto exit;
 
-    UInt32 footerMagicNumber = 0;
+    unsigned int footerMagicNumber = 0;
     if (fread(&footerMagicNumber, 4, 1, bundle) != 1) {
         LOG_ERROR("Failed to read footer magic number from the bundle - errno(%i)", errno);
         goto exit;
@@ -152,7 +141,7 @@ CFDataRef extractResumeData(const String& bundlePath)
     if (fsetpos(bundle, &footerLengthPosition))
         goto exit;
 
-    UInt32 footerLength = 0;
+    unsigned int footerLength = 0;
     if (fread(&footerLength, 4, 1, bundle) != 1) {
         LOG_ERROR("Failed to read ResumeData length from the bundle - errno(%i)", errno);
         goto exit;
@@ -166,8 +155,8 @@ CFDataRef extractResumeData(const String& bundlePath)
     if (fsetpos(bundle, &footerStartPosition))
         goto exit;
 
-    footerBuffer.resize(footerLength);
-    if (fread(footerBuffer.data(), 1, footerLength, bundle) != footerLength) {
+    resumeData.resize(footerLength);
+    if (fread(resumeData.data(), 1, footerLength, bundle) != footerLength) {
         LOG_ERROR("Failed to read ResumeData from the bundle - errno(%i)", errno);
         goto exit;
     }
@@ -180,12 +169,13 @@ CFDataRef extractResumeData(const String& bundlePath)
         LOG_ERROR("Failed to truncate the resume footer off the end of the file - errno(%i)", resizeError);
         goto exit;
     }
-
-    // Finally, make the resume data.  Now, it is possible by some twist of fate the bundle magic number
+    
+    // Finally, return the resume data.  Now, it is possible by some twist of fate the bundle magic number
     // was naturally at the end of the file and its not actually a valid bundle.  That, or someone engineered
     // it that way to try to attack us.  In that cause, this CFData will successfully create but when we 
     // actually try to start the CFURLDownload using this bogus data, it will fail and we will handle that gracefully
-    result = CFDataCreate(0, footerBuffer.data(), footerLength);
+    result = true;
+
 exit:
     fclose(bundle);
     return result;

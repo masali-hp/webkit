@@ -202,27 +202,29 @@ elseif (WTF_USE_CG)
     )
 endif ()
 
-list(APPEND WebKit_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/loader/archive/cf"
-    "${WEBCORE_DIR}/platform/cf"
-    "${WEBCORE_DIR}/loader/archive"
-)
-list(APPEND WebKit_INCLUDES
-    win/WebArchive.h
-    win/WebKitGraphics.h
-    win/WebKitSystemBits.h
-    win/CFDictionaryPropertyBag.h
-)
-list(APPEND WebKit_SOURCES_API
-    win/WebLocalizableStrings.cpp
-)
-list(APPEND WebKit_SOURCES_Classes
-    win/CFDictionaryPropertyBag.cpp
-    win/WebArchive.cpp
-)
-list(APPEND WebKit_SOURCES
-    win/WebKitSystemBits.cpp
-)
+if (WTF_USE_CF)
+    list(APPEND WebKit_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/loader/archive/cf"
+        "${WEBCORE_DIR}/platform/cf"
+        "${WEBCORE_DIR}/loader/archive"
+    )
+    list(APPEND WebKit_INCLUDES
+        win/WebArchive.h
+        win/WebKitGraphics.h
+        win/WebKitSystemBits.h
+        win/CFDictionaryPropertyBag.h
+    )
+    list(APPEND WebKit_SOURCES_API
+        win/WebLocalizableStrings.cpp
+    )
+    list(APPEND WebKit_SOURCES_Classes
+        win/CFDictionaryPropertyBag.cpp
+        win/WebArchive.cpp
+    )
+    list(APPEND WebKit_SOURCES
+        win/WebKitSystemBits.cpp
+    )
+endif ()
 
 if (WTF_USE_CF_NETWORK)
     list(APPEND WebKit_SOURCES_Classes
@@ -231,6 +233,11 @@ if (WTF_USE_CF_NETWORK)
         win/WebURLAuthenticationChallengeSenderCFNet.cpp
     )
 elseif (WTF_USE_CURL)
+    if (3RDPARTY_DIR)
+        list(APPEND WebCore_INCLUDE_DIRECTORIES
+            "${3RDPARTY_DIR}/libcurl/include"
+        )
+    endif ()
     list(APPEND WebKit_SOURCES_Classes
         win/WebCookieManagerCurl.cpp
         win/WebDownloadCurl.cpp
@@ -260,7 +267,11 @@ if (ENABLE_GEOLOCATION)
 endif ()
 
 if (ENABLE_INSPECTOR)
-    list(APPEND WebKit_SOURCES_WebCoreSupport cf/WebCoreSupport/WebInspectorClientCF.cpp)
+    if (WTF_USE_CF)
+        list(APPEND WebKit_SOURCES_WebCoreSupport cf/WebCoreSupport/WebInspectorClientCF.cpp)
+    else ()
+        list(APPEND WebKit_SOURCES_WebCoreSupport win/WebCoreSupport/WebInspectorClientNoCF.cpp)
+    endif ()
 
     list(APPEND WebKit_INCLUDES
         win/WebInspector.h
@@ -422,10 +433,11 @@ add_custom_target(forwarding-headerWin COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}
 set_target_properties(forwarding-headerWin PROPERTIES FOLDER "WebKit")
 set(ForwardingHeaders_NAME forwarding-headerWin)
 
-add_custom_target(forwarding-headerCF COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT_DIR} ${DERIVED_SOURCES_WEBKIT_DIR}/include cf --leaveExistingHeaders)
-set_target_properties(forwarding-headerCF PROPERTIES FOLDER "WebKit")
-set(ForwardingFoundationHeaders_NAME forwarding-headerCF)
-
+if (WTF_USE_CF)
+    add_custom_target(forwarding-headerCF COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT_DIR} ${DERIVED_SOURCES_WEBKIT_DIR}/include cf --leaveExistingHeaders)
+    set_target_properties(forwarding-headerCF PROPERTIES FOLDER "WebKit")
+    set(ForwardingFoundationHeaders_NAME forwarding-headerCF)
+endif ()
 if (WTF_USE_CURL)
     add_custom_target(forwarding-headerCurl COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT_DIR} ${DERIVED_SOURCES_WEBKIT_DIR}/include curl)
     set_target_properties(forwarding-headerCurl PROPERTIES FOLDER "WebKit")

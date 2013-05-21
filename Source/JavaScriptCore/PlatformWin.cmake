@@ -9,9 +9,11 @@ if(SHARED_CORE)
     )
 endif()
 
-list(APPEND JavaScriptCore_SOURCES
-    API/JSStringRefCF.cpp
-)
-list(APPEND JavaScriptCore_LIBRARIES
-    CFLite
-)
+if (WTF_USE_CF)
+    list(APPEND JavaScriptCore_SOURCES
+        API/JSStringRefCF.cpp
+    )
+    list(APPEND JavaScriptCore_LIBRARIES
+        CFLite
+    )
+endif ()

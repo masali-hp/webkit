@@ -31,6 +31,15 @@
 
 #include "ProgIDMacros.h"
 
+#if USE(CF)
+// These features have deep dependencies on CF currently.
+#  define CF_DICTIONARY_PROPERTY_BAG(macro) macro(CFDictionaryPropertyBag)
+#  define WEB_ARCHIVE(macro) macro(WebArchive)
+#else
+#  define CF_DICTIONARY_PROPERTY_BAG(macro)
+#  define WEB_ARCHIVE(macro)
+#endif
+
 #if ENABLE(SQL_DATABASE)
 #define WEB_DATABASE_MANAGER(macro) macro(WebDatabaseManager)
 #else
@@ -39,7 +48,7 @@
 
 // Items may only be added to the end of this macro. No items may be removed from it.
 #define FOR_EACH_COCLASS(macro) \
-    macro(CFDictionaryPropertyBag) \
+    CF_DICTIONARY_PROPERTY_BAG(macro) \
     macro(WebCache) \
     WEB_DATABASE_MANAGER(macro) \
     macro(WebDownload) \
@@ -59,7 +68,7 @@
     macro(WebURLRequest) \
     macro(WebURLResponse) \
     macro(WebView) \
-    macro(WebArchive) \
+    WEB_ARCHIVE(macro) \
     macro(WebCoreStatistics) \
     macro(WebCookieManager) \
     macro(WebWorkersPrivate) \

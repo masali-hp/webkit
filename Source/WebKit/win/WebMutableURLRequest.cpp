@@ -33,6 +33,7 @@
 #include <WebCore/BString.h>
 #include <WebCore/COMPtr.h>
 #include <WebCore/FormData.h>
+#include <WebCore/NotImplemented.h>
 #include <WebCore/ResourceHandle.h>
 #include <wtf/text/CString.h>
 #include <wtf/RetainPtr.h>
@@ -287,17 +288,38 @@ HRESULT STDMETHODCALLTYPE WebMutableURLRequest::setCachePolicy(
 }
 
 HRESULT STDMETHODCALLTYPE WebMutableURLRequest::setHTTPBody( 
-    /* [in] */ IStream* /*data*/)
+    /* [in] */ IStream* data)
 {
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    return setHTTPBodyStream(data);
 }
 
 HRESULT STDMETHODCALLTYPE WebMutableURLRequest::setHTTPBodyStream( 
-    /* [in] */ IStream* /*data*/)
+    /* [in] */ IStream* data)
 {
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    //Only support posting of a small amount of data
+    if(data !=NULL)
+    {
+        STATSTG statstg;
+        data->Stat(&statstg,1);
+
+        if(statstg.cbSize.LowPart > 0)
+        {
+            byte* buff=new byte[statstg.cbSize.LowPart];
+
+            if(buff!=NULL)
+            {
+                ULONG bytesRead=0;
+                data->Read(buff, statstg.cbSize.LowPart,&bytesRead);
+                PassRefPtr<FormData> fd=FormData::create(buff,statstg.cbSize.LowPart);
+
+                m_request.setHTTPBody(fd);
+                delete [] buff;
+                return S_OK;
+            }
+        }
+    }
+
+    return E_FAIL;
 }
 
 HRESULT STDMETHODCALLTYPE WebMutableURLRequest::setHTTPMethod( 
@@ -347,9 +369,13 @@ HRESULT STDMETHODCALLTYPE WebMutableURLRequest::setValue(
 
 HRESULT STDMETHODCALLTYPE WebMutableURLRequest::setAllowsAnyHTTPSCertificate(void)
 {
+#if USE(CFNETWORK) || (USE(CURL) && USE(CF))
     ResourceHandle::setHostAllowsAnyHTTPSCertificate(m_request.url().host());
-
     return S_OK;
+#else
+    notImplemented();
+    return E_NOTIMPL;
+#endif
 }
 
 HRESULT STDMETHODCALLTYPE WebMutableURLRequest::setClientCertificate(
@@ -359,14 +385,24 @@ HRESULT STDMETHODCALLTYPE WebMutableURLRequest::setClientCertificate(
         return E_POINTER;
 
     PCCERT_CONTEXT certContext = reinterpret_cast<PCCERT_CONTEXT>((ULONG64)cert);
+#if USE(CF)
     RetainPtr<CFDataRef> certData = WebCore::copyCertificateToData(certContext);
     ResourceHandle::setClientCertificate(m_request.url().host(), certData.get());
     return S_OK;
+#else
+    notImplemented();
+    return E_FAIL;
+#endif
 }
 
 CFURLRequestRef STDMETHODCALLTYPE WebMutableURLRequest::cfRequest()
 {
+#if USE(CF)
     return m_request.cfURLRequest(UpdateHTTPBody);
+#else
+    notImplemented();
+    return 0;
+#endif
 }
 
 HRESULT STDMETHODCALLTYPE WebMutableURLRequest::mutableCopy(

@@ -28,7 +28,6 @@
 
 #include "UserGestureIndicator.h"
 #include "WebElementPropertyBag.h"
-#include "WebLocalizableStrings.h"
 #include "WebView.h"
 
 #include <WebCore/ContextMenu.h>

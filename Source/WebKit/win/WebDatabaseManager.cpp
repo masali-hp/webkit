@@ -32,6 +32,10 @@
 
 #if ENABLE(SQL_DATABASE)
 
+#if USE(CF)
+#else
+#include "COMPropertyBag.h"
+#endif
 #include "COMEnumVariant.h"
 #include "COMPropertyBag.h"
 #include "MarshallingHelpers.h"

@@ -37,6 +37,10 @@
 #include <wtf/PassOwnPtr.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/CString.h>
+#if !USE(CF)
+#include <wtf/CurrentTime.h>
+using namespace WTF;
+#endif
 
 using namespace WebCore;
 
@@ -90,6 +94,7 @@ WebHistoryItem* WebHistoryItem::createInstance(PassRefPtr<HistoryItem> historyIt
 
 // IWebHistoryItemPrivate -----------------------------------------------------
 
+#if USE(CF)
 static CFStringRef urlKey = CFSTR("");
 static CFStringRef lastVisitedDateKey = CFSTR("lastVisitedDate");
 static CFStringRef titleKey = CFSTR("title");
@@ -99,9 +104,11 @@ static CFStringRef lastVisitWasHTTPNonGetKey = CFSTR("lastVisitWasHTTPNonGet");
 static CFStringRef redirectURLsKey = CFSTR("redirectURLs");
 static CFStringRef dailyVisitCountKey = CFSTR("D"); // short key to save space
 static CFStringRef weeklyVisitCountKey = CFSTR("W"); // short key to save space
+#endif
 
 HRESULT STDMETHODCALLTYPE WebHistoryItem::initFromDictionaryRepresentation(void* dictionary)
 {
+#if USE(CF)
     CFDictionaryRef dictionaryRef = (CFDictionaryRef) dictionary;
 
     CFStringRef urlStringRef = (CFStringRef) CFDictionaryGetValue(dictionaryRef, urlKey);
@@ -195,12 +202,15 @@ HRESULT STDMETHODCALLTYPE WebHistoryItem::initFromDictionaryRepresentation(void*
 
     if (dailyVector.get())
         m_historyItem->adoptVisitCounts(*dailyVector, *weeklyVector);
-
     return S_OK;
+#else
+    return E_NOTIMPL;
+#endif
 }
 
 HRESULT STDMETHODCALLTYPE WebHistoryItem::dictionaryRepresentation(void** dictionary)
 {
+#if USE(CF)
     CFDictionaryRef* dictionaryRef = (CFDictionaryRef*) dictionary;
     static CFStringRef lastVisitedFormat = CFSTR("%.1lf");
     CFStringRef lastVisitedStringRef =
@@ -291,6 +301,9 @@ HRESULT STDMETHODCALLTYPE WebHistoryItem::dictionaryRepresentation(void** dictio
         CFRelease(values[i]);
 
     return S_OK;
+#else
+    return E_NOTIMPL;
+#endif
 }
 
 HRESULT STDMETHODCALLTYPE WebHistoryItem::hasURLString(BOOL *hasURL)
@@ -484,7 +497,8 @@ HRESULT STDMETHODCALLTYPE WebHistoryItem::redirectURLs(IEnumVARIANT** urls)
 
 HRESULT STDMETHODCALLTYPE WebHistoryItem::visitedWithTitle(BSTR title, BOOL increaseVisitCount)
 {
-    m_historyItem->visited(title, CFAbsoluteTimeGetCurrent(), increaseVisitCount ? IncreaseVisitCount : DoNotIncreaseVisitCount);
+    double currTime = CFAbsoluteTimeGetCurrent();
+    m_historyItem->visited(title, currTime, increaseVisitCount ? IncreaseVisitCount : DoNotIncreaseVisitCount);
     return S_OK;
 }
 
