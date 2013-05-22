@@ -33,7 +33,7 @@
 #define WTF_USE_FILE_LOCK 1
 #endif
 
-#if PLATFORM(WIN) && !OS(WINCE)
+#if PLATFORM(WIN) && !defined(BUILDING_WITH_CMAKE)
 #include <WebCore/WebCoreHeaderDetection.h>
 #endif
 

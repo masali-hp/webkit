@@ -41,11 +41,18 @@ my @skippedPrefixes;
 my @frameworkHeaders;
 my $framework;
 my %neededHeaders;
+my $leaveExistingHeadersInPlace = 0;
 
 shift;
 my $outputDirectory = $ARGV[0];
 shift;
 my $platform  = $ARGV[0];
+
+if (@ARGV eq 2) {
+    if ($ARGV[1] eq "--leaveExistingHeaders") {
+        $leaveExistingHeadersInPlace = 1;
+    }
+}
 
 foreach my $prefix (@platformPrefixes) {
     push(@skippedPrefixes, $prefix) unless ($prefix =~ $platform);
@@ -80,7 +87,7 @@ sub collectFameworkHeaderPaths {
     my $file = $_;
     if ($filePath =~ '\.h$' && $filePath !~ "ForwardingHeaders" && grep{$file eq $_} keys %neededHeaders) {
         my $headerPath = substr($filePath, length(File::Spec->catfile($srcRoot, $framework)) + 1 );
-        push(@frameworkHeaders, $headerPath) unless (grep($headerPath =~ "$_/", @skippedPrefixes) || $headerPath =~ "config.h");
+        push(@frameworkHeaders, $headerPath) unless ((grep($headerPath =~ "$_/", @skippedPrefixes) && ($headerPath !~ "$platform/")) || $headerPath =~ "config.h");
     }
 }
 
@@ -99,7 +106,7 @@ sub createForwardingHeadersForFramework {
             $foundIncludeStatement = <EXISTING_HEADER> if open(EXISTING_HEADER, "<$forwardingHeaderPath");
             chomp($foundIncludeStatement);
 
-            if (! $foundIncludeStatement || $foundIncludeStatement ne $expectedIncludeStatement) {
+            if (! $foundIncludeStatement || (($foundIncludeStatement ne $expectedIncludeStatement) && $leaveExistingHeadersInPlace eq 0)) {
                 print "[Creating forwarding header for $framework/$header]\n";
                 open(FORWARDING_HEADER, ">$forwardingHeaderPath") or die "Could not open $forwardingHeaderPath.";
                 print FORWARDING_HEADER "$expectedIncludeStatement\n";

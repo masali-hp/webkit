@@ -1,0 +1,1 @@
+list(APPEND JSC_LIBRARIES winmm)
