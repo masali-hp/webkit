@@ -944,6 +944,14 @@ void FrameView::setNeedsOneShotDrawingSynchronization()
         page->chrome().client()->setNeedsOneShotDrawingSynchronization();
 }
 
+#else
+
+bool FrameView::scrollbarAnimationsAreSuppressed() const
+{
+    // what are scrollbar animations?  it appears this method is never called...
+    return false;
+}
+
 #endif // USE(ACCELERATED_COMPOSITING)
 
 void FrameView::setHeaderHeight(int headerHeight)
