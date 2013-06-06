@@ -31,7 +31,7 @@ using namespace WebCore;
 class WebDocumentLoader : public DocumentLoader
 {
 public:
-    static PassRefPtr<WebDocumentLoader> create(const ResourceRequest&, const SubstituteData&);
+    static PassRefPtr<WebDocumentLoader> create(const WebCore::ResourceRequest&, const SubstituteData&);
 
     ~WebDocumentLoader();
 
@@ -43,7 +43,7 @@ public:
     virtual void detachFromFrame();
 
 private:
-    WebDocumentLoader(const ResourceRequest&, const SubstituteData&);
+    WebDocumentLoader(const WebCore::ResourceRequest&, const SubstituteData&);
     WebDataSource* m_dataSource;
     WebDataSource* m_detachedDataSource; // not retained
 };

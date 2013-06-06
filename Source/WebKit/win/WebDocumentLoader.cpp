@@ -30,7 +30,7 @@
 
 using namespace WebCore;
 
-WebDocumentLoader::WebDocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData)
+WebDocumentLoader::WebDocumentLoader(const WebCore::ResourceRequest& request, const SubstituteData& substituteData)
     : DocumentLoader(request, substituteData)
     , m_dataSource(0)
     , m_detachedDataSource(0)
@@ -39,7 +39,7 @@ WebDocumentLoader::WebDocumentLoader(const ResourceRequest& request, const Subst
     gClassNameCount.add("WebDocumentLoader");
 }
 
-PassRefPtr<WebDocumentLoader> WebDocumentLoader::create(const ResourceRequest& req, const SubstituteData& data)
+PassRefPtr<WebDocumentLoader> WebDocumentLoader::create(const WebCore::ResourceRequest& req, const SubstituteData& data)
 {
     return adoptRef(new WebDocumentLoader(req, data));
 }

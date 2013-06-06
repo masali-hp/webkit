@@ -1,3 +1,5 @@
+#include "config.h"
+
 EXPORTS
         DllGetClassObject   PRIVATE
         DllCanUnloadNow     PRIVATE
@@ -383,13 +385,17 @@ EXPORTS
 #endif
         ?getHBITMAP@BitmapImage@WebCore@@UAE_NPAUHBITMAP__@@@Z
         ?getHBITMAPOfSize@BitmapImage@WebCore@@UAE_NPAUHBITMAP__@@PAUtagSIZE@@@Z
+#if USE(CG) || USE(CAIRO)
         ?drawPattern@Image@WebCore@@UAEXPAVGraphicsContext@2@ABVFloatRect@2@ABVAffineTransform@2@ABVFloatPoint@2@W4ColorSpace@2@W4CompositeOperator@2@1W4BlendMode@2@@Z
+#endif
         ?drawFrameMatchingSourceSize@BitmapImage@WebCore@@MAEXPAVGraphicsContext@2@ABVFloatRect@2@ABVIntSize@2@W4ColorSpace@2@W4CompositeOperator@2@@Z
         ?draw@Image@WebCore@@MAEXPAVGraphicsContext@2@ABVFloatRect@2@1W4ColorSpace@2@W4CompositeOperator@2@W4BlendMode@2@W4RespectImageOrientationEnum@2@@Z
         ?draw@BitmapImage@WebCore@@MAEXPAVGraphicsContext@2@ABVFloatRect@2@1W4ColorSpace@2@W4CompositeOperator@2@W4BlendMode@2@@Z
         ?mayFillWithSolidColor@BitmapImage@WebCore@@MAE_NXZ
         ?solidColor@BitmapImage@WebCore@@MBE?AVColor@2@XZ
+#if USE(CG) || USE(CAIRO)
         ?draw@BitmapImage@WebCore@@MAEXPAVGraphicsContext@2@ABVFloatRect@2@1W4ColorSpace@2@W4CompositeOperator@2@W4BlendMode@2@W4RespectImageOrientationEnum@2@@Z
+#endif
         ?frameCount@BitmapImage@WebCore@@MAEIXZ
         ?addAuthorSheet@DocumentStyleSheetCollection@WebCore@@QAEXV?$PassRefPtr@VStyleSheetContents@WebCore@@@WTF@@@Z
         ?parseString@StyleSheetContents@WebCore@@QAE_NABVString@WTF@@@Z

@@ -650,6 +650,9 @@ void WebChromeClient::populateVisitedLinks()
 
 void WebChromeClient::runOpenPanel(Frame*, PassRefPtr<FileChooser> prpFileChooser)
 {
+#if OS(WINCE)
+    notImplemented();
+#else
     RefPtr<FileChooser> fileChooser = prpFileChooser;
 
     HWND viewWindow;
@@ -704,6 +707,7 @@ void WebChromeClient::runOpenPanel(Frame*, PassRefPtr<FileChooser> prpFileChoose
         fileChooser->chooseFiles(fileList);
     }
     // FIXME: Show some sort of error if too many files are selected and the buffer is too small.  For now, this will fail silently.
+#endif
 }
 
 void WebChromeClient::loadIconForFiles(const Vector<WTF::String>& filenames, WebCore::FileIconLoader* loader)

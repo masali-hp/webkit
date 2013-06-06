@@ -54,6 +54,8 @@ typedef void PlatformPath;
 #if PLATFORM(QT)
 /* QPainterPath is valued based */
 typedef PlatformPath PlatformPathPtr;
+#elif OS(WINCE) && !USE(CAIRO)
+typedef WebCore::PlatformPath* PlatformPathPtr;
 #else
 typedef PlatformPath* PlatformPathPtr;
 #endif

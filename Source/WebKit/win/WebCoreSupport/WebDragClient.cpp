@@ -24,6 +24,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(DRAG_SUPPORT)
 #include "WebDragClient.h"
 #include "WebDropSource.h"
 #include "WebKitGraphics.h"
@@ -174,3 +176,4 @@ void WebDragClient::dragControllerDestroyed()
 {
     delete this;
 }
+#endif

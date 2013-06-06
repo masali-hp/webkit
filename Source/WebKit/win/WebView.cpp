@@ -145,6 +145,13 @@
 #include <WebCore/WindowsTouch.h>
 #include <wtf/MainThread.h>
 
+#if OS(WINCE)
+#define SetWindowLongPtrW(x, y, z) SetWindowLong(x, y, z)
+#define SetWindowLongPtr(x, y, z) SetWindowLong(x, y, z)
+#define GetWindowLongPtr(x, y) GetWindowLong(x, y)
+#define LONG_PTR LONG
+#endif
+
 #if USE(CG)
 #include <CoreGraphics/CGContext.h>
 #endif
@@ -363,13 +370,15 @@ WebView::WebView()
 #if ENABLE(INSPECTOR)
     , m_inspectorClient(0)
 #endif // ENABLE(INSPECTOR)
+#if ENABLE(DRAG_SUPPORT)
     , m_hasCustomDropTarget(false)
+    , m_dragData(0)
+#endif
     , m_useBackForwardList(true)
     , m_userAgentOverridden(false)
     , m_zoomMultiplier(1.0f)
     , m_zoomsTextOnly(false)
     , m_mouseActivated(false)
-    , m_dragData(0)
     , m_currentCharacterCode(0)
     , m_isBeingDestroyed(false)
     , m_paintCount(0)
@@ -378,9 +387,12 @@ WebView::WebView()
     , m_inIMEComposition(0)
     , m_toolTipHwnd(0)
     , m_closeWindowTimer(0)
+#if !OS(WINCE)
     , m_topLevelParent(0)
-    , m_deleteBackingStoreTimerActive(false)
     , m_transparent(false)
+    , m_usesLayeredWindow(false)
+#endif
+    , m_deleteBackingStoreTimerActive(false)
     , m_lastPanX(0)
     , m_lastPanY(0)
     , m_xOverpan(0)
@@ -390,14 +402,15 @@ WebView::WebView()
 #endif
     , m_nextDisplayIsSynchronous(false)
     , m_lastSetCursor(0)
-    , m_usesLayeredWindow(false)
 {
     JSC::initializeThreading();
     WTF::initializeMainThread();
 
     m_backingStoreSize.cx = m_backingStoreSize.cy = 0;
 
+#if ENABLE(DRAG_SUPPORT)
     CoCreateInstance(CLSID_DragDropHelper, 0, CLSCTX_INPROC_SERVER, IID_IDropTargetHelper,(void**)&m_dropTargetHelper);
+#endif
 
     initializeStaticObservers();
 
@@ -691,7 +704,7 @@ HRESULT STDMETHODCALLTYPE WebView::close()
     setAcceleratedCompositing(false);
 #endif
 
-    WebNotificationCenter::defaultCenterInternal()->postNotificationName(_bstr_t(WebViewWillCloseNotification).GetBSTR(), static_cast<IWebView*>(this), 0);
+    WebNotificationCenter::defaultCenterInternal()->postNotificationName(BString(WebViewWillCloseNotification).release(), static_cast<IWebView*>(this), 0);
 
     if (m_uiDelegatePrivate)
         m_uiDelegatePrivate->webViewClosing(this);
@@ -703,13 +716,17 @@ HRESULT STDMETHODCALLTYPE WebView::close()
             frame->loader()->detachFromParent();
     }
 
+#if !OS(WINCE)
     if (m_mouseOutTracker) {
         m_mouseOutTracker->dwFlags = TME_CANCEL;
         ::TrackMouseEvent(m_mouseOutTracker.get());
         m_mouseOutTracker.clear();
     }
-    
+#endif
+
+#if ENABLE(DRAG_SUPPORT)
     revokeDragDrop();
+#endif
 
     if (m_viewWindow) {
         // We can't check IsWindow(m_viewWindow) here, because that will return true even while
@@ -895,8 +912,10 @@ void WebView::scrollBackingStore(FrameView* frameView, int dx, int dy, const Int
     RECT regionBox;
     ::GetRgnBox(updateRegion, &regionBox);
 
+#if !OS(WINCE)
     // Flush.
     GdiFlush();
+#endif
 
     // Add the dirty region to the backing store's dirty region.
     addToDirtyRegion(updateRegion);
@@ -1018,9 +1037,12 @@ void WebView::updateBackingStore(FrameView* frameView, HDC dc, bool backingStore
         ::DeleteDC(bitmapDC);
     }
 
+#if !OS(WINCE)
     GdiFlush();
+#endif
 }
 
+#if !OS(WINCE)
 void WebView::performLayeredWindowUpdate()
 {
     // The backing store may have been destroyed if the window rect was set to zero height or zero width.
@@ -1046,6 +1068,7 @@ void WebView::performLayeredWindowUpdate()
 
     ::SelectObject(hdcMem.get(), hbmOld);
 }
+#endif
 
 void WebView::paint(HDC dc, LPARAM options)
 {
@@ -1086,8 +1109,10 @@ void WebView::paint(HDC dc, LPARAM options)
     } else {
         hdc = dc;
         ::GetClientRect(m_viewWindow, &rcPaint);
+#if !OS(WINCE)
         if (options & PRF_ERASEBKGND)
             ::FillRect(hdc, &rcPaint, (HBRUSH)GetStockObject(WHITE_BRUSH));
+#endif
         // Since we aren't painting to the screen, we want to paint all our
         // children into the HDC.
         windowsToPaint = PaintWebViewAndChildren;
@@ -1160,13 +1185,21 @@ void WebView::paintIntoBackingStore(FrameView* frameView, HDC bitmapDC, const In
     }
 #endif
 
+#if OS(WINCE)
+    GraphicsContext gc(bitmapDC);
+#else
     GraphicsContext gc(bitmapDC, m_transparent);
     gc.setShouldIncludeChildWindows(windowsToPaint == PaintWebViewAndChildren);
+#endif
     gc.save();
+#if !OS(WINCE)
     if (m_transparent)
         gc.clearRect(dirtyRect);
-    else
-        FillRect(bitmapDC, &rect, (HBRUSH)GetStockObject(WHITE_BRUSH));
+#endif
+    // I think we end up painting the whole view area multiple times, this
+    // doesn't seem to be necessary.
+    //else
+    //    FillRect(bitmapDC, &rect, (HBRUSH)GetStockObject(WHITE_BRUSH));
 
     COMPtr<IWebUIDelegatePrivate2> uiPrivate(Query, m_uiDelegate);
     if (uiPrivate)
@@ -1378,9 +1411,13 @@ bool WebView::handleContextMenuEvent(WPARAM wParam, LPARAM lParam)
     if (hasCustomMenus)
         m_uiDelegate->trackCustomPopupMenu((IWebView*)this, (OLE_HANDLE)(ULONG64)coreMenu->platformContextMenu(), &point);
     else {
+#if OS(WINCE)
+        UINT flags = TPM_TOPALIGN | TPM_HORIZONTAL | TPM_LEFTALIGN;
+#else
         // Surprisingly, TPM_RIGHTBUTTON means that items are selectable with either the right OR left mouse button
         UINT flags = TPM_RIGHTBUTTON | TPM_TOPALIGN | TPM_VERPOSANIMATION | TPM_HORIZONTAL
             | TPM_LEFTALIGN | TPM_HORPOSANIMATION;
+#endif
         ::TrackPopupMenuEx(coreMenu->platformContextMenu(), flags, point.x, point.y, m_viewWindow, 0);
     }
 
@@ -1467,7 +1504,9 @@ bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)
     static LONG globalClickCount;
     static IntPoint globalPrevPoint;
     static MouseButton globalPrevButton;
+#if !OS(WINCE)
     static LONG globalPrevMouseDownTime;
+#endif
 
     if (message == WM_CANCELMODE) {
         m_page->mainFrame()->eventHandler()->lostMouseCapture();
@@ -1477,14 +1516,24 @@ bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)
     // Create our event.
     // On WM_MOUSELEAVE we need to create a mouseout event, so we force the position
     // of the event to be at (MINSHORT, MINSHORT).
+#if OS(WINCE)
+    LPARAM position = lParam;
+#else
     LPARAM position = (message == WM_MOUSELEAVE) ? ((MINSHORT << 16) | MINSHORT) : lParam;
+#endif
     PlatformMouseEvent mouseEvent(m_viewWindow, message, wParam, position, m_mouseActivated);
 
+#if !OS(WINCE)
     setMouseActivated(false);
+#endif
 
     bool insideThreshold = abs(globalPrevPoint.x() - mouseEvent.position().x()) < ::GetSystemMetrics(SM_CXDOUBLECLK) &&
                            abs(globalPrevPoint.y() - mouseEvent.position().y()) < ::GetSystemMetrics(SM_CYDOUBLECLK);
+#if !OS(WINCE)
+    // GetMessageTime is not implemented on WINCE.  If double click is needed for CE, this
+    // will need to be implemented differently.
     LONG messageTime = ::GetMessageTime();
+#endif
 
     bool handled = false;
 
@@ -1497,14 +1546,18 @@ bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)
         // Always start capturing events when the mouse goes down in our HWND.
         ::SetCapture(m_viewWindow);
 
+#if !OS(WINCE)
         if (((messageTime - globalPrevMouseDownTime) < (LONG)::GetDoubleClickTime()) && 
             insideThreshold &&
             mouseEvent.button() == globalPrevButton)
             globalClickCount++;
         else
+#endif
             // Reset the click count.
             globalClickCount = 1;
+#if !OS(WINCE)
         globalPrevMouseDownTime = messageTime;
+#endif
         globalPrevButton = mouseEvent.button();
         globalPrevPoint = mouseEvent.position();
         
@@ -1521,17 +1574,20 @@ bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)
         mouseEvent.setClickCount(globalClickCount);
         m_page->mainFrame()->eventHandler()->handleMouseReleaseEvent(mouseEvent);
         ::ReleaseCapture();
+#if !OS(WINCE)
     } else if (message == WM_MOUSELEAVE && m_mouseOutTracker) {
         // Once WM_MOUSELEAVE is fired windows clears this tracker
         // so there is no need to disable it ourselves.
         m_mouseOutTracker.clear();
         m_page->mainFrame()->eventHandler()->mouseMoved(mouseEvent);
         handled = true;
+#endif
     } else if (message == WM_MOUSEMOVE) {
         if (!insideThreshold)
             globalClickCount = 0;
         mouseEvent.setClickCount(globalClickCount);
         handled = m_page->mainFrame()->eventHandler()->mouseMoved(mouseEvent);
+#if !OS(WINCE)
         if (!m_mouseOutTracker) {
             m_mouseOutTracker = adoptPtr(new TRACKMOUSEEVENT);
             m_mouseOutTracker->cbSize = sizeof(TRACKMOUSEEVENT);
@@ -1539,6 +1595,7 @@ bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)
             m_mouseOutTracker->hwndTrack = m_viewWindow;
             ::TrackMouseEvent(m_mouseOutTracker.get());
         }
+#endif
     }
     return handled;
 }
@@ -1892,7 +1949,9 @@ static const KeyDownEntry keyDownEntries[] = {
     { 'I',       CtrlKey,            "ToggleItalic"                                },
 
     { VK_ESCAPE, 0,                  "Cancel"                                      },
+#if !OS(WINCE)
     { VK_OEM_PERIOD, CtrlKey,        "Cancel"                                      },
+#endif
     { VK_TAB,    0,                  "InsertTab"                                   },
     { VK_TAB,    ShiftKey,           "InsertBacktab"                               },
     { VK_RETURN, 0,                  "InsertNewline"                               },
@@ -2113,23 +2172,32 @@ bool WebView::registerWebViewWindowClass()
 
     haveRegisteredWindowClass = true;
 
+#if OS(WINCE)
+    WNDCLASS wcex;
+    wcex.style = 0;
+    wcex.hbrBackground = (HBRUSH) (COLOR_WINDOW+1);
+#else
     WNDCLASSEX wcex;
-
     wcex.cbSize = sizeof(WNDCLASSEX);
-
     wcex.style          = CS_DBLCLKS;
+    wcex.hbrBackground  = 0;
+    wcex.hIconSm        = 0;
+#endif
+
     wcex.lpfnWndProc    = WebViewWndProc;
     wcex.cbClsExtra     = 0;
     wcex.cbWndExtra     = sizeof(WebView*);
     wcex.hInstance      = gInstance;
     wcex.hIcon          = 0;
     wcex.hCursor        = ::LoadCursor(0, IDC_ARROW);
-    wcex.hbrBackground  = 0;
     wcex.lpszMenuName   = 0;
     wcex.lpszClassName  = kWebViewWindowClassName;
-    wcex.hIconSm        = 0;
 
+#if OS(WINCE)
+    return !!RegisterClass(&wcex);
+#else
     return !!RegisterClassEx(&wcex);
+#endif
 }
 
 static HWND findTopLevelParent(HWND window)
@@ -2178,20 +2246,26 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
     switch (message) {
         case WM_PAINT: {
             webView->paint(0, 0);
+#if !OS(WINCE)
             if (webView->usesLayeredWindow())
                 webView->performLayeredWindowUpdate();
+#endif
             break;
         }
         case WM_ERASEBKGND:
+#if !OS(WINCE)
             if (webView->usesLayeredWindow()) {
                 // Don't perform a background erase for transparent views.
                 handled = true;
                 lResult = 1;
             }
+#endif
             break;
+#if !OS(WINCE)
         case WM_PRINTCLIENT:
             webView->paint((HDC)wParam, lParam);
             break;
+#endif
         case WM_DESTROY:
             webView->setIsBeingDestroyed();
             webView->close();
@@ -2212,7 +2286,9 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
         case WM_LBUTTONUP:
         case WM_MBUTTONUP:
         case WM_RBUTTONUP:
+#if !OS(WINCE)
         case WM_MOUSELEAVE:
+#endif
         case WM_CANCELMODE:
             if (Frame* coreFrame = core(mainFrameImpl))
                 if (coreFrame->view()->didFirstLayout())
@@ -2315,9 +2391,11 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
             else // If the high word of wParam is 0, the message is from a menu
                 webView->performContextMenuAction(wParam, lParam, false);
             break;
+#if !OS(WINCE)
         case WM_MENUCOMMAND:
             webView->performContextMenuAction(wParam, lParam, true);
             break;
+#endif
         case WM_CONTEXTMENU:
             handled = webView->handleContextMenuEvent(wParam, lParam);
             break;
@@ -2330,9 +2408,11 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
         case WM_DRAWITEM:
             handled = webView->onDrawItem(wParam, lParam);
             break;
+#if !OS(WINCE)
         case WM_UNINITMENUPOPUP:
             handled = webView->onUninitMenuPopup(wParam, lParam);
             break;
+#endif
         case WM_XP_THEMECHANGED:
             if (Frame* coreFrame = core(mainFrameImpl)) {
                 webView->deleteBackingStore();
@@ -2347,10 +2427,12 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
 #endif
            }
             break;
+#if !OS(WINCE)
         case WM_MOUSEACTIVATE:
             webView->setMouseActivated(true);
             handled = false;
             break;
+#endif
         case WM_GETDLGCODE: {
             COMPtr<IWebUIDelegate> uiDelegate;
             COMPtr<IWebUIDelegatePrivate> uiDelegatePrivate;
@@ -2368,9 +2450,11 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
             handled = false;
             break;
         }
+#if HAVE(ACCESSIBILITY)
         case WM_GETOBJECT:
             handled = webView->onGetObject(wParam, lParam, lResult);
             break;
+#endif
         case WM_IME_STARTCOMPOSITION:
             handled = webView->onIMEStartComposition();
             break;
@@ -2484,8 +2568,10 @@ HRESULT STDMETHODCALLTYPE WebView::QueryInterface(REFIID riid, void** ppvObject)
         *ppvObject = static_cast<IWebViewEditingActions*>(this);
     else if (IsEqualGUID(riid, IID_IWebNotificationObserver))
         *ppvObject = static_cast<IWebNotificationObserver*>(this);
+#if ENABLE(DRAG_SUPPORT)
     else if (IsEqualGUID(riid, IID_IDropTarget))
         *ppvObject = static_cast<IDropTarget*>(this);
+#endif
     else
         return E_NOINTERFACE;
 
@@ -2643,8 +2729,14 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
 
     registerWebViewWindowClass();
 
+#if OS(WINCE)
+    HWND parentHwnd = m_hostWindow;
+#else
+    HWND parentHwnd = m_hostWindow ? m_hostWindow : HWND_MESSAGE;
+#endif
+
     m_viewWindow = CreateWindowEx(0, kWebViewWindowClassName, 0, WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
-        frame.left, frame.top, frame.right - frame.left, frame.bottom - frame.top, m_hostWindow ? m_hostWindow : HWND_MESSAGE, 0, gInstance, 0);
+        frame.left, frame.top, frame.right - frame.left, frame.bottom - frame.top, parentHwnd, 0, gInstance, 0);
     ASSERT(::IsWindow(m_viewWindow));
 
     if (shouldInitializeTrackPointHack()) {
@@ -2655,7 +2747,9 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
         ::CreateWindowW(L"SCROLLBAR", L"FAKETRACKPOINTVSCROLLBAR", WS_CHILD | WS_VISIBLE | SBS_VERT, 0, 0, 0, 0, m_viewWindow, 0, gInstance, 0);
     }
 
+#if ENABLE(DRAG_SUPPORT)
     hr = registerDragDrop();
+#endif
     if (FAILED(hr))
         return hr;
 
@@ -2700,13 +2794,17 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
     pageClients.chromeClient = new WebChromeClient(this);
     pageClients.contextMenuClient = new WebContextMenuClient(this);
     pageClients.editorClient = new WebEditorClient(this);
+#if ENABLE(DRAG_SUPPORT)
     pageClients.dragClient = new WebDragClient(this);
+#endif
 #if ENABLE(INSPECTOR)
     pageClients.inspectorClient = m_inspectorClient;
 #endif // ENABLE(INSPECTOR)
 
     m_page = new Page(pageClients);
+#if ENABLE(GEOLOCATION)
     provideGeolocationTo(m_page, new WebGeolocationClient(this));
+#endif
 
     unsigned layoutMilestones = DidFirstLayout | DidFirstVisuallyNonEmptyLayout;
     m_page->addLayoutMilestones(static_cast<LayoutMilestones>(layoutMilestones));
@@ -2765,7 +2863,12 @@ void WebView::initializeToolTipWindow()
     if (!initCommonControls())
         return;
 
-    m_toolTipHwnd = CreateWindowEx(WS_EX_TRANSPARENT, TOOLTIPS_CLASS, 0, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
+#if OS(WINCE)
+    DWORD windowStyle = WS_OVERLAPPED;
+#else
+    DWORD windowStyle = WS_EX_TRANSPARENT;
+#endif
+    m_toolTipHwnd = CreateWindowEx(windowStyle, TOOLTIPS_CLASS, 0, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
                                    CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
                                    m_viewWindow, 0, 0, 0);
     if (!m_toolTipHwnd)
@@ -3327,11 +3430,13 @@ static void systemParameterChanged(WPARAM parameter)
 void WebView::windowReceivedMessage(HWND, UINT message, WPARAM wParam, LPARAM)
 {
     switch (message) {
+#if !OS(WINCE)
     case WM_NCACTIVATE:
         updateActiveStateSoon();
         if (!wParam)
             deleteBackingStoreSoon();
         break;
+#endif
     case WM_SETTINGCHANGE:
         systemParameterChanged(wParam);
         break;
@@ -3383,6 +3488,7 @@ HRESULT STDMETHODCALLTYPE WebView::setHostWindow(
     if (m_viewWindow) {
         if (window)
             SetParent(m_viewWindow, window);
+#if !OS(WINCE)
         else if (!isBeingDestroyed()) {
             // Turn the WebView into a message-only window so it will no longer be a child of the
             // old host window and will be hidden from screen. We only do this when
@@ -3390,6 +3496,7 @@ HRESULT STDMETHODCALLTYPE WebView::setHostWindow(
             // m_viewWindow in a weird state (see <http://webkit.org/b/29337>).
             SetParent(m_viewWindow, HWND_MESSAGE);
         }
+#endif
     }
 
     m_hostWindow = window;
@@ -3437,15 +3544,22 @@ HRESULT STDMETHODCALLTYPE WebView::searchFor(
 bool WebView::active()
 {
     HWND activeWindow = GetActiveWindow();
+#if !OS(WINCE)
     if (usesLayeredWindow() && activeWindow == m_viewWindow)
         return true;
-
-    return (activeWindow && m_topLevelParent == findTopLevelParent(activeWindow));
+#endif
+    // When placed on a winform we cannot always walk up the stack of
+    // windows to the point where m_topLevelParent == findTopLevelParent(activeWindow).
+    // GetActiveWindow() always returns NULL if we are not the active window
+    // so checking its return value is enough.
+    return (activeWindow);
+    //return (activeWindow && m_topLevelParent == findTopLevelParent(activeWindow));
 }
 
 void WebView::updateActiveState()
 {
-    m_page->focusController()->setActive(active());
+    if (m_page)
+        m_page->focusController()->setActive(active());
 }
 
 HRESULT STDMETHODCALLTYPE WebView::updateFocusedAndActiveState()
@@ -5033,21 +5147,29 @@ HRESULT STDMETHODCALLTYPE WebView::MIMETypeForExtension(
 HRESULT STDMETHODCALLTYPE WebView::setCustomDropTarget(
     /* [in] */ IDropTarget* dt)
 {
+#if ENABLE(DRAG_SUPPORT)
     ASSERT(::IsWindow(m_viewWindow));
     if (!dt)
         return E_POINTER;
     m_hasCustomDropTarget = true;
     revokeDragDrop();
     return ::RegisterDragDrop(m_viewWindow,dt);
+#else
+    return E_FAIL;
+#endif
 }
 
 HRESULT STDMETHODCALLTYPE WebView::removeCustomDropTarget()
 {
+#if ENABLE(DRAG_SUPPORT)
     if (!m_hasCustomDropTarget)
         return S_OK;
     m_hasCustomDropTarget = false;
     revokeDragDrop();
     return registerDragDrop();
+#else
+    return S_OK;
+#endif
 }
 
 HRESULT STDMETHODCALLTYPE WebView::setInViewSourceMode( 
@@ -5140,6 +5262,7 @@ HRESULT STDMETHODCALLTYPE WebView::visibleContentRect(
     return S_OK;
 }
 
+#if ENABLE(DRAG_SUPPORT)
 static DWORD dragOperationToDragCursor(DragOperation op) {
     DWORD res = DROPEFFECT_NONE;
     if (op & DragOperationCopy) 
@@ -5242,6 +5365,7 @@ HRESULT STDMETHODCALLTYPE WebView::Drop(
     m_page->dragController()->performDrag(&data);
     return S_OK;
 }
+#endif
 
 HRESULT STDMETHODCALLTYPE WebView::canHandleRequest( 
     IWebURLRequest *request,
@@ -5393,6 +5517,7 @@ HRESULT STDMETHODCALLTYPE WebView::shouldClose(
     return S_OK;
 }
 
+#if ENABLE(DRAG_SUPPORT)
 HRESULT WebView::registerDragDrop()
 {
     ASSERT(::IsWindow(m_viewWindow));
@@ -5406,6 +5531,7 @@ HRESULT WebView::revokeDragDrop()
 
     return ::RevokeDragDrop(m_viewWindow);
 }
+#endif
 
 HRESULT WebView::setProhibitsMainFrameScrolling(BOOL b)
 {
@@ -5418,8 +5544,12 @@ HRESULT WebView::setProhibitsMainFrameScrolling(BOOL b)
 
 HRESULT WebView::setShouldApplyMacFontAscentHack(BOOL b)
 {
+#if OS(WINCE)
+    return E_FAIL;
+#else
     SimpleFontData::setShouldApplyMacAscentHack(b);
     return S_OK;
+#endif
 }
 
 class IMMDict {
@@ -5454,20 +5584,26 @@ const IMMDict& IMMDict::dict()
 
 IMMDict::IMMDict()
 {
+#if OS(WINCE)
+    m_instance = ::LoadLibrary(TEXT("coredll.DLL"));
+#define LOAD_METHOD(x) (::GetProcAddress(m_instance, TEXT(x)))
+#else
     m_instance = ::LoadLibraryW(L"IMM32.DLL");
-    getContext = reinterpret_cast<getContextPtr>(::GetProcAddress(m_instance, "ImmGetContext"));
+#define LOAD_METHOD(x) (::GetProcAddress(m_instance, x))
+#endif
+    getContext = reinterpret_cast<getContextPtr> LOAD_METHOD("ImmGetContext");
     ASSERT(getContext);
-    releaseContext = reinterpret_cast<releaseContextPtr>(::GetProcAddress(m_instance, "ImmReleaseContext"));
+    releaseContext = reinterpret_cast<releaseContextPtr> LOAD_METHOD("ImmReleaseContext");
     ASSERT(releaseContext);
-    getCompositionString = reinterpret_cast<getCompositionStringPtr>(::GetProcAddress(m_instance, "ImmGetCompositionStringW"));
+    getCompositionString = reinterpret_cast<getCompositionStringPtr> LOAD_METHOD("ImmGetCompositionStringW");
     ASSERT(getCompositionString);
-    setCandidateWindow = reinterpret_cast<setCandidateWindowPtr>(::GetProcAddress(m_instance, "ImmSetCandidateWindow"));
+    setCandidateWindow = reinterpret_cast<setCandidateWindowPtr> LOAD_METHOD("ImmSetCandidateWindow");
     ASSERT(setCandidateWindow);
-    setOpenStatus = reinterpret_cast<setOpenStatusPtr>(::GetProcAddress(m_instance, "ImmSetOpenStatus"));
+    setOpenStatus = reinterpret_cast<setOpenStatusPtr> LOAD_METHOD("ImmSetOpenStatus");
     ASSERT(setOpenStatus);
-    notifyIME = reinterpret_cast<notifyIMEPtr>(::GetProcAddress(m_instance, "ImmNotifyIME"));
+    notifyIME = reinterpret_cast<notifyIMEPtr> LOAD_METHOD("ImmNotifyIME");
     ASSERT(notifyIME);
-    associateContextEx = reinterpret_cast<associateContextExPtr>(::GetProcAddress(m_instance, "ImmAssociateContextEx"));
+    associateContextEx = reinterpret_cast<associateContextExPtr> LOAD_METHOD("ImmAssociateContextEx");
     ASSERT(associateContextEx);
 }
 
@@ -5830,6 +5966,7 @@ HRESULT STDMETHODCALLTYPE WebView::inspector(IWebInspector** inspector)
 
 HRESULT STDMETHODCALLTYPE WebView::windowAncestryDidChange()
 {
+#if !OS(WINCE)
     HWND newParent;
     if (m_viewWindow)
         newParent = findTopLevelParent(m_hostWindow);
@@ -5849,6 +5986,7 @@ HRESULT STDMETHODCALLTYPE WebView::windowAncestryDidChange()
 
     if (m_topLevelParent)
         WindowMessageBroadcaster::addListener(m_topLevelParent, this);
+#endif
 
     updateActiveState();
 
@@ -5959,21 +6097,33 @@ HRESULT STDMETHODCALLTYPE WebView::backingStore(
 
 HRESULT STDMETHODCALLTYPE WebView::setTransparent(BOOL transparent)
 {
+#if OS(WINCE)
+    if (transparent == FALSE)
+        return S_OK;
+
+    return E_FAIL;
+#else
     if (m_transparent == !!transparent)
         return S_OK;
 
     m_transparent = transparent;
     m_mainFrame->updateBackground();
     return S_OK;
+#endif
 }
 
 HRESULT STDMETHODCALLTYPE WebView::transparent(BOOL* transparent)
 {
+#if OS(WINCE)
+    *transparent = FALSE;
+    return S_OK;
+#else
     if (!transparent)
         return E_POINTER;
 
     *transparent = this->transparent() ? TRUE : FALSE;
     return S_OK;
+#endif
 }
 
 static bool setWindowStyle(HWND window, int index, LONG_PTR newValue)
@@ -5988,6 +6138,12 @@ static bool setWindowStyle(HWND window, int index, LONG_PTR newValue)
 
 HRESULT WebView::setUsesLayeredWindow(BOOL usesLayeredWindow)
 {
+#if OS(WINCE)
+    if (usesLayeredWindow == FALSE)
+        return S_OK;
+
+    return E_FAIL;
+#else
     if (m_usesLayeredWindow == !!usesLayeredWindow)
         return S_OK;
 
@@ -6043,6 +6199,7 @@ HRESULT WebView::setUsesLayeredWindow(BOOL usesLayeredWindow)
 
     m_usesLayeredWindow = usesLayeredWindow;
     return S_OK;
+#endif
 }
 
 HRESULT WebView::usesLayeredWindow(BOOL* usesLayeredWindow)
@@ -6050,7 +6207,11 @@ HRESULT WebView::usesLayeredWindow(BOOL* usesLayeredWindow)
     if (!usesLayeredWindow)
         return E_POINTER;
 
+#if OS(WINCE)
+    *usesLayeredWindow = FALSE;
+#else
     *usesLayeredWindow = this->usesLayeredWindow() ? TRUE : FALSE;
+#endif
     return S_OK;
 }
 
@@ -6170,6 +6331,7 @@ bool WebView::shouldUseEmbeddedView(const WTF::String& mimeType) const
     return m_embeddedViewMIMETypes->contains(mimeType);
 }
 
+#if HAVE(ACCESSIBILITY)
 bool WebView::onGetObject(WPARAM wParam, LPARAM lParam, LRESULT& lResult) const
 {
     lResult = 0;
@@ -6211,6 +6373,7 @@ STDMETHODIMP WebView::AccessibleObjectFromWindow(HWND hwnd, DWORD objectID, REFI
         return E_FAIL;
     return procPtr(hwnd, objectID, riid, ppObject);
 }
+#endif
 
 HRESULT WebView::setMemoryCacheDelegateCallsEnabled(BOOL enabled)
 {
@@ -6596,12 +6759,17 @@ HRESULT WebView::unused5()
 
 HRESULT WebView::setGeolocationProvider(IWebGeolocationProvider* locationProvider)
 {
+#if ENABLE(GEOLOCATION)
     m_geolocationProvider = locationProvider;
     return S_OK;
+#else
+    return E_NOTIMPL;
+#endif
 }
 
 HRESULT WebView::geolocationProvider(IWebGeolocationProvider** locationProvider)
 {
+#if ENABLE(GEOLOCATION)
     if (!locationProvider)
         return E_POINTER;
 
@@ -6609,18 +6777,26 @@ HRESULT WebView::geolocationProvider(IWebGeolocationProvider** locationProvider)
         return E_FAIL;
 
     return m_geolocationProvider.copyRefTo(locationProvider);
+#else
+    return E_NOTIMPL;
+#endif
 }
 
 HRESULT WebView::geolocationDidChangePosition(IWebGeolocationPosition* position)
 {
+#if ENABLE(GEOLOCATION)
     if (!m_page)
         return E_FAIL;
     GeolocationController::from(m_page)->positionChanged(core(position));
     return S_OK;
+#else
+    return E_NOTIMPL;
+#endif
 }
 
 HRESULT WebView::geolocationDidFailWithError(IWebError* error)
 {
+#if ENABLE(GEOLOCATION)
     if (!m_page)
         return E_FAIL;
     if (!error)
@@ -6633,6 +6809,9 @@ HRESULT WebView::geolocationDidFailWithError(IWebError* error)
     RefPtr<GeolocationError> geolocationError = GeolocationError::create(GeolocationError::PositionUnavailable, toString(description));
     GeolocationController::from(m_page)->errorOccurred(geolocationError.get());
     return S_OK;
+#else
+    return E_NOTIMPL;
+#endif
 }
 
 HRESULT WebView::setDomainRelaxationForbiddenForURLScheme(BOOL forbidden, BSTR scheme)
@@ -6813,13 +6992,22 @@ HRESULT WebView::httpPipeliningEnabled(BOOL* enabled)
 {
     if (!enabled)
         return E_POINTER;
-    *enabled = ResourceRequest::httpPipeliningEnabled();
+#if USE(CFNETWORK) || USE(CURL)
+    *enabled = WebCore::ResourceRequest::httpPipeliningEnabled();
+#else
+    *enabled = FALSE;
+#endif
     return S_OK;
 }
 
 HRESULT WebView::setHTTPPipeliningEnabled(BOOL enabled)
 {
-    ResourceRequest::setHTTPPipeliningEnabled(enabled);
+#if USE(CFNETWORK) || USE(CURL)
+    WebCore::ResourceRequest::setHTTPPipeliningEnabled(enabled);
+#else
+    if (enabled)
+        return E_FAIL;
+#endif
     return S_OK;
 }
 

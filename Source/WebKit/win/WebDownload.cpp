@@ -74,7 +74,7 @@ WebDownload* WebDownload::createInstance()
     return instance;
 }
 
-WebDownload* WebDownload::createInstance(ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& response, IWebDownloadDelegate* delegate)
+WebDownload* WebDownload::createInstance(ResourceHandle* handle, const WebCore::ResourceRequest& request, const ResourceResponse& response, IWebDownloadDelegate* delegate)
 {
     WebDownload* instance = new WebDownload();
     instance->AddRef();

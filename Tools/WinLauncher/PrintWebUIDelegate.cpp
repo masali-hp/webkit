@@ -137,7 +137,11 @@ HRESULT PrintWebUIDelegate::drawHeaderInRect(
     // Turn off header for now.
     HDC dc = reinterpret_cast<HDC>(drawingContext);
 
+#ifdef _WIN32_WCE
+    HGDIOBJ hFont = ::GetStockObject(SYSTEM_FONT);
+#else
     HGDIOBJ hFont = ::GetStockObject(ANSI_VAR_FONT);
+#endif
     HGDIOBJ hOldFont = ::SelectObject(dc, hFont);
 
     LPCWSTR header = L"[Sample Header]";
@@ -170,7 +174,11 @@ HRESULT PrintWebUIDelegate::drawFooterInRect(
 
     HDC dc = reinterpret_cast<HDC>(drawingContext);
 
+#ifdef _WIN32_WCE
+    HGDIOBJ hFont = ::GetStockObject(SYSTEM_FONT);
+#else
     HGDIOBJ hFont = ::GetStockObject(ANSI_VAR_FONT);
+#endif
     HGDIOBJ hOldFont = ::SelectObject(dc, hFont);
 
     LPCWSTR footer = L"[Sample Footer]";

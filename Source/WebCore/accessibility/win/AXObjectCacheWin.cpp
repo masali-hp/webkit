@@ -25,6 +25,8 @@
 
 
 #include "config.h"
+
+#if HAVE(ACCESSIBILITY)
 #include "AXObjectCache.h"
 
 #include "AccessibilityObject.h"
@@ -153,3 +155,5 @@ void AXObjectCache::handleFocusedUIElementChanged(Node*, Node* newFocusedNode)
 }
 
 } // namespace WebCore
+
+#endif

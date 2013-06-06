@@ -337,7 +337,9 @@ HRESULT STDMETHODCALLTYPE WebFrame::paintDocumentRectToContext(
 
     HDC dc = reinterpret_cast<HDC>(static_cast<ULONG64>(deviceContext));
     GraphicsContext gc(dc);
+#if !OS(WINCE)
     gc.setShouldIncludeChildWindows(true);
+#endif
     gc.save();
     LONG width = rect.right - rect.left;
     LONG height = rect.bottom - rect.top;
@@ -370,7 +372,9 @@ HRESULT STDMETHODCALLTYPE WebFrame::paintScrollViewRectToContextAtPoint(
 
     HDC dc = reinterpret_cast<HDC>(static_cast<ULONG64>(deviceContext));
     GraphicsContext gc(dc);
+#if !OS(WINCE)
     gc.setShouldIncludeChildWindows(true);
+#endif
     gc.save();
     IntRect dirtyRect(rect);
     dirtyRect.move(-pt.x, -pt.y);
@@ -579,7 +583,7 @@ void WebFrame::loadData(PassRefPtr<WebCore::SharedBuffer> data, BSTR mimeType, B
 
     KURL failingKURL = MarshallingHelpers::BSTRToKURL(failingURL);
 
-    ResourceRequest request(baseKURL);
+    WebCore::ResourceRequest request(baseKURL);
     SubstituteData substituteData(data, mimeTypeString, encodingString, failingKURL);
 
     // This method is only called from IWebFrame methods, so don't ASSERT that the Frame pointer isn't null.
@@ -1573,7 +1577,7 @@ void WebFrame::didChangeIcons(DocumentLoader*)
     notImplemented();
 }
 
-bool WebFrame::canHandleRequest(const ResourceRequest& request) const
+bool WebFrame::canHandleRequest(const WebCore::ResourceRequest& request) const
 {
     return WebView::canHandleRequest(request);
 }
@@ -1646,26 +1650,26 @@ void WebFrame::saveViewStateToItem(HistoryItem*)
 {
 }
 
-ResourceError WebFrame::cancelledError(const ResourceRequest& request)
+ResourceError WebFrame::cancelledError(const WebCore::ResourceRequest& request)
 {
     // FIXME: Need ChickenCat to include CFNetwork/CFURLError.h to get these values
     // Alternatively, we could create our own error domain/codes.
     return ResourceError(String(WebURLErrorDomain), -999, request.url().string(), String());
 }
 
-ResourceError WebFrame::blockedError(const ResourceRequest& request)
+ResourceError WebFrame::blockedError(const WebCore::ResourceRequest& request)
 {
     // FIXME: Need to implement the String descriptions for errors in the WebKitErrorDomain and have them localized
     return ResourceError(String(WebKitErrorDomain), WebKitErrorCannotUseRestrictedPort, request.url().string(), String());
 }
 
-ResourceError WebFrame::cannotShowURLError(const ResourceRequest& request)
+ResourceError WebFrame::cannotShowURLError(const WebCore::ResourceRequest& request)
 {
     // FIXME: Need to implement the String descriptions for errors in the WebKitErrorDomain and have them localized
     return ResourceError(String(WebKitErrorDomain), WebKitErrorCannotShowURL, request.url().string(), String());
 }
 
-ResourceError WebFrame::interruptedForPolicyChangeError(const ResourceRequest& request)
+ResourceError WebFrame::interruptedForPolicyChangeError(const WebCore::ResourceRequest& request)
 {
     // FIXME: Need to implement the String descriptions for errors in the WebKitErrorDomain and have them localized
     return ResourceError(String(WebKitErrorDomain), WebKitErrorFrameLoadInterruptedByPolicyChange, request.url().string(), String());
@@ -1731,7 +1735,7 @@ void WebFrame::receivedPolicyDecision(PolicyAction action)
     (coreFrame->loader()->policyChecker()->*function)(action);
 }
 
-void WebFrame::dispatchDecidePolicyForResponse(FramePolicyFunction function, const ResourceResponse& response, const ResourceRequest& request)
+void WebFrame::dispatchDecidePolicyForResponse(FramePolicyFunction function, const ResourceResponse& response, const WebCore::ResourceRequest& request)
 {
     Frame* coreFrame = core(this);
     ASSERT(coreFrame);
@@ -1748,7 +1752,7 @@ void WebFrame::dispatchDecidePolicyForResponse(FramePolicyFunction function, con
     (coreFrame->loader()->policyChecker()->*function)(PolicyUse);
 }
 
-void WebFrame::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function, const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState, const String& frameName)
+void WebFrame::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function, const NavigationAction& action, const WebCore::ResourceRequest& request, PassRefPtr<FormState> formState, const String& frameName)
 {
     Frame* coreFrame = core(this);
     ASSERT(coreFrame);
@@ -1766,7 +1770,7 @@ void WebFrame::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction functi
     (coreFrame->loader()->policyChecker()->*function)(PolicyUse);
 }
 
-void WebFrame::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function, const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState)
+void WebFrame::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function, const NavigationAction& action, const WebCore::ResourceRequest& request, PassRefPtr<FormState> formState)
 {
     Frame* coreFrame = core(this);
     ASSERT(coreFrame);
@@ -1794,7 +1798,7 @@ void WebFrame::dispatchUnableToImplementPolicy(const ResourceError& error)
     policyDelegate->unableToImplementPolicyWithError(d->webView, webError.get(), this);
 }
 
-void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, const ResourceRequest& request, const ResourceResponse& response)
+void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, const WebCore::ResourceRequest& request, const ResourceResponse& response)
 {
     COMPtr<IWebDownloadDelegate> downloadDelegate;
     COMPtr<IWebView> webView;
@@ -1813,7 +1817,7 @@ void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader,
     download.adoptRef(WebDownload::createInstance(documentLoader->mainResourceLoader()->handle(), request, response, downloadDelegate.get()));
 }
 
-bool WebFrame::dispatchDidLoadResourceFromMemoryCache(DocumentLoader*, const ResourceRequest&, const ResourceResponse&, int /*length*/)
+bool WebFrame::dispatchDidLoadResourceFromMemoryCache(DocumentLoader*, const WebCore::ResourceRequest&, const ResourceResponse&, int /*length*/)
 {
     notImplemented();
     return false;
@@ -1839,7 +1843,7 @@ void WebFrame::dispatchDidFailLoad(const ResourceError& error)
     }
 }
 
-void WebFrame::startDownload(const ResourceRequest& request, const String& /* suggestedName */)
+void WebFrame::startDownload(const WebCore::ResourceRequest& request, const String& /* suggestedName */)
 {
     d->webView->downloadURL(request.url());
 }
@@ -2296,6 +2300,9 @@ HRESULT STDMETHODCALLTYPE WebFrame::spoolPages(
     /* [in] */ UINT endPage,
     /* [retval][out] */ void* ctx)
 {
+#if OS(WINCE)
+    return E_NOTIMPL;
+#else
 #if USE(CG)
     if (!printDC || !ctx) {
         ASSERT_NOT_REACHED();
@@ -2379,6 +2386,7 @@ HRESULT STDMETHODCALLTYPE WebFrame::spoolPages(
 #endif
 
     return S_OK;
+#endif
 }
 
 HRESULT STDMETHODCALLTYPE WebFrame::isFrameSet( 
@@ -2586,6 +2594,7 @@ void WebFrame::setWebView(WebView* webView)
     d->webView = webView;
 }
 
+#if HAVE(ACCESSIBILITY)
 COMPtr<IAccessible> WebFrame::accessible() const
 {
     Frame* coreFrame = core(this);
@@ -2603,16 +2612,22 @@ COMPtr<IAccessible> WebFrame::accessible() const
     }
     return m_accessible.get();
 }
+#endif
 
 void WebFrame::updateBackground()
 {
-    Color backgroundColor = webView()->transparent() ? Color::transparent : Color::white;
+#if OS(WINCE)
+    Color backgroundColor = Color::white;
+    bool transparent = false;
+#else
+    bool transparent = webView()->transparent();
+    Color backgroundColor = transparent ? Color::transparent : Color::white;
+#endif
     Frame* coreFrame = core(this);
-
     if (!coreFrame || !coreFrame->view())
         return;
 
-    coreFrame->view()->updateBackgroundRecursively(backgroundColor, webView()->transparent());
+    coreFrame->view()->updateBackgroundRecursively(backgroundColor, transparent);
 }
 
 PassRefPtr<FrameNetworkingContext> WebFrame::createNetworkingContext()

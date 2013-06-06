@@ -31,7 +31,9 @@
 #include "WebKit.h"
 #include "WebDataSource.h"
 
+#if HAVE(ACCESSIBILITY)
 #include "AccessibleDocument.h"
+#endif
 
 #include <WebCore/AdjustViewSizeOrNot.h>
 #include <WebCore/FrameWin.h>
@@ -386,7 +388,9 @@ public:
     WebView* webView() const;
     void setWebView(WebView*);
 
+#if HAVE(ACCESSIBILITY)
     COMPtr<IAccessible> accessible() const;
+#endif
 
 protected:
     void loadHTMLString(BSTR string, BSTR baseURL, BSTR unreachableURL);
@@ -408,7 +412,9 @@ protected:
     bool                m_inPrintingMode;
     Vector<WebCore::IntRect> m_pageRects;
     int m_pageHeight;   // height of the page adjusted by margins
+#if HAVE(ACCESSIBILITY)
     mutable COMPtr<AccessibleDocument> m_accessible;
+#endif
 };
 
 #endif

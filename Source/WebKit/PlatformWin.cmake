@@ -200,6 +200,10 @@ elseif (WTF_USE_CG)
     list(APPEND WebKit_SOURCES_API
         win/WebKitGraphics.cpp
     )
+elseif (WINOS MATCHES CE)
+    list(APPEND WebKit_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/platform/graphics/wince"
+    )
 endif ()
 
 if (WTF_USE_CF)
@@ -233,6 +237,9 @@ if (WTF_USE_CF_NETWORK)
         win/WebURLAuthenticationChallengeSenderCFNet.cpp
     )
 elseif (WTF_USE_CURL)
+    list(APPEND WebKit_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/platform/network/curl"
+    )
     if (3RDPARTY_DIR)
         list(APPEND WebCore_INCLUDE_DIRECTORIES
             "${3RDPARTY_DIR}/libcurl/include"
@@ -244,10 +251,15 @@ elseif (WTF_USE_CURL)
         win/WebURLAuthenticationChallengeSenderCurl.cpp
     )
 elseif (WTF_USE_WININET)
+    list(APPEND WebKit_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/platform/network/win"
+    )
+    # There is no curl implementation in these files but they satisfy
+    # linking requirements.
     list(APPEND WebKit_SOURCES_Classes
-        win/WebCookieManagerWin.cpp
-        win/WebDownloadWin.cpp
-        win/WebURLAuthenticationChallengeSenderWin.cpp
+        win/WebCookieManagerCurl.cpp
+        win/WebDownloadCurl.cpp
+        win/WebURLAuthenticationChallengeSenderCurl.cpp
     )
 endif ()
 
@@ -275,7 +287,6 @@ if (ENABLE_INSPECTOR)
 
     list(APPEND WebKit_INCLUDES
         win/WebInspector.h
-        win/WebNodeHighlight.h
     )
     list(APPEND WebKit_SOURCES_Classes
         win/WebInspector.cpp
@@ -286,9 +297,14 @@ if (ENABLE_INSPECTOR)
         win/WebCoreSupport/WebInspectorDelegate.cpp
         win/WebCoreSupport/WebInspectorDelegate.h
     )
-    list(APPEND WebKit_SOURCES
-        win/WebNodeHighlight.cpp
-    )
+    if (WINOS MATCHES XP)
+        list(APPEND WebKit_INCLUDES
+            win/WebNodeHighlight.h
+        )
+        list(APPEND WebKit_SOURCES
+            win/WebNodeHighlight.cpp
+        )
+    endif ()
 endif ()
 
 if (ENABLE_DRAG_SUPPORT)
@@ -325,7 +341,11 @@ macro (GENERATE_INTERFACE _infile _defines _depends)
     set_source_files_properties(${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces/${_filewe}.h PROPERTIES GENERATED TRUE)
 endmacro ()
 
-set(MIDL_DEFINES /D\ \"__PRODUCTION__=01\")
+if (WINOS MATCHES CE)
+  set(MIDL_DEFINES /D\ \"_WIN32_WCE=0x600\"\ /D\ \"UNDER_CE\"\ /D\ \"WINCE\"\ /D\ \"STANDARDSHELL_UI_MODEL\"\ /D\ \"__PRODUCTION__=01\")
+else ()
+  set(MIDL_DEFINES /D\ \"__PRODUCTION__=01\")
+endif ()
 
 set(WEBKIT_IDL_DEPENDENCIES
     win/Interfaces/AccessibleComparable.idl
@@ -444,52 +464,58 @@ if (WTF_USE_CURL)
     set(ForwardingNetworkHeaders_NAME forwarding-headerCurl)
 endif ()
 
-# WebKit export file generator:
-if (NOT RUBY_EXECUTABLE)
-    message(FATAL_ERROR "The Ruby interpreter is needed to generate webkit exports generator.")
-endif ()
-
+# WebKit export file (WebKitExports.def):
+# Use c preprocessor to transform the file, then use perl script to remove blank lines.
 set(WEBKIT_EXPORTS_INPUT ${CMAKE_CURRENT_SOURCE_DIR}/win/WebKit.vcproj/WebKitExports.def.in)
-set(WEBKIT_EXPORTS_GENERATOR_CPP ${DERIVED_SOURCES_WEBKIT_DIR}/WebKitExportGenerator.cpp)
+set(WEBKIT_EXPORTS_INT ${CMAKE_BINARY_DIR}/Source/WebKit/WebKitExports.def.i)
+set(WEBKIT_EXPORTS_OUTPUT ${DERIVED_SOURCES_WEBKIT_DIR}/WebKitExports.def)
+# This part is ugly.  Because we use the c preprocessor on WebKitExports.def.in, Visual
+# Studio thinks it is a source file and wants to link WebKitExports.def.in.obj.
+# There seems to be no way to have the preprocessor run on the file but not pass it
+# to the list of files to link.  We will make an empty source file which will be compiled
+# into WebKitExports.def.obj so that linking succeeds.
+set(WEBKIT_EXPORTS_BLANK ${DERIVED_SOURCES_WEBKIT_DIR}/blank.cpp)
+if (NOT EXISTS ${WEBKIT_EXPORTS_BLANK})
+    file(WRITE ${WEBKIT_EXPORTS_BLANK} "")
+endif ()
+#  "/FoWebKit.dir\\${CMAKE_CFG_INTDIR}\\WebKitExports.def.obj"
 add_custom_command(
-    OUTPUT ${WEBKIT_EXPORTS_GENERATOR_CPP}
-    MAIN_DEPENDENCY ${WEBKIT_EXPORTS_INPUT}
-    COMMAND ${RUBY_EXECUTABLE} ${WEBCORE_DIR}/make-export-file-generator ${WEBKIT_EXPORTS_INPUT} ${WEBKIT_EXPORTS_GENERATOR_CPP}
-    VERBATIM)
-set_source_files_properties(${WEBKIT_EXPORTS_GENERATOR_CPP} PROPERTIES GENERATED TRUE)
-
-# FIXME - We're going to have problems when we want to build for CE & CE-ARM.
-# CMake talks about how you could use a generated executable during a cross
-# compile, but it looks a bit messy and requires the host OS executable
-# to be built first.
-# http://www.vtk.org/Wiki/CMake_Cross_Compiling#Using_executables_in_the_build_created_during_the_build
-# Another idea - use VS with a file that includes WebKitExports.def.in but have
-# the build stop at the pre-processor stage to create the exports .def file.
-# For now mimic the ruby + WebKitExportGenerator.exe to build the export file.
-add_executable(WebKitExportGenerator ${WEBKIT_EXPORTS_GENERATOR_CPP})
-#set_target_properties(WebKitExportGenerator PROPERTIES COMPILE_DEFINITIONS "USE_SYSTEM_MALLOC=1")
-#set_target_properties(WebKitExportGenerator PROPERTIES COMPILE_FLAGS "DUSE_SYSTEM_MALLOC=1")
-target_link_libraries(WebKitExportGenerator WTF)
-set_target_properties(WebKitExportGenerator PROPERTIES FOLDER "WebKit")
-
-get_property(WebKitExportGeneratorLocation TARGET WebKitExportGenerator PROPERTY LOCATION)
+    OUTPUT ${CMAKE_BINARY_DIR}/Source/WebKit/WebKit.dir/${CMAKE_CFG_INTDIR}/blank
+    MAIN_DEPENDENCY ${WEBKIT_EXPORTS_BLANK}
+    COMMAND ${CMAKE_C_COMPILER} /c /FoWebKit.dir\\${CMAKE_CFG_INTDIR}\\WebKitExports.def.obj ${WEBKIT_EXPORTS_BLANK}
+)
+if (CMAKE_SYSTEM_PROCESSOR MATCHES ARM)
+    set(EXPORTS_ARCH --architecture=ARM)
+else ()
+    set(EXPORTS_ARCH --architecture=x86)
+endif ()
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBKIT_DIR}/WebKitExports.def
-    COMMAND WebKitExportGenerator > ${DERIVED_SOURCES_WEBKIT_DIR}/WebKitExports.def
-    DEPENDS ${WebKitExportGeneratorLocation}
-    VERBATIM)
-list(APPEND WebKit_SOURCES ${DERIVED_SOURCES_WEBKIT_DIR}/WebKitExports.def)
-set_source_files_properties(${DERIVED_SOURCES_WEBKIT_DIR}/WebKitExports.def PROPERTIES GENERATED TRUE)
+    OUTPUT ${WEBKIT_EXPORTS_OUTPUT}
+    MAIN_DEPENDENCY ${WEBKIT_EXPORTS_INT}
+    DEPENDS ${WEBKIT_EXPORTS_INPUT} ${WEBKIT_EXPORTS_INT}
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/Scripts/trim-win-exports.pl --input ${WEBKIT_EXPORTS_INT} ${EXPORTS_ARCH} > ${WEBKIT_EXPORTS_OUTPUT}
+)
+set_source_files_properties(${WEBKIT_EXPORTS_INPUT} PROPERTIES COMPILE_FLAGS "/EP /P")
+set_source_files_properties(${WEBKIT_EXPORTS_INT} PROPERTIES GENERATED TRUE)
+set_source_files_properties(${WEBKIT_EXPORTS_OUTPUT} PROPERTIES GENERATED TRUE)
+list(APPEND WebKit_SOURCES
+    ${WEBKIT_EXPORTS_INPUT}
+    ${WEBKIT_EXPORTS_INT}
+    ${WEBKIT_EXPORTS_OUTPUT}
+    ${WEBKIT_EXPORTS_BLANK}
+)
+source_group(Exports FILES ${WEBKIT_EXPORTS_INPUT} ${WEBKIT_EXPORTS_INT} ${WEBKIT_EXPORTS_OUTPUT} ${WEBKIT_EXPORTS_BLANK})
 
 # Add library dependencies for WebKit:
-
-list(APPEND WebKit_LIBRARIES
-    shlwapi
-    usp10
-    comctl32
-    rpcrt4
-    comsupp
-)
+if (WINOS MATCHES XP)
+    list(APPEND WebKit_LIBRARIES
+        shlwapi
+        usp10
+        comctl32
+        rpcrt4
+        comsupp
+    )
+endif ()
 
 # We need the webkit libraries to come before the system default libraries.
 # To do this we add system default libs as webkit libs and zero out system
@@ -519,9 +545,11 @@ foreach(_infile ${WebKit_INSTALL_HEADERS})
                      MAIN_DEPENDENCY ${_infile})
 endforeach()
 
-list(APPEND WebKit_LIBRARIES
-    winmm
-)
+if (WINOS MATCHES XP)
+    list(APPEND WebKit_LIBRARIES
+        winmm
+    )
+endif ()
 
 # incremental linking fails for debug builds
 SET(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /INCREMENTAL:NO")

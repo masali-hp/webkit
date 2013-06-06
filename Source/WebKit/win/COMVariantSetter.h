@@ -31,6 +31,11 @@
 #include <wtf/Assertions.h>
 #include <wtf/Forward.h>
 
+#if OS(WINCE)
+//This define is missing from OLEAUTO.h under wince
+#define V_UI8(X)         V_UNION(X, ullVal)
+#endif
+
 template<typename T> struct COMVariantSetter {};
 
 template<typename T> struct COMVariantSetterBase

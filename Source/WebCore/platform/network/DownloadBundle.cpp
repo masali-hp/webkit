@@ -26,9 +26,16 @@
 #include "config.h"
 #include "DownloadBundle.h"
 
+#if OS(WINCE)
+#include "NotImplemented.h"
+#if !defined(errno)
+#define errno 0
+#endif
+#else
 #include <io.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#endif
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -92,6 +99,10 @@ exit:
 
 bool extractResumeData(const String& bundlePath, Vector<unsigned char> & resumeData)
 {
+#if OS(WINCE)
+    notImplemented();
+    return false;
+#else
     if (bundlePath.isEmpty()) {
         LOG_ERROR("Cannot create resume data from empty download bundle path");
         return false;
@@ -179,6 +190,7 @@ bool extractResumeData(const String& bundlePath, Vector<unsigned char> & resumeD
 exit:
     fclose(bundle);
     return result;
+#endif
 }
 
 } // namespace DownloadBundle

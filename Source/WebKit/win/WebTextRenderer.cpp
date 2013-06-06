@@ -82,7 +82,11 @@ ULONG STDMETHODCALLTYPE WebTextRenderer::Release()
 HRESULT STDMETHODCALLTYPE WebTextRenderer::registerPrivateFont(
     /* [in] */ LPCOLESTR fontFilePath)
 {
+#if OS(WINCE)
+    if (!AddFontResource(fontFilePath))
+#else
     if (!AddFontResourceEx(fontFilePath, FR_PRIVATE, 0))
+#endif
         return E_FAIL;
 
     return S_OK;

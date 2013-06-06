@@ -51,7 +51,11 @@ public:
     virtual HRESULT STDMETHODCALLTYPE javaScriptProtectedGlobalObjectsCount( 
         /* [retval][out] */ UINT *count);
     virtual HRESULT STDMETHODCALLTYPE javaScriptProtectedObjectTypeCounts( 
+#if OS(WINCE)
+        /* [retval][out] */ IPropertyBag** typeNamesAndCounts);
+#else
         /* [retval][out] */ IPropertyBag2** typeNamesAndCounts);
+#endif
     virtual HRESULT STDMETHODCALLTYPE iconPageURLMappingCount( 
         /* [retval][out] */ UINT *count);
     virtual HRESULT STDMETHODCALLTYPE iconRetainedPageURLCount( 
