@@ -40,9 +40,11 @@
 #include <wtf/platform.h>
 #include <wtf/text/CString.h>
 
+#if !OS(WINCE)
 #include <io.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#endif
 
 #include <WebCore/BString.h>
 #include <WebCore/NotImplemented.h>
@@ -55,7 +57,7 @@ using namespace WebCore;
 
 // WebDownload ----------------------------------------------------------------
 
-void WebDownload::init(ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& response, IWebDownloadDelegate* delegate)
+void WebDownload::init(ResourceHandle* handle, const WebCore::ResourceRequest& request, const ResourceResponse& response, IWebDownloadDelegate* delegate)
 {
    notImplemented();
 }

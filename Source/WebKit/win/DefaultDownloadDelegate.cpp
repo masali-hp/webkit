@@ -109,7 +109,11 @@ HRESULT STDMETHODCALLTYPE DefaultDownloadDelegate::decideDestinationWithSuggeste
     LOG(Download, "DefaultDownloadDelegate %p - decideDestinationWithSuggestedFilename %s", download, String(filename, SysStringLen(filename)).ascii().data());
 
     WCHAR pathChars[MAX_PATH];
+#if OS(WINCE)
+    if (FAILED(SHGetSpecialFolderPath(NULL, (LPWSTR) pathChars, CSIDL_DESKTOPDIRECTORY, 1))) {
+#else
     if (FAILED(SHGetFolderPath(0, CSIDL_DESKTOPDIRECTORY  | CSIDL_FLAG_CREATE, 0, 0, pathChars))) {
+#endif
         if (FAILED(download->setDestination(filename, true))) {
             LOG_ERROR("Failed to set destination on file");
             return E_FAIL;

@@ -27,6 +27,38 @@
 
 using namespace WTF::Unicode;
 
+#if OS(WINCE)
+// bsearch is not part of CRT in WinCE
+void * bsearch(
+   const void *key,
+   const void *base,
+   size_t num,
+   size_t width,
+   int ( __cdecl *compare ) ( const void *, const void *)
+   )
+{
+   if (num == 1) {
+       if (compare(key, base) == 0) {
+           return (void*) base;
+       }
+       return NULL;
+   }
+
+   int mid = num / 2;
+   void * midPtr = ((unsigned char*)base) + mid * width;
+   int result = compare(key, midPtr);
+   if (result > 0) {
+       return bsearch(key, base, mid, width, compare);
+   }
+   else if (result < 0) {
+       return bsearch(key, midPtr, num - mid, width, compare);
+   }
+   else {
+       return midPtr;
+   }
+}
+#endif
+
 namespace WebCore {
 
 RenderQuote::RenderQuote(Document* node, QuoteType quote)

@@ -1,4 +1,3 @@
-
 include(OptionsWindows)
 
 # Defaults for features for all ports are listed in WebKitFeatures.cmake
@@ -35,3 +34,7 @@ WEBKIT_DEFINE_IF_SET(WTF_USE_CF)
 WEBKIT_DEFINE_IF_SET(WTF_PLATFORM_WIN_CAIRO)
 WEBKIT_DEFINE_IF_SET(WTF_USE_CURL)
 WEBKIT_DEFINE_IF_SET(WTF_USE_WININET)
+
+if (NOT ENABLE_ACCESSIBILITY)
+    add_definitions(-DHAVE_ACCESSIBILITY=0)
+endif ()

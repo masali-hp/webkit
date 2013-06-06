@@ -78,6 +78,22 @@ static void getFileModificationTimeFromFindData(const WIN32_FIND_DATAW& findData
     time = fileTime.QuadPart / 10000000 - kSecondsFromFileTimeToTimet;
 }
 
+#if OS(WINCE)
+static size_t reverseFindPathSeparator(const String& path, unsigned start = UINT_MAX)
+{
+    size_t positionSlash = path.reverseFind('/', start);
+    size_t positionBackslash = path.reverseFind('\\', start);
+
+    if (positionSlash == notFound)
+        return positionBackslash;
+
+    if (positionBackslash == notFound)
+        return positionSlash;
+
+    return std::max(positionSlash, positionBackslash);
+}
+#endif
+
 bool getFileSize(const String& path, long long& size)
 {
     WIN32_FIND_DATAW findData;
@@ -182,6 +198,25 @@ CString fileSystemRepresentation(const String& path)
 
 bool makeAllDirectories(const String& path)
 {
+#if OS(WINCE)
+    size_t lastDivPos = reverseFindPathSeparator(path);
+    unsigned endPos = path.length();
+    if (lastDivPos == endPos - 1) {
+        --endPos;
+        lastDivPos = reverseFindPathSeparator(path, lastDivPos);
+    }
+
+    if (lastDivPos != notFound) {
+        if (!makeAllDirectories(path.substring(0, lastDivPos)))
+            return false;
+    }
+
+    String folder(path.substring(0, endPos));
+    CreateDirectory(folder.charactersWithNullTermination(), 0);
+
+    DWORD fileAttr = GetFileAttributes(folder.charactersWithNullTermination());
+    return fileAttr != 0xFFFFFFFF && (fileAttr & FILE_ATTRIBUTE_DIRECTORY);
+#else
     String fullPath = path;
     if (SHCreateDirectoryEx(0, fullPath.charactersWithNullTermination(), 0) != ERROR_SUCCESS) {
         DWORD error = GetLastError();
@@ -191,6 +226,7 @@ bool makeAllDirectories(const String& path)
         }
     }
     return true;
+#endif
 }
 
 String homeDirectoryPath()
@@ -254,8 +290,13 @@ static String bundleName()
 static String storageDirectory(DWORD pathIdentifier)
 {
     Vector<UChar> buffer(MAX_PATH);
+#if OS(WINCE)
+    if (!SHGetSpecialFolderPath(0, buffer.data(), pathIdentifier, TRUE))
+        return String();
+#else
     if (FAILED(SHGetFolderPathW(0, pathIdentifier | CSIDL_FLAG_CREATE, 0, 0, buffer.data())))
         return String();
+#endif
     buffer.resize(wcslen(buffer.data()));
     String directory = String::adopt(buffer);
 
@@ -263,7 +304,6 @@ static String storageDirectory(DWORD pathIdentifier)
     directory = pathByAppendingComponent(directory, companyNameDirectory + bundleName());
     if (!makeAllDirectories(directory))
         return String();
-
     return directory;
 }
 
@@ -362,7 +402,12 @@ long long seekFile(PlatformFileHandle handle, long long offset, FileSeekOrigin o
     LARGE_INTEGER newOffset;
     newOffset.QuadPart = 0;
 
+#if OS(WINCE)
+    LONG moveHigh = offset >> 32;
+    SetFilePointer(handle, offset & 0xFFFFFFFF, moveHigh ? &moveHigh : NULL, moveMethod);
+#else
     SetFilePointerEx(handle, largeOffset, &newOffset, moveMethod);
+#endif
 
     return newOffset.QuadPart;
 }

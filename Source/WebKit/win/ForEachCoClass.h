@@ -46,6 +46,12 @@
 #define WEB_DATABASE_MANAGER(macro)
 #endif
 
+#if ENABLE(GEOLOCATION)
+#define WEB_GEOLOCATION(macro) macro(WebGeolocationPosition)
+#else
+#define WEB_GEOLOCATION(macro)
+#endif
+
 // Items may only be added to the end of this macro. No items may be removed from it.
 #define FOR_EACH_COCLASS(macro) \
     CF_DICTIONARY_PROPERTY_BAG(macro) \
@@ -73,7 +79,7 @@
     macro(WebCookieManager) \
     macro(WebWorkersPrivate) \
     macro(WebScriptWorld) \
-    macro(WebGeolocationPosition) \
+    WEB_GEOLOCATION(macro) \
     macro(WebSerializedJSValue) \
     macro(WebUserContentURLPattern) \
     // end of macro

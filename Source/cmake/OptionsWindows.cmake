@@ -1,4 +1,11 @@
-add_definitions(-D_HAS_EXCEPTIONS=0 -DNOMINMAX -DUNICODE)
+if (CMAKE_SYSTEM_NAME MATCHES WindowsCE)
+    # NOMINMAX is already defined in c:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\ce\include\altcecrt.h
+    add_definitions(-D_HAS_EXCEPTIONS=0 -DUNICODE)
+    set(WINOS "CE")
+else ()
+    add_definitions(-D_HAS_EXCEPTIONS=0 -DNOMINMAX -DUNICODE)
+    set(WINOS "XP")
+endif ()
 
 include_directories(${JAVASCRIPTCORE_DIR}/os-win32)
 

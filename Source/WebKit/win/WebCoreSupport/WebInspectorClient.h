@@ -89,10 +89,16 @@ private:
     HWND m_inspectedWebViewHwnd;
     HWND m_frontendHwnd;
 
+#if !OS(WINCE)
     OwnPtr<WebNodeHighlight> m_highlight;
+#endif
 };
 
-class WebInspectorFrontendClient : public WebCore::InspectorFrontendClientLocal, WebCore::WindowMessageListener {
+class WebInspectorFrontendClient : public WebCore::InspectorFrontendClientLocal
+#if !OS(WINCE)
+    , WebCore::WindowMessageListener
+#endif
+{
 public:
     WebInspectorFrontendClient(WebView* inspectedWebView, HWND inspectedWebViewHwnd, HWND frontendHwnd, const COMPtr<WebView>& frotnendWebView, HWND frontendWebViewHwnd, WebInspectorClient*, WTF::PassOwnPtr<Settings>);
     virtual ~WebInspectorFrontendClient();
@@ -121,7 +127,9 @@ private:
 
     void updateWindowTitle();
 
+#if !OS(WINCE)
     LRESULT onGetMinMaxInfo(WPARAM, LPARAM);
+#endif
     LRESULT onSize(WPARAM, LPARAM);
     LRESULT onClose(WPARAM, LPARAM);
     LRESULT onSetFocus();

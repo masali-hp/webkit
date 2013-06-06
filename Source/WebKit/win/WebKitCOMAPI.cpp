@@ -34,8 +34,17 @@
 struct CLSIDHash {
     static unsigned hash(const CLSID& clsid)
     {
-        RPC_STATUS status;
-        return ::UuidHash(const_cast<CLSID*>(&clsid), &status);
+        //RPC_STATUS status;
+        //return ::UuidHash(const_cast<CLSID*>(&clsid), &status);
+        //Using this hash method eliminates a dependency on Rpcrt4.lib.
+        unsigned h = 0;
+        unsigned char * ptr = (unsigned char *) &clsid;
+        for (size_t i = 0; i < sizeof(CLSID); i++){
+            h += ptr[i];
+            h += (h << 13);
+            h ^= (h >> 5);
+        }
+        return h;
     }
     static bool equal(const CLSID& a, const CLSID& b) { return ::IsEqualCLSID(a, b); }
     static const bool safeToCompareToEmptyOrDeleted = true;

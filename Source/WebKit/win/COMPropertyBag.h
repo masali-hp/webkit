@@ -38,7 +38,11 @@
 #include "COMVariantSetter.h"
 
 template<typename ValueType, typename KeyType = typename WTF::String, typename HashType = typename WTF::StringHash>
-class COMPropertyBag : public IPropertyBag, public IPropertyBag2 {
+class COMPropertyBag : public IPropertyBag
+#if !OS(WINCE)
+    , public IPropertyBag2
+#endif
+{
     WTF_MAKE_NONCOPYABLE(COMPropertyBag);
 public:
     typedef HashMap<KeyType, ValueType, HashType> HashMapType;
@@ -55,12 +59,14 @@ public:
     virtual HRESULT STDMETHODCALLTYPE Read(LPCOLESTR pszPropName, VARIANT*, IErrorLog*);
     virtual HRESULT STDMETHODCALLTYPE Write(LPCOLESTR pszPropName, VARIANT*);
 
+#if !OS(WINCE)
     // IPropertyBag2
     virtual HRESULT STDMETHODCALLTYPE Read(ULONG cProperties, PROPBAG2*, IErrorLog*, VARIANT* pvarValue, HRESULT* phrError);
     virtual HRESULT STDMETHODCALLTYPE Write(ULONG cProperties, PROPBAG2*, VARIANT*);
     virtual HRESULT STDMETHODCALLTYPE CountProperties(ULONG* pcProperties);
     virtual HRESULT STDMETHODCALLTYPE GetPropertyInfo(ULONG iProperty, ULONG cProperties, PROPBAG2* pPropBag, ULONG* pcProperties);
     virtual HRESULT STDMETHODCALLTYPE LoadObject(LPCOLESTR pstrName, DWORD dwHint, IUnknown*, IErrorLog*);
+#endif
 
 private:
     COMPropertyBag()
@@ -107,8 +113,10 @@ HRESULT STDMETHODCALLTYPE COMPropertyBag<ValueType, KeyType, HashType>::QueryInt
         *ppvObject = static_cast<IPropertyBag*>(this);
     else if (IsEqualGUID(riid, IID_IPropertyBag))
         *ppvObject = static_cast<IPropertyBag*>(this);
+#if !OS(WINCE)
     else if (IsEqualGUID(riid, IID_IPropertyBag2))
         *ppvObject = static_cast<IPropertyBag2*>(this);
+#endif
     else
         return E_NOINTERFACE;
 
@@ -161,6 +169,7 @@ HRESULT STDMETHODCALLTYPE COMPropertyBag<ValueType, KeyType, HashType>::Write(LP
     return E_FAIL;
 }
 
+#if !OS(WINCE)
 template<typename ValueType, typename KeyType, typename HashType>
 HRESULT STDMETHODCALLTYPE COMPropertyBag<ValueType, KeyType, HashType>::Read(ULONG cProperties, PROPBAG2* pPropBag, IErrorLog* pErrorLog, VARIANT* pvarValue, HRESULT* phrError)
 {
@@ -233,5 +242,6 @@ HRESULT STDMETHODCALLTYPE COMPropertyBag<ValueType, KeyType, HashType>::LoadObje
 {
     return E_NOTIMPL;
 }
+#endif
 
 #endif // COMPropertyBag_h

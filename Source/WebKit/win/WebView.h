@@ -33,7 +33,9 @@
 #include "WebPreferences.h"
 #include <WebCore/COMPtr.h>
 #include <WebCore/DragActions.h>
+#include <WebCore/FrameView.h>
 #include <WebCore/IntRect.h>
+#include <WebCore/KeyboardEvent.h>
 #include <WebCore/RefCountedGDIHandle.h>
 #include <WebCore/SuspendableTimer.h>
 #include <WebCore/WindowMessageListener.h>
@@ -76,7 +78,9 @@ typedef WebCore::RefCountedGDIHandle<HRGN> RefCountedHRGN;
 WebView* kit(WebCore::Page*);
 WebCore::Page* core(IWebView*);
 
+#if ENABLE(DRAG_SUPPORT)
 interface IDropTargetHelper;
+#endif
 
 class WebView 
     : public IWebView
@@ -87,7 +91,9 @@ class WebView
     , public IWebViewUndoableEditing
     , public IWebViewEditingActions
     , public IWebNotificationObserver
+#if ENABLE(DRAG_SUPPORT)
     , public IDropTarget
+#endif
     , WebCore::WindowMessageListener
 #if USE(ACCELERATED_COMPOSITING)
     , WebCore::GraphicsLayerClient
@@ -669,6 +675,7 @@ public:
     virtual HRESULT STDMETHODCALLTYPE selectionRect(
         RECT* rc);
     
+#if ENABLE(DRAG_SUPPORT)
     virtual HRESULT STDMETHODCALLTYPE DragEnter(
         IDataObject* pDataObject, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect);
 
@@ -679,6 +686,7 @@ public:
     
     virtual HRESULT STDMETHODCALLTYPE Drop(
         IDataObject* pDataObject, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect);
+#endif
 
     virtual HRESULT STDMETHODCALLTYPE canHandleRequest( 
         IWebURLRequest *request,
@@ -854,7 +862,9 @@ public:
 
     WebCore::Page* page();
     bool handleMouseEvent(UINT, WPARAM, LPARAM);
+#if !OS(WINCE)
     void setMouseActivated(bool flag) { m_mouseActivated = flag; }
+#endif
     bool handleContextMenuEvent(WPARAM, LPARAM);
     bool onMeasureItem(WPARAM, LPARAM);
     bool onDrawItem(WPARAM, LPARAM);
@@ -884,8 +894,10 @@ public:
     void closeWindowTimerFired();
     bool didClose() const { return m_didClose; }
 
+#if !OS(WINCE)
     bool transparent() const { return m_transparent; }
     bool usesLayeredWindow() const { return m_usesLayeredWindow; }
+#endif
 
     bool onIMEStartComposition();
     bool onIMEComposition(LPARAM);
@@ -899,8 +911,10 @@ public:
     void resetIME(WebCore::Frame*);
     void setInputMethodState(bool);
 
+#if ENABLE(DRAG_SUPPORT)
     HRESULT registerDragDrop();
     HRESULT revokeDragDrop();
+#endif
 
     // Convenient to be able to violate the rules of COM here for easy movement to the frame.
     WebFrame* topLevelFrame() const { return m_mainFrame; }
@@ -935,13 +949,17 @@ public:
     void deleteBackingStoreSoon();
     void cancelDeleteBackingStoreSoon();
 
+#if !OS(WINCE)
     HWND topLevelParent() const { return m_topLevelParent; }
+#endif
     HWND viewWindow() const { return m_viewWindow; }
 
     void updateActiveState();
 
+#if HAVE(ACCESSIBILITY)
     bool onGetObject(WPARAM, LPARAM, LRESULT&) const;
     static STDMETHODIMP AccessibleObjectFromWindow(HWND, DWORD objectID, REFIID, void** ppObject);
+#endif
 
     void downloadURL(const WebCore::KURL&);
 
@@ -1005,8 +1023,11 @@ private:
     void paintIntoBackingStore(WebCore::FrameView*, HDC bitmapDC, const WebCore::IntRect& dirtyRect, WindowsToPaint);
     void updateBackingStore(WebCore::FrameView*, HDC = 0, bool backingStoreCompletelyDirty = false, WindowsToPaint = PaintWebViewOnly);
 
+#if !OS(WINCE)
     void performLayeredWindowUpdate();
+#endif
 
+#if ENABLE(DRAG_SUPPORT)
     WebCore::DragOperation keyStateToDragOperation(DWORD grfKeyState) const;
 
     // FIXME: This variable is part of a workaround. The drop effect (pdwEffect) passed to Drop is incorrect. 
@@ -1014,6 +1035,7 @@ private:
     // Thus, on return from DoDragDrop we have the correct pdwEffect for the drag-and-drop operation.
     // (see https://bugs.webkit.org/show_bug.cgi?id=29264)
     DWORD m_lastDropEffect;
+#endif
 
 #if USE(ACCELERATED_COMPOSITING)
     // GraphicsLayerClient
@@ -1104,29 +1126,32 @@ protected:
     WTF::String m_overrideEncoding;
     WTF::String m_applicationName;
     bool m_mouseActivated;
+#if ENABLE(DRAG_SUPPORT)
+    bool m_hasCustomDropTarget;
     // WebCore dragging logic needs to be able to inspect the drag data
     // this is updated in DragEnter/Leave/Drop
     COMPtr<IDataObject> m_dragData;
     COMPtr<IDropTargetHelper> m_dropTargetHelper;
+#endif
     UChar m_currentCharacterCode;
     bool m_isBeingDestroyed;
     unsigned m_paintCount;
     bool m_hasSpellCheckerDocumentTag;
     bool m_didClose;
-    bool m_hasCustomDropTarget;
     unsigned m_inIMEComposition;
     HWND m_toolTipHwnd;
     WTF::String m_toolTip;
     bool m_deleteBackingStoreTimerActive;
 
-    bool m_transparent;
-
     static bool s_allowSiteSpecificHacks;
 
     WebCore::SuspendableTimer* m_closeWindowTimer;
+#if !OS(WINCE)
     OwnPtr<TRACKMOUSEEVENT> m_mouseOutTracker;
-
+    bool m_transparent;
+    bool m_usesLayeredWindow;
     HWND m_topLevelParent;
+#endif
 
     OwnPtr<HashSet<WTF::String> > m_embeddedViewMIMETypes;
 
@@ -1151,7 +1176,6 @@ protected:
 #endif
 
     bool m_nextDisplayIsSynchronous;
-    bool m_usesLayeredWindow;
 
     HCURSOR m_lastSetCursor;
 

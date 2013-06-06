@@ -137,7 +137,11 @@ HRESULT STDMETHODCALLTYPE WebCoreStatistics::javaScriptProtectedGlobalObjectsCou
 }
 
 HRESULT STDMETHODCALLTYPE WebCoreStatistics::javaScriptProtectedObjectTypeCounts( 
+#if OS(WINCE)
+    /* [retval][out] */ IPropertyBag** typeNamesAndCounts)
+#else
     /* [retval][out] */ IPropertyBag2** typeNamesAndCounts)
+#endif
 {
     JSLockHolder lock(JSDOMWindow::commonVM());
     OwnPtr<TypeCountSet> jsObjectTypeNames(JSDOMWindow::commonVM()->heap.protectedObjectTypeCounts());
@@ -147,7 +151,11 @@ HRESULT STDMETHODCALLTYPE WebCoreStatistics::javaScriptProtectedObjectTypeCounts
     for (Iterator current = jsObjectTypeNames->begin(); current != end; ++current)
         typeCountMap.set(current->key, current->value);
 
+#if OS(WINCE)
+    COMPtr<IPropertyBag> results(AdoptCOM, COMPropertyBag<int>::createInstance(typeCountMap));
+#else
     COMPtr<IPropertyBag2> results(AdoptCOM, COMPropertyBag<int>::createInstance(typeCountMap));
+#endif
     results.copyRefTo(typeNamesAndCounts);
     return S_OK;
 }

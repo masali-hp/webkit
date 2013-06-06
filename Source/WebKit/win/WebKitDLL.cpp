@@ -55,17 +55,23 @@ CLSID gRegCLSIDs[] = {
 };
 #undef CLSID_FOR_CLASS
 
+#if OS(WINCE)
+BOOL WINAPI DllMain( HANDLE hModule, DWORD  ul_reason_for_call, LPVOID /*lpReserved*/)
+#else
 STDAPI_(BOOL) DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID /*lpReserved*/)
+#endif
 {
     switch (ul_reason_for_call) {
         case DLL_PROCESS_ATTACH:
             gLockCount = gClassCount = 0;
-            gInstance = hModule;
-            WebCore::setInstanceHandle(hModule);
+            gInstance = (HINSTANCE) hModule;
+            WebCore::setInstanceHandle((HINSTANCE) hModule);
             return TRUE;
 
         case DLL_PROCESS_DETACH:
+#if !OS(WINCE)
             WebCore::RenderThemeWin::setWebKitIsBeingUnloaded();
+#endif
             break;
 
         case DLL_THREAD_ATTACH:

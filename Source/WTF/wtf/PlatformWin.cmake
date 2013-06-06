@@ -33,9 +33,15 @@ list(APPEND WTF_SOURCES
     win/OwnPtrWin.cpp
 )
 
-list(APPEND WTF_LIBRARIES
-    winmm
-)
+if (WINOS MATCHES XP)
+    list(APPEND WTF_LIBRARIES
+        winmm
+    )
+else ()
+    list(APPEND WTF_LIBRARIES
+        mmtimer
+    )
+endif ()
 
 if (WTF_USE_PTHREADS)
     include_directories(${WEBKIT_LIBRARIES_DIR}/win/include/pthreads)

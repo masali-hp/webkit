@@ -113,7 +113,7 @@ void WebFrameLoaderClient::forceLayout()
     view->forceLayout(true);
 }
 
-void WebFrameLoaderClient::assignIdentifierToInitialRequest(unsigned long identifier, DocumentLoader* loader, const ResourceRequest& request)
+void WebFrameLoaderClient::assignIdentifierToInitialRequest(unsigned long identifier, DocumentLoader* loader, const WebCore::ResourceRequest& request)
 {
     WebView* webView = m_webFrame->webView();
     COMPtr<IWebResourceLoadDelegate> resourceLoadDelegate;
@@ -174,7 +174,7 @@ void WebFrameLoaderClient::dispatchDidCancelAuthenticationChallenge(DocumentLoad
     resourceLoadDelegate->didCancelAuthenticationChallenge(webView, identifier, webChallenge.get(), getWebDataSource(loader));
 }
 
-void WebFrameLoaderClient::dispatchWillSendRequest(DocumentLoader* loader, unsigned long identifier, ResourceRequest& request, const ResourceResponse& redirectResponse)
+void WebFrameLoaderClient::dispatchWillSendRequest(DocumentLoader* loader, unsigned long identifier, WebCore::ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
     WebView* webView = m_webFrame->webView();
     COMPtr<IWebResourceLoadDelegate> resourceLoadDelegate;
@@ -192,7 +192,7 @@ void WebFrameLoaderClient::dispatchWillSendRequest(DocumentLoader* loader, unsig
         return;
 
     if (!newWebURLRequest) {
-        request = ResourceRequest();
+        request = WebCore::ResourceRequest();
         return;
     }
 
@@ -653,7 +653,7 @@ void WebFrameLoaderClient::didDetectXSS(const KURL&, bool)
     // FIXME: propogate call into the private delegate.
 }
 
-PassRefPtr<DocumentLoader> WebFrameLoaderClient::createDocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData)
+PassRefPtr<DocumentLoader> WebFrameLoaderClient::createDocumentLoader(const WebCore::ResourceRequest& request, const SubstituteData& substituteData)
 {
     RefPtr<WebDocumentLoader> loader = WebDocumentLoader::create(request, substituteData);
 
@@ -723,8 +723,14 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
 
     RECT rect;
     view->frameRect(&rect);
+#if OS(WINCE)
+    // transparent webviews not supported in wince
+    Color backgroundColor = Color::white;
+    bool transparent = false;
+#else
     bool transparent = view->transparent();
     Color backgroundColor = transparent ? Color::transparent : Color::white;
+#endif
     core(m_webFrame)->createView(IntRect(rect).size(), backgroundColor, transparent);
 }
 

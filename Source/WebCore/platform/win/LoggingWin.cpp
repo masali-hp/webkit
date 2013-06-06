@@ -37,6 +37,12 @@ namespace WebCore {
 
 static inline void initializeWithUserDefault(WTFLogChannel& channel)
 {
+#if OS(WINCE)
+    // WinCE does not have support for environment variables.
+    // A reasonable alternative may be to read these settings from a file.
+    // For now just initialize all channels to On.
+    channel.state = WTFLogChannelOn;
+#else
     DWORD length = GetEnvironmentVariableA(channel.defaultName, 0, 0);
     if (!length)
         return;
@@ -69,6 +75,7 @@ static inline void initializeWithUserDefault(WTFLogChannel& channel)
         channel.state = WTFLogChannelOn;
     else
         channel.state = WTFLogChannelOff;
+#endif
 }
 
 void initializeLoggingChannelsIfNecessary()

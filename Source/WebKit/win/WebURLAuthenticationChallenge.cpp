@@ -216,12 +216,16 @@ HRESULT STDMETHODCALLTYPE WebURLAuthenticationChallenge::protectionSpace(
 HRESULT STDMETHODCALLTYPE WebURLAuthenticationChallenge::sender(
     /* [out, retval] */ IWebURLAuthenticationChallengeSender** sender)
 {
+#if USE(WININET)
+    return E_NOTIMPL;
+#else
     if (!m_sender) {
         AuthenticationClient* client = m_authenticationChallenge.authenticationClient();
         m_sender.adoptRef(WebURLAuthenticationChallengeSender::createInstance(client));
     }
 
     return m_sender.copyRefTo(sender);
+#endif
 }
 
 // WebURLAuthenticationChallenge -------------------------------------------------------------------

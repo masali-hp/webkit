@@ -31,6 +31,12 @@
 
 #include "WindowMessageListener.h"
 
+#if OS(WINCE) && !defined(GWLP_WNDPROC)
+#define GWLP_WNDPROC (-4)
+#define SetWindowLongPtr(x, y, z) SetWindowLong(x, y, z)
+#define LONG_PTR LONG
+#endif
+
 namespace WebCore {
 
 typedef HashMap<HWND, WindowMessageBroadcaster*> InstanceMap;

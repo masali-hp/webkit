@@ -53,6 +53,14 @@
 
 using namespace WebCore;
 
+#ifndef WS_OVERLAPPEDWINDOW
+#define WS_OVERLAPPEDWINDOW (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX)
+#endif
+
+#ifndef WM_WINDOWPOSCHANGING
+#define WM_WINDOWPOSCHANGING WM_WINDOWPOSCHANGED
+#endif
+
 static LPCTSTR kWebInspectorWindowClassName = TEXT("WebInspectorWindowClass");
 static ATOM registerWindowClass();
 static LPCTSTR kWebInspectorPointerProp = TEXT("WebInspectorPointer");
@@ -200,6 +208,12 @@ void WebInspectorClient::bringFrontendToFront()
 
 void WebInspectorClient::highlight()
 {
+#if OS(WINCE)
+    // WinCE does not support layered/transparent windows,
+    // so we just draw the highlighted node as part of the
+    // WebView paint.
+    m_inspectedWebView->invalidateBackingStore(NULL);
+#else
     bool creatingHighlight = !m_highlight;
 
     if (creatingHighlight)
@@ -212,18 +226,33 @@ void WebInspectorClient::highlight()
 
     if (creatingHighlight && IsWindowVisible(m_frontendHwnd))
         m_highlight->placeBehindWindow(m_frontendHwnd);
+#endif
 }
 
 void WebInspectorClient::hideHighlight()
 {
+#if OS(WINCE)
+    // WinCE does not support layered/transparent windows,
+    // so we just draw the highlighted node as part of the
+    // WebView paint.
+    m_inspectedWebView->invalidateBackingStore(NULL);
+#else
     if (m_highlight)
         m_highlight->setShowsWhileWebViewIsVisible(false);
+#endif
 }
 
 void WebInspectorClient::updateHighlight()
 {
+#if OS(WINCE)
+    // WinCE does not support layered/transparent windows,
+    // so we just draw the highlighted node as part of the
+    // WebView paint.
+    m_inspectedWebView->invalidateBackingStore(NULL);
+#else
     if (m_highlight && m_highlight->isShowing())
         m_highlight->update();
+#endif
 }
 
 void WebInspectorClient::releaseFrontend()
@@ -337,7 +366,13 @@ void WebInspectorFrontendClient::setAttachedWindowHeight(unsigned height)
     int totalHeight = hostWindowRect.bottom - hostWindowRect.top;
     int webViewWidth = inspectedRect.right - inspectedRect.left;
 
+#if OS(WINCE)
+    // WinCE doesn't do WM_WINDOWPOSCHANGING messages.  Set the inspected webview height to the
+    // exact size it should be.
+    SetWindowPos(m_inspectedWebViewHwnd, 0, 0, 0, webViewWidth, totalHeight - height, SWP_NOZORDER);
+#else
     SetWindowPos(m_frontendWebViewHwnd, 0, 0, totalHeight - height, webViewWidth, height, SWP_NOZORDER);
+#endif
 
     // We want to set the inspected web view height to the totalHeight, because the height adjustment
     // of the inspected web view happens in onWebViewWindowPosChanging, not here.
@@ -377,8 +412,10 @@ void WebInspectorFrontendClient::closeWindowWithoutNotifications()
     ASSERT(m_inspectedWebViewHwnd);
     ASSERT(!IsWindowVisible(m_frontendHwnd));
 
+#if !OS(WINCE)
     // Remove the Inspector's WebView from the inspected WebView's parent window.
     WindowMessageBroadcaster::removeListener(m_inspectedWebViewHwnd, this);
+#endif
 
     m_attached = false;
 
@@ -420,8 +457,10 @@ void WebInspectorFrontendClient::showWindowWithoutNotifications()
         return;
     }
 
+#if !OS(WINCE)
     // Put the Inspector's WebView inside the inspected WebView's parent window.
     WindowMessageBroadcaster::addListener(m_inspectedWebViewHwnd, this);
+#endif
 
     HWND hostWindow;
     if (FAILED(m_inspectedWebView->hostWindow(reinterpret_cast<OLE_HANDLE*>(&hostWindow))))
@@ -462,6 +501,7 @@ void WebInspectorFrontendClient::updateWindowTitle()
     ::SetWindowText(m_frontendHwnd, title.charactersWithNullTermination());
 }
 
+#if !OS(WINCE)
 LRESULT WebInspectorFrontendClient::onGetMinMaxInfo(WPARAM, LPARAM lParam)
 {
     MINMAXINFO* info = reinterpret_cast<MINMAXINFO*>(lParam);
@@ -470,6 +510,7 @@ LRESULT WebInspectorFrontendClient::onGetMinMaxInfo(WPARAM, LPARAM lParam)
 
     return 0;
 }
+#endif
 
 LRESULT WebInspectorFrontendClient::onSize(WPARAM, LPARAM)
 {
@@ -521,8 +562,10 @@ static LRESULT CALLBACK WebInspectorWndProc(HWND hwnd, UINT msg, WPARAM wParam, 
         return ::DefWindowProc(hwnd, msg, wParam, lParam);
 
     switch (msg) {
+#if !OS(WINCE)
         case WM_GETMINMAXINFO:
             return client->onGetMinMaxInfo(wParam, lParam);
+#endif
         case WM_SIZE:
             return client->onSize(wParam, lParam);
         case WM_CLOSE:
@@ -539,9 +582,11 @@ static LRESULT CALLBACK WebInspectorWndProc(HWND hwnd, UINT msg, WPARAM wParam, 
 void WebInspectorFrontendClient::windowReceivedMessage(HWND, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
+#if !OS(WINCE)
         case WM_WINDOWPOSCHANGING:
             onWebViewWindowPosChanging(wParam, lParam);
             break;
+#endif
         default:
             break;
     }
@@ -554,9 +599,13 @@ static ATOM registerWindowClass()
     if (haveRegisteredWindowClass)
         return true;
 
+#if OS(WINCE)
+    WNDCLASS wcex;
+#else
     WNDCLASSEX wcex;
-
     wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.hIconSm        = 0;
+#endif
 
     wcex.style          = 0;
     wcex.lpfnWndProc    = WebInspectorWndProc;
@@ -568,11 +617,14 @@ static ATOM registerWindowClass()
     wcex.hbrBackground  = 0;
     wcex.lpszMenuName   = 0;
     wcex.lpszClassName  = kWebInspectorWindowClassName;
-    wcex.hIconSm        = 0;
 
     haveRegisteredWindowClass = true;
 
+#if OS(WINCE)
+    return ::RegisterClass(&wcex);
+#else
     return ::RegisterClassEx(&wcex);
+#endif
 }
 
 #endif // ENABLE(INSPECTOR)

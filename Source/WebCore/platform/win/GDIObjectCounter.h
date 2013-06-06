@@ -29,7 +29,7 @@
 #ifndef GDIObjectCounter_h
 #define GDIObjectCounter_h
 
-#ifdef NDEBUG
+#if defined(NDEBUG) || OS(WINCE)
 #define LOCAL_GDI_COUNTER(num, identifier) ((void)0)
 #else
 #define LOCAL_GDI_COUNTER(num, identifier) GDIObjectCounter counter##num(identifier)

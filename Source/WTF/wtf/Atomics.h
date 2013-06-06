@@ -63,12 +63,8 @@
 #include <wtf/StdLibExtras.h>
 
 #if OS(WINDOWS)
-#if OS(WINCE)
-#include <cmnintrin.h>
-#else
 extern "C" void _ReadWriteBarrier(void);
 #pragma intrinsic(_ReadWriteBarrier)
-#endif
 #include <windows.h>
 #elif OS(QNX)
 #include <atomic.h>
@@ -241,7 +237,9 @@ inline void memoryBarrierBeforeUnlock() { armV7_dmb(); }
 
 inline void x86_mfence()
 {
-#if OS(WINDOWS)
+#if OS(WINCE)
+    _ReadWriteBarrier();
+#elif OS(WINDOWS)
     // I think that this does the equivalent of a dummy interlocked instruction,
     // instead of using the 'mfence' instruction, at least according to MSDN. I
     // know that it is equivalent for our purposes, but it would be good to

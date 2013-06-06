@@ -4,6 +4,9 @@ list(REMOVE_ITEM WebCore_SOURCES
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/accessibility/win"
+    "${WEBCORE_DIR}/page/win"
+    "${WEBCORE_DIR}/platform/text/win"
+    "${WEBCORE_DIR}/platform/win"
     "${WEBCORE_DIR}/plugins/win"
 )
 
@@ -34,6 +37,8 @@ list(APPEND WebCore_SOURCES
     accessibility/win/AccessibilityObjectWin.cpp
     accessibility/win/AXObjectCacheWin.cpp
 
+    html/HTMLSelectElementWin.cpp
+
     page/win/DragControllerWin.cpp
     page/win/EventHandlerWin.cpp
 
@@ -45,10 +50,9 @@ list(APPEND WebCore_SOURCES
     platform/LocalizedStrings.cpp
     platform/PlatformStrategies.cpp
 
-    platform/graphics/FontPlatformData.cpp
-
     platform/graphics/opentype/OpenTypeUtilities.cpp
 
+    platform/graphics/win/DIBPixelData.cpp
     platform/graphics/win/FullScreenController.cpp
     platform/graphics/win/IconWin.cpp
     platform/graphics/win/ImageWin.cpp
@@ -127,6 +131,8 @@ if (WTF_PLATFORM_WIN_CAIRO)
     list(APPEND WebCore_SOURCES
         page/win/FrameCairoWin.cpp
 
+        platform/graphics/FontPlatformData.cpp
+
         platform/graphics/cairo/BitmapImageCairo.cpp
         platform/graphics/cairo/CairoUtilities.cpp
         platform/graphics/cairo/FontCairo.cpp
@@ -175,6 +181,8 @@ elseif (WTF_USE_CG)
         "${WEBCORE_DIR}/platform/graphics/cg"
     )
     list(APPEND WebCore_SOURCES
+        platform/graphics/FontPlatformData.cpp
+
         platform/graphics/win/FontCGWin.cpp
         platform/graphics/win/FontCustomPlatformData.cpp
         platform/graphics/win/FontPlatformDataCGWin.cpp
@@ -269,9 +277,10 @@ elseif (WTF_USE_CURL)
 elseif (WTF_USE_WININET)
     list(APPEND WebCore_INCLUDE_DIRECTORIES "${WEBCORE_DIR}/platform/network/win")
     list(APPEND WebCore_SOURCES
+        platform/network/NetworkStorageSessionStub.cpp
         platform/network/win/CredentialStorageWin.cpp
         platform/network/win/CookieJarWin.cpp
-        platform/network/win/KURLWin.cpp
+        # platform/network/win/KURLWin.cpp
         platform/network/win/ProxyServerWin.cpp
         platform/network/win/ResourceHandleWin.cpp
         platform/network/win/SocketStreamHandleWin.cpp
@@ -311,36 +320,93 @@ if (NOT SHARED_CORE)
     list(APPEND WebCore_LINK_FLAGS "/expectedoutputsize:200000000")
 endif ()
 
-list(APPEND WebCore_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/page/win"
-    "${WEBCORE_DIR}/platform/graphics/opentype"
-    "${WEBCORE_DIR}/platform/graphics/win"
-    "${WEBCORE_DIR}/platform/text/win"
-    "${WEBCORE_DIR}/platform/win"
-)
+if (WINOS MATCHES XP)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/platform/graphics/opentype"
+        "${WEBCORE_DIR}/platform/graphics/win"
+    )
 
-list(APPEND WebCore_SOURCES
-    html/HTMLSelectElementWin.cpp
+    list(APPEND WebCore_SOURCES
+        rendering/RenderThemeWin.cpp
 
-    rendering/RenderThemeWin.cpp
+        page/win/FrameWin.cpp
 
-    page/win/FrameWin.cpp
+        platform/win/GDIObjectCounter.cpp
 
-    platform/win/GDIObjectCounter.cpp
+        platform/graphics/win/FontCacheWin.cpp
+        platform/graphics/win/FontPlatformDataWin.cpp
+        platform/graphics/win/FontWin.cpp
+        platform/graphics/win/GraphicsContextWin.cpp
+        platform/graphics/win/SimpleFontDataWin.cpp
+        platform/graphics/win/UniscribeController.cpp
+    )
 
-    platform/graphics/win/DIBPixelData.cpp
-    platform/graphics/win/FontCacheWin.cpp
-    platform/graphics/win/FontPlatformDataWin.cpp
-    platform/graphics/win/FontWin.cpp
-    platform/graphics/win/GraphicsContextWin.cpp
-    platform/graphics/win/SimpleFontDataWin.cpp
-    platform/graphics/win/UniscribeController.cpp
-)
+    list(APPEND WebCore_LIBRARIES
+        shlwapi
+        version
+        usp10
+        winmm
+        ws2_32
+    )
+elseif (WINOS MATCHES CE)
 
-list(APPEND WebCore_LIBRARIES
-    shlwapi
-    version
-    usp10
-    winmm
-    ws2_32
-)
+# should this include dir be common if WCHAR unicode is used?
+# "${WEBCORE_DIR}/platform/text/wchar"
+
+    list (APPEND WebCore_SOURCES
+        platform/graphics/win/GDIExtras.cpp
+        platform/graphics/wince/ImageWinCE.cpp
+        platform/graphics/wince/FontWince.cpp
+        platform/text/TextEncodingDetectorNone.cpp
+        platform/text/wchar/TextBreakIteratorWchar.cpp
+    )
+
+    if (WTF_PLATFORM_WIN_CAIRO)
+        list (APPEND WebCore_INCLUDE_DIRECTORIES
+            "${WEBCORE_DIR}/platform/graphics/win"
+        )
+        list (APPEND WebCore_SOURCES
+            page/win/FrameCairoWin.cpp
+            page/win/FrameWin.cpp
+            rendering/RenderThemeWin.cpp
+            platform/graphics/win/DIBPixelData.cpp
+            platform/graphics/win/FontCacheWin.cpp
+            platform/graphics/win/FontPlatformDataWin.cpp
+            platform/graphics/win/GraphicsContextWin.cpp
+            platform/graphics/win/SimpleFontDataWin.cpp
+        )
+    else ()
+        list (APPEND WebCore_INCLUDE_DIRECTORIES
+            "${WEBCORE_DIR}/platform/graphics/wince"
+            "${WEBCORE_DIR}/platform/graphics/win"
+        )
+        list (APPEND WebCore_SOURCES
+            page/wince/FrameWinCE.cpp
+
+            rendering/RenderThemeWince.cpp
+
+            platform/graphics/wince/FontCacheWince.cpp
+            platform/graphics/wince/FontCustomPlatformData.cpp
+            platform/graphics/wince/FontPlatformData.cpp
+            platform/graphics/wince/GlyphPageTreeNodeWince.cpp
+            platform/graphics/wince/GradientWince.cpp
+            platform/graphics/wince/GraphicsContextWince.cpp
+            platform/graphics/wince/SharedBitmap.cpp
+            platform/graphics/wince/ImageBufferWince.cpp
+            platform/graphics/wince/ImageWinCE.cpp
+            platform/graphics/wince/PathWince.cpp
+            platform/graphics/wince/PlatformPathWince.cpp
+            platform/graphics/wince/SimpleFontDataWince.cpp
+        )
+    endif ()
+
+    #if (WTF_CPU_ARM)
+        # This is a workaround for an internal compiler error when compiling InspectorBackendDispatcher.cpp for
+        # WinCE/ARM.  Disable optimizations.
+        # source\wtf\wtf\hashtraits.h(176) : fatal error C1001: An internal error has occurred in the compiler.
+        # (compiler file 'd:\orcas\compiler\utc\src\P2\main.c[0x5BC0335E:0x5BC0335E]', line 243)
+        # To work around this problem, try simplifying or changing the program near the locations listed above.
+    #    SET_SOURCE_FILES_PROPERTIES(${DERIVED_SOURCES_WEBCORE_DIR}/InspectorBackendDispatcher.cpp PROPERTIES COMPILE_FLAGS "/Od")
+    #endif ()
+
+endif ()

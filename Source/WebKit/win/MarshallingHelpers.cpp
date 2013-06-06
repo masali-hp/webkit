@@ -186,7 +186,11 @@ SAFEARRAY* MarshallingHelpers::intArrayToSafeArray(CFArrayRef inArray)
 
 SAFEARRAY* MarshallingHelpers::intRectToSafeArray(const WebCore::IntRect& rect)
 {
+#if OS(WINCE)
+    SAFEARRAY* sa = ::SafeArrayCreateVector(VT_I4, 0, 4);
+#else
     SAFEARRAY* sa = ::SafeArrayCreateVectorEx(VT_I4, 0, 4, 0);
+#endif
     long count = 0;
     int value;
 

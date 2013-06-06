@@ -52,5 +52,9 @@ interface IWebCoreStatistics : IUnknown
     HRESULT purgeInactiveFontData();
     HRESULT glyphPageCount([out, retval] UINT* count);
 
+#ifdef WINCE
+    HRESULT javaScriptProtectedObjectTypeCounts([out, retval] IPropertyBag** typeNamesAndCounts);
+#else
     HRESULT javaScriptProtectedObjectTypeCounts([out, retval] IPropertyBag2** typeNamesAndCounts);
+#endif
 }

@@ -39,11 +39,17 @@ SET(WinLauncher_LIBRARIES
     WebKit
 )
 
-LIST(APPEND WinLauncher_LIBRARIES
-    comctl32
-    shlwapi
-    ws2_32
-)
+IF (WINOS MATCHES XP)
+    LIST(APPEND WinLauncher_LIBRARIES
+        comctl32
+        shlwapi
+        ws2_32
+    )
+ELSE ()
+    LIST(APPEND WinLauncher_LIBRARIES
+        ws2
+    )
+ENDIF ()
 
 INCLUDE_DIRECTORIES(${WinLauncher_INCLUDE_DIRECTORIES})
 
@@ -54,7 +60,15 @@ STRING(REPLACE " " "\;" CXX_LIBS ${CMAKE_CXX_STANDARD_LIBRARIES})
 LIST(APPEND WinLauncher_LIBRARIES ${CXX_LIBS})
 SET(CMAKE_CXX_STANDARD_LIBRARIES "")
 
-ADD_LIBRARY (WinLauncher SHARED ${WinLauncher_INCLUDES} ${WinLauncher_SOURCES} ${WinLauncher_RESOURCES})
+# If you want to build DLLLauncher as the EXE that launches WinLauncher, then set
+# BUILD_WIN_LAUNCHER_AS_EXE.
+IF (BUILD_WIN_LAUNCHER_AS_EXE)
+    ADD_DEFINITIONS(-DBUILD_WINLAUNCHER_EXE)
+    ADD_EXECUTABLE (WinLauncher WIN32 ${WinLauncher_INCLUDES} ${WinLauncher_SOURCES} ${WinLauncher_RESOURCES})
+ELSE()
+    ADD_LIBRARY (WinLauncher SHARED ${WinLauncher_INCLUDES} ${WinLauncher_SOURCES} ${WinLauncher_RESOURCES})
+ENDIF()
+
 
 ADD_DEPENDENCIES(WinLauncher WebKit)
 TARGET_LINK_LIBRARIES(WinLauncher ${WinLauncher_LIBRARIES})

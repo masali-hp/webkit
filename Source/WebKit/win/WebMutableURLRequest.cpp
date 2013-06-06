@@ -46,6 +46,10 @@
 #include <CFNetwork/CFURLRequestPriv.h>
 #endif
 
+#if OS(WINCE)
+#include "WinCrypt.h"
+#endif
+
 using namespace WebCore;
 
 // IWebURLRequest ----------------------------------------------------------------
@@ -73,7 +77,7 @@ WebMutableURLRequest* WebMutableURLRequest::createInstance(IWebMutableURLRequest
     return instance;
 }
 
-WebMutableURLRequest* WebMutableURLRequest::createInstance(const ResourceRequest& request)
+WebMutableURLRequest* WebMutableURLRequest::createInstance(const WebCore::ResourceRequest& request)
 {
     WebMutableURLRequest* instance = new WebMutableURLRequest(true);
     instance->AddRef();
@@ -88,7 +92,7 @@ WebMutableURLRequest* WebMutableURLRequest::createImmutableInstance()
     return instance;
 }
 
-WebMutableURLRequest* WebMutableURLRequest::createImmutableInstance(const ResourceRequest& request)
+WebMutableURLRequest* WebMutableURLRequest::createImmutableInstance(const WebCore::ResourceRequest& request)
 {
     WebMutableURLRequest* instance = new WebMutableURLRequest(false);
     instance->AddRef();
@@ -443,7 +447,7 @@ const HTTPHeaderMap& WebMutableURLRequest::httpHeaderFields() const
     return m_request.httpHeaderFields();
 }
 
-const ResourceRequest& WebMutableURLRequest::resourceRequest() const
+const WebCore::ResourceRequest& WebMutableURLRequest::resourceRequest() const
 {
     return m_request;
 }

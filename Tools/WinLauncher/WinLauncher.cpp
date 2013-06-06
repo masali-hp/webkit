@@ -40,6 +40,17 @@
 #include <string>
 #include <wininet.h>
 
+#ifdef _WIN32_WCE
+#define SetWindowLongPtr(x, y, z) SetWindowLong(x, y, z)
+#define GetWindowLongPtr(x, y) GetWindowLong(x, y)
+#define LONG_PTR LONG
+#define RegisterClassEx(x) RegisterClass(x)
+#endif
+
+#ifndef WS_OVERLAPPEDWINDOW
+#define WS_OVERLAPPEDWINDOW (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX)
+#endif
+
 #define MAX_LOADSTRING 100
 #define URLBAR_HEIGHT  24
 
@@ -249,6 +260,15 @@ static void computeFullDesktopFrame()
     s_windowSize.cy = desktop.bottom - desktop.top;
 }
 
+#ifdef BUILD_WINLAUNCHER_EXE
+#if defined(_WIN32_WCE)
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpstrCmdLine, int nCmdShow)
+#else
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpstrCmdLine, int nCmdShow)
+#endif
+{
+    hInst = hInstance;
+#else
 BOOL WINAPI DllMain(HINSTANCE dllInstance, DWORD reason, LPVOID)
 {
     if (reason == DLL_PROCESS_ATTACH)
@@ -256,9 +276,10 @@ BOOL WINAPI DllMain(HINSTANCE dllInstance, DWORD reason, LPVOID)
 
     return TRUE;
 }
-
 extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HINSTANCE, LPTSTR, int nCmdShow)
 {
+#endif
+
 #ifdef _CRTDBG_MAP_ALLOC
     _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
     _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
@@ -274,6 +295,7 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
     InitCtrlEx.dwICC  = 0x00004000; //ICC_STANDARD_CLASSES;
     InitCommonControlsEx(&InitCtrlEx);
 
+#ifndef _WIN32_WCE
     int argc = 0;
     WCHAR** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     for (int i = 1; i < argc; ++i) {
@@ -282,6 +304,7 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
         else if (!wcsicmp(argv[i], L"--desktop"))
             s_fullDesktop = true;
     }
+#endif
 
     // Initialize global strings
     LoadString(hInst, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -292,7 +315,11 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
         computeFullDesktopFrame();
 
     // Init COM
+#ifdef _WIN32_WCE
+    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+#else
     OleInitialize(NULL);
+#endif
 
     if (usesLayeredWebView()) {
         hURLBarWnd = CreateWindow(L"EDIT", L"Type URL Here",
@@ -423,16 +450,26 @@ exit:
 #endif
 
     // Shut down COM.
+#ifdef _WIN32_WCE
+    CoUninitialize();
+#else
     OleUninitialize();
+#endif
     
     return static_cast<int>(msg.wParam);
 }
 
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
+#if defined(_WIN32_WCE)
+    WNDCLASS wcex;
+    wcex.lpszMenuName   = 0;
+#else
     WNDCLASSEX wcex;
-
     wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+    wcex.lpszMenuName   = MAKEINTRESOURCE(IDC_WINLAUNCHER);
+#endif
 
     wcex.style          = CS_HREDRAW | CS_VREDRAW;
     wcex.lpfnWndProc    = WndProc;
@@ -442,13 +479,16 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WINLAUNCHER));
     wcex.hCursor        = LoadCursor(NULL, IDC_ARROW);
     wcex.hbrBackground  = 0;
-    wcex.lpszMenuName   = MAKEINTRESOURCE(IDC_WINLAUNCHER);
     wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
+#if defined(_WIN32_WCE)
+    return RegisterClass(&wcex);
+#else
     return RegisterClassEx(&wcex);
+#endif
 }
 
+#if !defined(_WIN32_WCE)
 static BOOL CALLBACK AbortProc(HDC hDC, int Error)
 {
     MSG msg;
@@ -528,6 +568,7 @@ exit:
     if (framePrivate)
         framePrivate->Release();
 }
+#endif
 
 static const int dragBarHeight = 30;
 
@@ -536,6 +577,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     WNDPROC parentProc = usesLayeredWebView() ? DefWebKitProc : DefWindowProc;
 
     switch (message) {
+#if !defined(_WIN32_WCE)
     case WM_NCHITTEST:
         if (usesLayeredWebView()) {
             RECT window;
@@ -553,6 +595,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 return HTCAPTION;
         }
         return CallWindowProc(parentProc, hWnd, message, wParam, lParam);
+#endif
     case WM_COMMAND: {
         int wmId = LOWORD(wParam);
         int wmEvent = HIWORD(wParam);
@@ -564,9 +607,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case IDM_EXIT:
             DestroyWindow(hWnd);
             break;
+#if !defined(_WIN32_WCE)
         case IDM_PRINT:
             PrintView(hWnd, message, wParam, lParam);
             break;
+#endif
         default:
             return CallWindowProc(parentProc, hWnd, message, wParam, lParam);
         }
@@ -639,6 +684,7 @@ static void loadURL(BSTR urlBStr)
 
     static BSTR methodBStr = SysAllocString(TEXT("GET"));
 
+#ifndef _WIN32_WCE
     if (urlBStr && urlBStr[0] && (PathFileExists(urlBStr) || PathIsUNC(urlBStr))) {
         TCHAR fileURL[INTERNET_MAX_URL_LENGTH];
         DWORD fileURLLength = sizeof(fileURL)/sizeof(fileURL[0]);
@@ -646,6 +692,7 @@ static void loadURL(BSTR urlBStr)
         if (SUCCEEDED(UrlCreateFromPath(urlBStr, fileURL, &fileURLLength, 0)))
             SysReAllocString(&urlBStr, fileURL);
     }
+#endif
 
     HRESULT hr = gWebView->mainFrame(&frame);
     if (FAILED(hr))
