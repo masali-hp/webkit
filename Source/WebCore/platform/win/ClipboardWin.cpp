@@ -301,7 +301,7 @@ static HRESULT writeFileToDataObject(IDataObject* dataObject, HGLOBAL fileDescri
     if (FAILED(hr = dataObject->SetData(fe, &medium, TRUE)))
         goto exit;
 
-#if USE(CF)
+#if !OS(WINCE)
     // HDROP
     if (hDropContent) {
         medium.hGlobal = hDropContent;
@@ -535,7 +535,7 @@ ListHashSet<String> ClipboardWin::types() const
 
 PassRefPtr<FileList> ClipboardWin::files() const
 {
-#if USE(CF)
+#if !OS(WINCE)
     RefPtr<FileList> files = FileList::create();
     if (!canReadData())
         return files.release();

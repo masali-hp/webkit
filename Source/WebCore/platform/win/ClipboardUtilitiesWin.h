@@ -46,7 +46,9 @@ FORMATETC* plainTextFormat();
 FORMATETC* filenameWFormat();
 FORMATETC* filenameFormat();
 FORMATETC* htmlFormat();
+#if !OS(WINCE)
 FORMATETC* cfHDropFormat();
+#endif
 FORMATETC* smartPasteFormat();
 FORMATETC* fileDescriptorFormat();
 FORMATETC* fileContentFormatZero();

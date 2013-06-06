@@ -48,11 +48,13 @@
 
 namespace WebCore {
 
+#if !OS(WINCE)
 FORMATETC* cfHDropFormat()
 {
     static FORMATETC urlFormat = {CF_HDROP, 0, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
     return &urlFormat;
 }
+#endif
 
 #if USE(CF)
 static bool urlFromPath(CFStringRef path, String& url)
@@ -75,6 +77,9 @@ static bool urlFromPath(CFStringRef path, String& url)
 #else
 static bool urlFromPath(const String& path, String& url)
 {
+#if OS(WINCE)
+    return false;
+#else
     if (path.isEmpty())
         return false;
 
@@ -87,6 +92,7 @@ static bool urlFromPath(const String& path, String& url)
 
     url = String(fileURL, fileURLLength);
     return true;
+#endif
 }
 #endif
 
@@ -103,6 +109,7 @@ static bool getDataMapItem(const DragDataMap* dataObject, FORMATETC* format, Str
 static bool getWebLocData(IDataObject* dataObject, String& url, String* title) 
 {
     bool succeeded = false;
+#if !OS(WINCE)
     WCHAR filename[MAX_PATH];
     WCHAR urlBuffer[INTERNET_MAX_URL_LENGTH];
 
@@ -136,11 +143,15 @@ exit:
     // Free up memory.
     DragFinish(hdrop);
     GlobalUnlock(medium.hGlobal);
+#endif
     return succeeded;
 }
 
 static bool getWebLocData(const DragDataMap* dataObject, String& url, String* title) 
 {
+#if OS(WINCE)
+    return false;
+#else
     WCHAR filename[MAX_PATH];
     WCHAR urlBuffer[INTERNET_MAX_URL_LENGTH];
 
@@ -161,6 +172,7 @@ static bool getWebLocData(const DragDataMap* dataObject, String& url, String* ti
     
     url = urlBuffer;
     return true;
+#endif
 }
 
 static String extractURL(const String &inURL, String* title)
@@ -487,6 +499,7 @@ String getURL(IDataObject* dataObject, DragData::FilenameConversionPolicy filena
         ReleaseStgMedium(&store);
     }
     else if (filenamePolicy == DragData::ConvertFilenames) {
+#if !OS(WINCE)
         if (SUCCEEDED(dataObject->GetData(filenameWFormat(), &store))) {
             // file using unicode
             wchar_t* data = static_cast<wchar_t*>(GlobalLock(store.hGlobal));
@@ -518,6 +531,7 @@ String getURL(IDataObject* dataObject, DragData::FilenameConversionPolicy filena
             GlobalUnlock(store.hGlobal);
             ReleaseStgMedium(&store);
         }
+#endif
     }
     return url;
 }
@@ -540,6 +554,7 @@ String getURL(const DragDataMap* data, DragData::FilenameConversionPolicy filena
     if (!getDataMapItem(data, filenameWFormat(), stringData))
         getDataMapItem(data, filenameFormat(), stringData);
 
+#if !OS(WINCE)
     if (stringData.isEmpty() || (!PathFileExists(stringData.charactersWithNullTermination()) && !PathIsUNC(stringData.charactersWithNullTermination())))
         return url;
 #if USE(CF)
@@ -549,6 +564,7 @@ String getURL(const DragDataMap* data, DragData::FilenameConversionPolicy filena
 #else
     if (urlFromPath(stringData, url) && title)
         *title = url;
+#endif
 #endif
     return url;
 }
@@ -751,6 +767,7 @@ void getUtf8Data(IDataObject* data, FORMATETC* format, Vector<String>& dataStrin
 
 void getCFData(IDataObject* data, FORMATETC* format, Vector<String>& dataStrings)
 {
+#if !OS(WINCE)
     STGMEDIUM store;
     if (FAILED(data->GetData(format, &store)))
         return;
@@ -769,6 +786,7 @@ void getCFData(IDataObject* data, FORMATETC* format, Vector<String>& dataStrings
 
     GlobalUnlock(store.hGlobal);
     ReleaseStgMedium(&store);
+#endif
 }
 
 // Setter functions.
@@ -831,7 +849,9 @@ static const ClipboardFormatMap& getClipboardMap()
         formatMap.add(texthtmlFormat()->cfFormat, new ClipboardDataItem(texthtmlFormat(), getStringData<UChar>, setUCharData));
         formatMap.add(plainTextFormat()->cfFormat,  new ClipboardDataItem(plainTextFormat(), getStringData<char>, setUtf8Data));
         formatMap.add(plainTextWFormat()->cfFormat,  new ClipboardDataItem(plainTextWFormat(), getStringData<UChar>, setUCharData));
+#if !OS(WINCE)
         formatMap.add(cfHDropFormat()->cfFormat,  new ClipboardDataItem(cfHDropFormat(), getCFData, setCFData));
+#endif
         formatMap.add(filenameFormat()->cfFormat,  new ClipboardDataItem(filenameFormat(), getStringData<char>, setUtf8Data));
         formatMap.add(filenameWFormat()->cfFormat,  new ClipboardDataItem(filenameWFormat(), getStringData<UChar>, setUCharData));
         formatMap.add(urlFormat()->cfFormat,  new ClipboardDataItem(urlFormat(), getStringData<char>, setUtf8Data));

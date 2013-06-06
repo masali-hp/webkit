@@ -108,7 +108,7 @@ String DragData::asURL(Frame*, FilenameConversionPolicy filenamePolicy, String* 
 
 bool DragData::containsFiles() const
 {
-#if USE(CF)
+#if !OS(WINCE)
     return (m_platformDragData) ? SUCCEEDED(m_platformDragData->QueryGetData(cfHDropFormat())) : m_dragDataMap.contains(cfHDropFormat()->cfFormat);
 #else
     return false;
@@ -117,7 +117,7 @@ bool DragData::containsFiles() const
 
 unsigned DragData::numberOfFiles() const
 {
-#if USE(CF)
+#if !OS(WINCE)
     if (!m_platformDragData)
         return 0;
 
@@ -143,7 +143,7 @@ unsigned DragData::numberOfFiles() const
 
 void DragData::asFilenames(Vector<String>& result) const
 {
-#if USE(CF)
+#if !OS(WINCE)
     if (m_platformDragData) {
         WCHAR filename[MAX_PATH];
 
