@@ -70,6 +70,21 @@ public:
         return static_cast<char*>(m_bound) - static_cast<char*>(m_origin);
     }
 
+#if OS(WINCE)
+    // There are instances where we don't have any good way to figure out
+    // the stack bounds (WinCE, running on top of a .NET thread), so we just
+    // need someone to tell us what the bounds are.
+    // This function must be called before initializeThreading() is
+    // called for the current thread.
+    static void * s_origin;
+    static void * s_bound;
+    static void setCurrentThreadBounds(void * origin, void * bound)
+    {
+        s_origin = origin;
+        s_bound = bound;
+    }
+#endif
+
 private:
     StackBounds()
         : m_origin(0)

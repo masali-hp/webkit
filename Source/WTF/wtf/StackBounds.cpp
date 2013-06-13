@@ -65,7 +65,11 @@ namespace WTF {
 // FIXME: remove this! - this code unsafely guesses at stack sizes!
 #if OS(WINDOWS) || OS(SOLARIS) || OS(OPENBSD)
 // Based on the current limit used by the JSC parser, guess the stack size.
+#if OS(WINCE)
+static const ptrdiff_t estimatedStackSize = 16 * sizeof(void*) * 1024; // 64 KB
+#else
 static const ptrdiff_t estimatedStackSize = 128 * sizeof(void*) * 1024;
+#endif
 // This method assumes the stack is growing downwards.
 static void* estimateStackBound(void* origin)
 {
@@ -165,11 +169,17 @@ void StackBounds::initialize()
 
 #elif OS(WINCE)
 
-static bool detectGrowingDownward(void* previousFrame)
+#define STACK_GROWS_ON_DEMAND
+
+static bool detectGrowingDownward(int count, void * firstFrame, void * previousFrame)
 {
-    // Find the address of this stack frame by taking the address of a local variable.
-    int thisFrame;
-    return previousFrame > &thisFrame;
+    int thisFrame = count;
+    if (count == 0) {
+        return firstFrame > &thisFrame;
+    }
+    else {
+        return detectGrowingDownward(count - 1, firstFrame, &thisFrame);
+    }
 }
 
 static inline bool isPageWritable(void* page)
@@ -214,23 +224,43 @@ static inline void* getUpperStackBound(char* currentPage, DWORD pageSize)
     return currentPage - pageSize;
 }
 
+void * StackBounds::s_origin = 0;
+void * StackBounds::s_bound = 0;
+
 void StackBounds::initialize()
 {
+    // if the bounds have been set previously, use those values.
+    if (s_origin) {
+        m_origin = s_origin;
+        m_bound = s_bound;
+        s_origin = 0;
+        return;
+    }
+
     // find the address of this stack frame by taking the address of a local variable
-    void* thisFrame = &thisFrame;
-    bool isGrowingDownward = detectGrowingDownward(thisFrame);
+    int thisFrame;
+
+    bool isGrowingDownward = detectGrowingDownward(10, &thisFrame, 0);
 
     SYSTEM_INFO systemInfo;
     GetSystemInfo(&systemInfo);
     DWORD pageSize = systemInfo.dwPageSize;
 
     // scan all of memory starting from this frame, and return the last writeable page found
-    char* currentPage = reinterpret_cast<char*>(reinterpret_cast<DWORD>(thisFrame) & ~(pageSize - 1));
+    char* currentPage = reinterpret_cast<char*>(reinterpret_cast<DWORD>(&thisFrame) & ~(pageSize - 1));
+
     void* lowerStackBound = getLowerStackBound(currentPage, pageSize);
     void* upperStackBound = getUpperStackBound(currentPage, pageSize);
 
     m_origin = isGrowingDownward ? upperStackBound : lowerStackBound;
+#ifdef STACK_GROWS_ON_DEMAND
+    // If the stack grows on demand (and is not pre-allocated), we cannot
+    // determine how big the stack can grow to.
+    ASSERT(!isGrowingDownward || (unsigned int) m_origin > estimatedStackSize);
+    m_bound = static_cast<char*>(m_origin) + (isGrowingDownward ? -estimatedStackSize : estimatedStackSize);
+#else
     m_bound = isGrowingDownward ? lowerStackBound : upperStackBound;
+#endif
 }
 
 #elif OS(WINDOWS)
