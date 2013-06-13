@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Patrick Gansterer <paroga@paroga.com>
+ * Copyright (C) 2013 Hewlett-Packard Development Company, L.P.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +32,7 @@
 #include <wtf/unicode/UnicodeMacrosFromICU.h>
 
 typedef wchar_t UChar;
-typedef uint32_t UChar32;
+typedef int32_t UChar32; // umachine.h
 
 namespace WTF {
 namespace Unicode {
@@ -129,20 +130,18 @@ WTF_EXPORT_PRIVATE bool hasLineBreakingPropertyComplexContext(UChar32);
 WTF_EXPORT_PRIVATE UChar32 mirroredChar(UChar32);
 
 inline bool isAlphanumeric(UChar c) { return !!iswalnum(c); }
-inline bool isDigit(UChar c) { return !!iswdigit(c); }
-inline bool isLetter(UChar c) { return !!iswalpha(c); }
-inline bool isLower(UChar c) { return !!iswlower(c); }
-inline bool isPrintableChar(UChar c) { return !!iswprint(c); }
-inline bool isPunct(UChar c) { return !!iswpunct(c); }
-inline bool isSpace(UChar c) { return !!iswspace(c); }
-inline bool isUpper(UChar c) { return !!iswupper(c); }
+
+//bool isLower(UChar c);
+bool isPrintableChar(UChar c);
+bool isPunct(UChar c);
+bool isSpace(UChar c);
 
 inline bool isArabicChar(UChar32 c) { return c >= 0x0600 && c <= 0x06ff; }
 inline bool isSeparatorSpace(UChar32 c) { return category(c) == Separator_Space; }
 
-inline UChar foldCase(UChar c) { return towlower(c); }
-inline UChar toLower(UChar c) { return towlower(c); }
-inline UChar toUpper(UChar c) { return towupper(c); }
+UChar foldCase(UChar c);
+UChar toLower(UChar c);
+UChar toUpper(UChar c);
 inline UChar toTitleCase(UChar c) { return towupper(c); }
 
 WTF_EXPORT_PRIVATE int foldCase(UChar* result, int resultLength, const UChar* source, int sourceLength, bool* isError);
