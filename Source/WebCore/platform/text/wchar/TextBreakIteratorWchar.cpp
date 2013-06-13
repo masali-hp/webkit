@@ -99,6 +99,14 @@ struct CharBreakIterator: TextBreakIterator {
 struct LineBreakIterator: TextBreakIterator {
     virtual int next();
     virtual int previous();
+
+    void setPriorContext(const UChar* priorContext, unsigned priorContextLength) {
+        this->priorContext = priorContext;
+        this->priorContextLength = priorContextLength;
+    }
+
+    const UChar * priorContext;
+    unsigned priorContextLength;
 };
 
 struct SentenceBreakIterator : TextBreakIterator {
@@ -162,6 +170,8 @@ int CharBreakIterator::previous()
     return currentPos;
 }
 
+
+
 int LineBreakIterator::next()
 {
     if (currentPos == length) {
@@ -169,27 +179,60 @@ int LineBreakIterator::next()
         return currentPos;
     }
     bool haveSpace = false;
+    CharCategory prevCat = NoCategory;
+    if (priorContextLength > 0) {
+        prevCat = category(priorContext[priorContextLength - 1]);
+    }
     while (currentPos < length) {
-        if (haveSpace && !isLineStop(string[currentPos]))
+        CharCategory cat = category(string[currentPos]);
+        bool currentIsLineStop = cat != Separator_Line;
+        if (haveSpace && !currentIsLineStop)
             break;
-        if (isLineStop(string[currentPos]))
+        // characters that are OK to end a line with (full width comma, close quote),
+        // as long as they are not followed by a comma, period:
+        if ((prevCat == Punctuation_Other || prevCat == Punctuation_Close) &&
+            cat != Punctuation_Other)
+            break;
+        // an asian character can end a line, as long as it is not followed by a
+        // letter modifier, a comma, or a close quote (we do not want these to start a line)
+        if (prevCat == Letter_Other &&
+            cat != Letter_Modifier && cat != Punctuation_Other && cat != Punctuation_Close)
+            break;
+        if (currentIsLineStop)
             haveSpace = true;
         ++currentPos;
+        prevCat = cat;
     }
     return currentPos;
 }
 
 int LineBreakIterator::previous()
 {
-    if (!currentPos) {
+    if (currentPos == 0) {
         currentPos = -1;
         return currentPos;
     }
     bool haveSpace = false;
+    CharCategory prevCat = NoCategory;
+    if (priorContextLength > 0) {
+        prevCat = category(priorContext[0]);
+    }
     while (currentPos > 0) {
-        if (haveSpace && !isLineStop(string[currentPos]))
+        CharCategory cat = category(string[currentPos]);
+        bool currentIsLineStop = cat != Separator_Line;
+        if (haveSpace && !currentIsLineStop)
             break;
-        if (isLineStop(string[currentPos]))
+        // characters that are OK to end a line with (full width comma, close quote),
+        // as long as they are not followed by a comma, period:
+        if ((prevCat == Punctuation_Other || prevCat == Punctuation_Close) &&
+            cat != Punctuation_Other)
+            break;
+        // an asian character can end a line, as long as it is not followed by a
+        // letter modifier, a comma, or a close quote (we do not want these to start a line)
+        if (prevCat == Letter_Other &&
+            cat != Letter_Modifier && cat != Punctuation_Other && cat != Punctuation_Close)
+            break;
+        if (currentIsLineStop)
             haveSpace = true;
         --currentPos;
     }
@@ -254,17 +297,11 @@ NonSharedCharacterBreakIterator::~NonSharedCharacterBreakIterator()
         delete m_iterator;
 }
 
-static TextBreakIterator* staticLineBreakIterator;
+static LineBreakIterator* staticLineBreakIterator;
 
 TextBreakIterator* acquireLineBreakIterator(const UChar* string, int length, const AtomicString& locale, const UChar* priorContext, unsigned priorContextLength)
 {
-    // This code does not yet support non-empty prior line break context. This
-    // needs to be fixed by someone building/testing on a non-ICU platform. See
-    // https://bugs.webkit.org/show_bug.cgi?id=105692#c52 for further info.
-    ASSERT_UNUSED(priorContext, !priorContext);
-    ASSERT_UNUSED(priorContextLength, !priorContextLength);
-
-    TextBreakIterator* lineBreakIterator = 0;
+    LineBreakIterator* lineBreakIterator = 0;
     if (staticLineBreakIterator) {
         staticLineBreakIterator->reset(string, length);
         swap(staticLineBreakIterator, lineBreakIterator);
@@ -275,6 +312,7 @@ TextBreakIterator* acquireLineBreakIterator(const UChar* string, int length, con
         lineBreakIterator->reset(string, length);
     }
 
+    lineBreakIterator->setPriorContext(priorContext, priorContextLength);
     return lineBreakIterator;
 }
 
@@ -283,7 +321,7 @@ void releaseLineBreakIterator(TextBreakIterator* iterator)
     ASSERT(iterator);
 
     if (!staticLineBreakIterator)
-        staticLineBreakIterator = iterator;
+        staticLineBreakIterator = reinterpret_cast<LineBreakIterator*>(iterator);
     else
         delete iterator;
 }
