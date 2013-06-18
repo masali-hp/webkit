@@ -28,6 +28,7 @@
 #ifndef PluginDatabase_h
 #define PluginDatabase_h
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
 #include "PluginPackage.h"
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
@@ -114,5 +115,6 @@ namespace WebCore {
     };
 
 } // namespace WebCore
+#endif
 
 #endif

@@ -124,6 +124,7 @@ namespace WebCore {
 #endif
     };
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     // FIXME: This is a workaround because PluginPackageHash is broken and may consider keys with different hashes as equal.
     struct PluginPackageHashTraits : HashTraits<RefPtr<PluginPackage> > {
         static const int minimumTableSize = 64;
@@ -137,6 +138,7 @@ namespace WebCore {
         static bool equal(const RefPtr<PluginPackage>& a, const RefPtr<PluginPackage>& b) { return PluginPackage::equal(*a.get(), *b.get()); }
         static const bool safeToCompareToEmptyOrDeleted = false;
     };
+#endif
 
 } // namespace WebCore
 

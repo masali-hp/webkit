@@ -120,11 +120,14 @@ void WebPlatformStrategies::deleteCookie(const NetworkStorageSession& session, c
 
 void WebPlatformStrategies::refreshPlugins()
 {
+#if ENABLE(NETSCAPE_PLUGIN_API)
     PluginDatabase::installedPlugins()->refresh();
+#endif
 }
 
 void WebPlatformStrategies::getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>& outPlugins)
 {
+#if ENABLE(NETSCAPE_PLUGIN_API)
     const Vector<PluginPackage*>& plugins = PluginDatabase::installedPlugins()->plugins();
 
     outPlugins.resize(plugins.size());
@@ -154,6 +157,7 @@ void WebPlatformStrategies::getPluginInfo(const WebCore::Page*, Vector<WebCore::
 
         outPlugins[i] = info;
     }
+#endif
 }
 
 bool WebPlatformStrategies::isLinkVisited(Page* page, LinkHash hash, const KURL&, const AtomicString&)

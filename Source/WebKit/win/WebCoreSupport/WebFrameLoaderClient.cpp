@@ -857,10 +857,25 @@ void WebFrameLoaderClient::dispatchDidFailToStartPlugin(const PluginView* plugin
     resourceLoadDelegate->plugInFailedWithError(webView, error.get(), getWebDataSource(frame->loader()->documentLoader()));
 }
 #endif
+#else
+void WebFrameLoaderClient::dispatchDidFailToStartPlugin(const String & url) const
+{
+    WebView* webView = m_webFrame->webView();
+    Frame* frame = core(m_webFrame);
+
+    COMPtr<IWebResourceLoadDelegate> resourceLoadDelegate;
+    if (FAILED(webView->resourceLoadDelegate(&resourceLoadDelegate)))
+        return;
+
+    ResourceError resourceError(String(WebKitErrorDomain), WebKitErrorCannotLoadPlugIn, url, String());
+    COMPtr<IWebError> error(AdoptCOM, WebError::createInstance(resourceError));
+    resourceLoadDelegate->plugInFailedWithError(webView, error.get(), getWebDataSource(frame->loader()->documentLoader()));
+}
 #endif
 
 PassRefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& pluginSize, HTMLPlugInElement* element, const KURL& url, const Vector<String>& paramNames, const Vector<String>& paramValues, const String& mimeType, bool loadManually)
 {
+#if ENABLE(NETSCAPE_PLUGIN_API)
     WebView* webView = m_webFrame->webView();
 
     COMPtr<IWebUIDelegate> ui;
@@ -902,9 +917,17 @@ PassRefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& pluginSize,
     if (pluginView->status() == PluginStatusLoadedSuccessfully)
         return pluginView;
 
+#if USE(CF)
     dispatchDidFailToStartPlugin(pluginView.get());
+#else
+    dispatchDidFailToStartPlugin(url.string());
+#endif
 
     return 0;
+#else
+    dispatchDidFailToStartPlugin(url.string());
+    return 0;
+#endif
 }
 
 void WebFrameLoaderClient::redirectDataToPlugin(Widget* pluginWidget)

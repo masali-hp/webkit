@@ -2230,6 +2230,7 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
     COMPtr<WebView> protector(webView);
     ASSERT(webView);
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     // Windows Media Player has a modal message loop that will deliver messages
     // to us at inappropriate times and we will crash if we handle them when
     // they are delivered. We repost paint messages so that we eventually get
@@ -2240,6 +2241,7 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
             PostMessage(hWnd, message, wParam, lParam);
         return 0;
     }
+#endif
 
     bool handled = true;
 
@@ -2625,10 +2627,12 @@ HRESULT STDMETHODCALLTYPE WebView::canShowMIMEType(
     *canShow = MIMETypeRegistry::isSupportedImageMIMEType(mimeTypeStr)
         || MIMETypeRegistry::isSupportedNonImageMIMEType(mimeTypeStr);
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     if (!*canShow && m_page && m_page->pluginData()) {
         *canShow = (m_page->pluginData()->supportsMimeType(mimeTypeStr, PluginData::AllPlugins) && allowPlugins)
             || m_page->pluginData()->supportsMimeType(mimeTypeStr, PluginData::OnlyApplicationPlugins);
     }
+#endif
 
     if (!*canShow)
         *canShow = shouldUseEmbeddedView(mimeTypeStr);
@@ -5452,8 +5456,12 @@ HRESULT STDMETHODCALLTYPE WebView::setAllowSiteSpecificHacks(
 HRESULT STDMETHODCALLTYPE WebView::addAdditionalPluginDirectory( 
         /* [in] */ BSTR directory)
 {
+#if ENABLE(NETSCAPE_PLUGIN_API)
     PluginDatabase::installedPlugins()->addExtraPluginDirectory(toString(directory));
     return S_OK;
+#else
+    return E_NOTIMPL;
+#endif
 }
 
 HRESULT STDMETHODCALLTYPE WebView::loadBackForwardListFromOtherView( 

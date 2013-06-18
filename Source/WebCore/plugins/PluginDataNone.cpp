@@ -29,6 +29,10 @@
 
 namespace WebCore {
 
+PluginData::PluginData(const Page*)
+{
+}
+
 void PluginData::initPlugins(const Page*)
 {
 }

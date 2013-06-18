@@ -42,10 +42,6 @@ list(APPEND WebCore_SOURCES
     page/win/DragControllerWin.cpp
     page/win/EventHandlerWin.cpp
 
-    plugins/PluginDatabase.cpp
-
-    plugins/win/PluginDatabaseWin.cpp
-
     platform/Cursor.cpp
     platform/LocalizedStrings.cpp
     platform/PlatformStrategies.cpp
@@ -215,12 +211,13 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
         plugins/win/PluginMessageThrottlerWin.cpp
         plugins/win/PluginPackageWin.cpp
         plugins/win/PluginViewWin.cpp
+        plugins/PluginDatabase.cpp
+        plugins/win/PluginDatabaseWin.cpp
         plugins/PluginPackage.cpp
         plugins/PluginView.cpp
     )
 else ()
     list(APPEND WebCore_SOURCES
-        plugins/PluginPackage.cpp
         plugins/PluginPackageNone.cpp
         plugins/PluginViewNone.cpp
     )

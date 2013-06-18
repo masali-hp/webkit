@@ -82,7 +82,7 @@ enum {
 
 LRESULT CALLBACK TimerWindowWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-#if PLATFORM(WIN)
+#if PLATFORM(WIN) && ENABLE(NETSCAPE_PLUGIN_API)
     // Windows Media Player has a modal message loop that will deliver messages
     // to us at inappropriate times and we will crash if we handle them when
     // they are delivered. We repost all messages so that we will get to handle

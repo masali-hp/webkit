@@ -120,7 +120,11 @@ public:
 
     virtual bool shouldAlwaysUsePluginDocument(const WTF::String& mimeType) const;
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     virtual void dispatchDidFailToStartPlugin(const WebCore::PluginView*) const;
+#else
+    virtual void dispatchDidFailToStartPlugin(const String & url) const;
+#endif
 
 protected:
     WebFrameLoaderClient(WebFrame*);

@@ -108,6 +108,7 @@ bool SubframeLoader::resourceWillUsePlugin(const String& url, const String& mime
 
 bool SubframeLoader::pluginIsLoadable(HTMLPlugInImageElement* pluginElement, const KURL& url, const String& mimeType)
 {
+#if ENABLE(NETSCAPE_PLUGIN_API)
     Settings* settings = m_frame->settings();
     if (!settings)
         return false;
@@ -143,6 +144,9 @@ bool SubframeLoader::pluginIsLoadable(HTMLPlugInImageElement* pluginElement, con
     }
 
     return true;
+#else
+    return false;
+#endif
 }
 
 bool SubframeLoader::requestPlugin(HTMLPlugInImageElement* ownerElement, const KURL& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues, bool useFallback)
@@ -200,7 +204,11 @@ static void logPluginRequest(Page* page, const String& mimeType, const String& u
     }
 
     PluginData* pluginData = page->pluginData();
+#if ENABLE(NETSCAPE_PLUGIN_API)
     String pluginFile = pluginData ? pluginData->pluginFileForMimeType(newMIMEType) : String();
+#else
+    String pluginFile;
+#endif
     String description = !pluginFile ? newMIMEType : pluginFile;
 
     ChromeClient* client = page->chrome().client();
@@ -404,15 +412,20 @@ Frame* SubframeLoader::loadSubframe(HTMLFrameOwnerElement* ownerElement, const K
 
 bool SubframeLoader::allowPlugins(ReasonForCallingAllowPlugins reason)
 {
+#if ENABLE(NETSCAPE_PLUGIN_API)
     Settings* settings = m_frame->settings();
     bool allowed = m_frame->loader()->client()->allowPlugins(settings && settings->arePluginsEnabled());
     if (!allowed && reason == AboutToInstantiatePlugin)
         m_frame->loader()->client()->didNotAllowPlugins();
     return allowed;
+#else
+    return false;
+#endif
 }
 
 bool SubframeLoader::shouldUsePlugin(const KURL& url, const String& mimeType, bool shouldPreferPlugInsForImages, bool hasFallback, bool& useFallback)
 {
+#if ENABLE(NETSCAPE_PLUGIN_API)
     if (m_frame->loader()->client()->shouldAlwaysUsePluginDocument(mimeType)) {
         useFallback = false;
         return true;
@@ -432,6 +445,9 @@ bool SubframeLoader::shouldUsePlugin(const KURL& url, const String& mimeType, bo
     // it be handled as a plugin to show the broken plugin icon.
     useFallback = objectType == ObjectContentNone && hasFallback;
     return objectType == ObjectContentNone || objectType == ObjectContentNetscapePlugin || objectType == ObjectContentOtherPlugin;
+#else
+    return false;
+#endif
 }
 
 Document* SubframeLoader::document() const

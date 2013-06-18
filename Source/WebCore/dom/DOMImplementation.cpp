@@ -396,6 +396,7 @@ PassRefPtr<Document> DOMImplementation::createDocument(const String& type, Frame
         return FTPDirectoryDocument::create(frame, url);
 #endif
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     PluginData* pluginData = 0;
     PluginData::AllowedPluginTypes allowedPluginTypes = PluginData::OnlyApplicationPlugins;
     if (frame && frame->page()) {
@@ -409,6 +410,7 @@ PassRefPtr<Document> DOMImplementation::createDocument(const String& type, Frame
     // We do not want QuickTime to take over all image types, obviously.
     if ((MIMETypeRegistry::isPDFOrPostScriptMIMEType(type)) && pluginData && pluginData->supportsMimeType(type, allowedPluginTypes))
         return PluginDocument::create(frame, url);
+#endif
     if (Image::supportsType(type))
         return ImageDocument::create(frame, url);
 
@@ -420,11 +422,13 @@ PassRefPtr<Document> DOMImplementation::createDocument(const String& type, Frame
          return MediaDocument::create(frame, url);
 #endif
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     // Everything else except text/plain can be overridden by plugins. In particular, Adobe SVG Viewer should be used for SVG, if installed.
     // Disallowing plug-ins to use text/plain prevents plug-ins from hijacking a fundamental type that the browser is expected to handle,
     // and also serves as an optimization to prevent loading the plug-in database in the common case.
     if (type != "text/plain" && ((pluginData && pluginData->supportsMimeType(type, allowedPluginTypes)) || (frame && frame->loader()->client()->shouldAlwaysUsePluginDocument(type))))
         return PluginDocument::create(frame, url);
+#endif
     if (isTextMIMEType(type))
         return TextDocument::create(frame, url);
 
