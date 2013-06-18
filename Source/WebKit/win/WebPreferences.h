@@ -485,6 +485,9 @@ public:
     virtual HRESULT STDMETHODCALLTYPE requestAnimationFrameEnabled(BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setRequestAnimationFrameEnabled(BOOL);
 
+    virtual HRESULT STDMETHODCALLTYPE emulateTouchEvents(BOOL* emulateTouchEvents);
+    virtual HRESULT STDMETHODCALLTYPE setEmulateTouchEvents(BOOL emulateTouchEvents);
+
     // WebPreferences
 
     // This method accesses a different preference key than developerExtrasEnabled.

@@ -368,6 +368,14 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
 
     standardPreferences->setAcceleratedCompositingEnabled(TRUE);
 
+    standardPreferences->setEmulateTouchEvents(TRUE);
+
+    IWebPreferencesPrivate * prefsPrivate = NULL;
+    if (SUCCEEDED(standardPreferences->QueryInterface(IID_IWebPreferencesPrivate, (void**)&prefsPrivate))) {
+        prefsPrivate->setLocalStorageDatabasePath(SysAllocString(L"\\."));
+        prefsPrivate->Release();
+    }
+
     HRESULT hr = WebKitCreateInstance(CLSID_WebView, 0, IID_IWebView, reinterpret_cast<void**>(&gWebView));
     if (FAILED(hr))
         goto exit;
@@ -467,7 +475,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 #else
     WNDCLASSEX wcex;
     wcex.cbSize = sizeof(WNDCLASSEX);
-    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+    wcex.hIconSm        = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL));
     wcex.lpszMenuName   = MAKEINTRESOURCE(IDC_WINLAUNCHER);
 #endif
 

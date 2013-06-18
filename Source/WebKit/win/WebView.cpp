@@ -4788,6 +4788,13 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     settings->setShouldDisplayTextDescriptions(enabled);
 #endif
 
+#if ENABLE(TOUCH_EVENTS)
+    hr = preferences->emulateTouchEvents(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings->setTouchEventEmulationEnabled(enabled);
+#endif
+
     COMPtr<IWebPreferencesPrivate> prefsPrivate(Query, preferences);
     if (prefsPrivate) {
         hr = prefsPrivate->localStorageDatabasePath(&str);

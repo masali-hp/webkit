@@ -317,6 +317,8 @@ void WebPreferences::initializeDefaultSettings()
 
     SET_DEFAULT(WebKitRequestAnimationFrameEnabledPreferenceKey, TRUE_VALUE);
 
+    SET_DEFAULT(WebKitEmulateTouchEventsKey, FALSE_VALUE);
+
 #if USE(CF)
     defaultSettings = defaults;
 #endif
@@ -1934,3 +1936,14 @@ HRESULT WebPreferences::requestAnimationFrameEnabled(BOOL* enabled)
     return S_OK;
 }
 
+HRESULT WebPreferences::emulateTouchEvents(BOOL* emulateTouchEvents)
+{
+    *emulateTouchEvents = boolValueForKey(STRING(WebKitEmulateTouchEventsKey));
+    return S_OK;
+}
+
+HRESULT WebPreferences::setEmulateTouchEvents(BOOL emulateTouchEvents)
+{
+    setBoolValue(STRING(WebKitEmulateTouchEventsKey), emulateTouchEvents);
+    return S_OK;
+}

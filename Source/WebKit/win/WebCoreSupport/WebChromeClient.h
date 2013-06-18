@@ -171,6 +171,9 @@ public:
 
     virtual bool shouldRubberBandInDirection(WebCore::ScrollDirection) const { return true; }
     virtual void numWheelEventHandlersChanged(unsigned) { }
+#if ENABLE(TOUCH_EVENTS)
+    virtual void needTouchEvents(bool) { }
+#endif
 
     WebView* webView() { return m_webView; }
 

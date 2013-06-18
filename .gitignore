@@ -54,6 +54,7 @@ tags
 
 # Ignore files installed by WebKitSupportLibrary/WebKitAuxiliaryLibrary
 /WebKitSupportLibrary.zip
+/WebKitLibraries
 /WebKitLibraries/win/Software License Agreement for WebKit Support Libraries.rtf
 /WebKitLibraries/win/WebKitAuxiliaryLibrary.headers
 /WebKitLibraries/win/WebKitAuxiliaryLibraryVersion

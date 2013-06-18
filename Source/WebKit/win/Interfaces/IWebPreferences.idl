@@ -213,4 +213,7 @@ interface IWebPreferences : IUnknown
 
     HRESULT areSeamlessIFramesEnabled([out, retval] BOOL* enabled);
     HRESULT setSeamlessIFramesEnabled([in] BOOL enabled);
+
+    HRESULT setEmulateTouchEvents([in] BOOL emulateTouchEvents);
+    HRESULT emulateTouchEvents([out, retval] BOOL* emulateTouchEvents);
 }

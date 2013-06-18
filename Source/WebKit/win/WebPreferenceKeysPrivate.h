@@ -167,3 +167,4 @@
 
 #define WebKitRequestAnimationFrameEnabledPreferenceKey "WebKitRequestAnimationFrameEnabled"
 
+#define WebKitEmulateTouchEventsKey "WebKitEmulateTouchEvents"
