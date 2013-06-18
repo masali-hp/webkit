@@ -24,6 +24,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(CONTEXT_MENUS)
 #include "ContextMenu.h"
 
 #include "Document.h"
@@ -139,3 +141,4 @@ HMENU ContextMenu::platformContextMenu() const
 }
 
 } // namespace WebCore
+#endif

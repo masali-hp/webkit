@@ -23,6 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
+#if ENABLE(CONTEXT_MENUS)
 #include <WebCore/ContextMenu.h>
 #include <WebCore/ContextMenuClient.h>
 #include <wtf/Forward.h>
@@ -49,3 +50,4 @@ public:
 private:
     WebView* m_webView;
 };
+#endif

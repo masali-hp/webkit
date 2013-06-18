@@ -1349,6 +1349,7 @@ Page* WebView::page()
     return m_page;
 }
 
+#if ENABLE(CONTEXT_MENUS)
 bool WebView::handleContextMenuEvent(WPARAM wParam, LPARAM lParam)
 {
     // Translate the screen coordinates into window coordinates
@@ -1498,6 +1499,7 @@ void WebView::performContextMenuAction(WPARAM wParam, LPARAM lParam, bool byPosi
         return;
     m_page->contextMenuController()->contextMenuItemSelected(item);
 }
+#endif
 
 bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -2390,9 +2392,12 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
         case WM_COMMAND:
             if (HIWORD(wParam))
                 handled = webView->execCommand(wParam, lParam);
+#if ENABLE(CONTEXT_MENUS)
             else // If the high word of wParam is 0, the message is from a menu
                 webView->performContextMenuAction(wParam, lParam, false);
+#endif
             break;
+#if ENABLE(CONTEXT_MENUS)
 #if !OS(WINCE)
         case WM_MENUCOMMAND:
             webView->performContextMenuAction(wParam, lParam, true);
@@ -2414,6 +2419,7 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
         case WM_UNINITMENUPOPUP:
             handled = webView->onUninitMenuPopup(wParam, lParam);
             break;
+#endif
 #endif
         case WM_XP_THEMECHANGED:
             if (Frame* coreFrame = core(mainFrameImpl)) {
@@ -2796,7 +2802,9 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
 
     Page::PageClients pageClients;
     pageClients.chromeClient = new WebChromeClient(this);
+#if ENABLE(CONTEXT_MENUS)
     pageClients.contextMenuClient = new WebContextMenuClient(this);
+#endif
     pageClients.editorClient = new WebEditorClient(this);
 #if ENABLE(DRAG_SUPPORT)
     pageClients.dragClient = new WebDragClient(this);

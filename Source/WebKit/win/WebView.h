@@ -865,12 +865,14 @@ public:
 #if !OS(WINCE)
     void setMouseActivated(bool flag) { m_mouseActivated = flag; }
 #endif
+#if ENABLE(CONTEXT_MENUS)
     bool handleContextMenuEvent(WPARAM, LPARAM);
     bool onMeasureItem(WPARAM, LPARAM);
     bool onDrawItem(WPARAM, LPARAM);
     bool onInitMenuPopup(WPARAM, LPARAM);
     bool onUninitMenuPopup(WPARAM, LPARAM);
     void performContextMenuAction(WPARAM, LPARAM, bool byPosition);
+#endif
     bool mouseWheel(WPARAM, LPARAM, bool isMouseHWheel);
     bool verticalScroll(WPARAM, LPARAM);
     bool horizontalScroll(WPARAM, LPARAM);

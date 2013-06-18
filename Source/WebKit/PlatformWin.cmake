@@ -148,8 +148,6 @@ list(APPEND WebKit_SOURCES_WebCoreSupport
     win/WebCoreSupport/EmbeddedWidget.h
     win/WebCoreSupport/WebChromeClient.cpp
     win/WebCoreSupport/WebChromeClient.h
-    win/WebCoreSupport/WebContextMenuClient.cpp
-    win/WebCoreSupport/WebContextMenuClient.h
     win/WebCoreSupport/WebDesktopNotificationsDelegate.cpp
     win/WebCoreSupport/WebDesktopNotificationsDelegate.h
     win/WebCoreSupport/WebDragClient.cpp
@@ -180,6 +178,15 @@ if (ENABLE_ACCESSIBILITY)
         win/AccessibleBase.cpp
         win/AccessibleDocument.cpp
         win/AccessibleImage.cpp
+    )
+endif ()
+
+if (ENABLE_CONTEXT_MENUS)
+    list(APPEND WebKit_INCLUDES
+        win/WebCoreSupport/WebContextMenuClient.h
+    )
+    list(APPEND WebKit_SOURCES_WebCoreSupport
+        win/WebCoreSupport/WebContextMenuClient.cpp
     )
 endif ()
 

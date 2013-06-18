@@ -24,6 +24,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(CONTEXT_MENUS)
 #include "ContextMenuItem.h"
 
 #include "ContextMenu.h"
@@ -103,3 +105,4 @@ MENUITEMINFO ContextMenuItem::platformContextMenuItem() const
 }
 
 }
+#endif
