@@ -247,7 +247,7 @@ PassRefPtr<FixedSizeFontData> FixedSizeFontData::create(const AtomicString& fami
     winFont.lfStrikeOut = false;
     winFont.lfCharSet = DEFAULT_CHARSET;
     winFont.lfOutPrecision = OUT_DEFAULT_PRECIS;
-    winFont.lfQuality = CLEARTYPE_QUALITY; //DEFAULT_QUALITY;
+    winFont.lfQuality = ANTIALIASED_QUALITY; //CLEARTYPE_QUALITY; //DEFAULT_QUALITY;
     winFont.lfClipPrecision = CLIP_DEFAULT_PRECIS;
     winFont.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
     winFont.lfItalic = italic;

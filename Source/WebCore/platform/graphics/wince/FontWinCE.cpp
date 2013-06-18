@@ -62,11 +62,13 @@ public:
 
 ScreenDcReleaser releaseScreenDc;
 
+#if !USE(CAIRO)
 void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* fontData, const GlyphBuffer& glyphBuffer,
                       int from, int numGlyphs, const FloatPoint& point) const
 {
     graphicsContext->drawText(fontData, glyphBuffer, from, numGlyphs, point);
 }
+#endif
 
 class TextRunComponent {
 public:

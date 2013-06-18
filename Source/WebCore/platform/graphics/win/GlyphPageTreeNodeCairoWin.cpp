@@ -40,14 +40,23 @@ bool GlyphPage::fill(unsigned offset, unsigned length, UChar* buffer, unsigned b
     if (bufferLength > length)
         return false;
 
+#if OS(WINCE)
+    // WinCE does not have GetGlyphIndices.  The closest it has is provided through
+    // the IMLangFontLink interface, which is only present if IE is installed.
+    // http://msdn.microsoft.com/en-us/library/ee492017(v=winembedded.60).aspx
+    // Our 'glyph' index will simply be the character index.  When cairo draws text
+    // in WinCE, it assumes the glyph index is a character index.
+    // It would be better to add a feature to webkit - something like GLYPH_LOOKUP,
+    // which would enable the whole glyph page stuff to be stubbed out.
+    for (unsigned i = 0; i < length; ++i)
+        setGlyphDataForIndex(offset + i, buffer[i], fontData);
+    return true;
+#else
     bool haveGlyphs = false;
 
     HDC dc = GetDC((HWND)0);
     SaveDC(dc);
     SelectObject(dc, fontData->platformData().hfont());
-
-    TEXTMETRIC tm;
-    GetTextMetrics(dc, &tm);
 
     WORD localGlyphBuffer[GlyphPage::size * 2];
     DWORD result = GetGlyphIndices(dc, buffer, bufferLength, localGlyphBuffer, 0);
@@ -67,6 +76,7 @@ bool GlyphPage::fill(unsigned offset, unsigned length, UChar* buffer, unsigned b
     ReleaseDC(0, dc);
 
     return haveGlyphs;
+#endif
 }
 
 }

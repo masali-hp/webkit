@@ -49,7 +49,11 @@ void FontPlatformData::platformDataInit(HFONT font, float size, HDC hdc, WCHAR* 
     static cairo_font_options_t* fontOptions = 0;
     if (!fontOptions) {
        fontOptions = cairo_font_options_create();
+#if OS(WINCE)
+       cairo_font_options_set_antialias(fontOptions, CAIRO_ANTIALIAS_GRAY);
+#else
        cairo_font_options_set_antialias(fontOptions, CAIRO_ANTIALIAS_SUBPIXEL);
+#endif
     }
 
     m_scaledFont = cairo_scaled_font_create(fontFace, &sizeMatrix, &ctm, fontOptions);

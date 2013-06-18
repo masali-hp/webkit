@@ -45,8 +45,6 @@ namespace WebCore {
 void SimpleFontData::platformInit()
 {
     m_syntheticBoldOffset = m_platformData.syntheticBold() ? 1.0f : 0.f;
-    m_scriptCache = 0;
-    m_scriptFontProperties = 0;
     m_isSystemFont = false;
 
     if (m_platformData.useGDI())
@@ -57,8 +55,10 @@ void SimpleFontData::platformInit()
         m_avgCharWidth = 0;
         m_maxCharWidth = 0;
         m_isSystemFont = false;
+#if !OS(WINCE)
         m_scriptCache = 0;
         m_scriptFontProperties = 0;
+#endif
         return;
     }
 
@@ -98,8 +98,10 @@ void SimpleFontData::platformInit()
     m_fontMetrics.setXHeight(xHeight);
     cairo_win32_scaled_font_done_font(scaledFont);
 
+#if !OS(WINCE)
     m_scriptCache = 0;
     m_scriptFontProperties = 0;
+#endif
 
     RestoreDC(dc, -1);
 }
@@ -127,7 +129,20 @@ float SimpleFontData::platformWidthForGlyph(Glyph glyph) const
     cairo_win32_scaled_font_select_font(scaledFont, dc);
 
     int width;
+#if OS(WINCE)
+    // In WinCE we don't know the glyph index.
+    //if (scaledFont->is_bitmap) {
+    //    GetCharWidth32(hdc, glyph, glyph, &width);
+    //}
+    //else {
+    // FIXME: we assume we have a TT font here.  what if we don't?
+        ABC abc;
+        GetCharABCWidths(dc, glyph, glyph, &abc);
+        width = abc.abcA + abc.abcB + abc.abcC;
+    //}
+#else
     GetCharWidthI(dc, glyph, 1, 0, &width);
+#endif
 
     cairo_win32_scaled_font_done_font(scaledFont);
 

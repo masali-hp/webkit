@@ -40,8 +40,10 @@ namespace WebCore {
 #if PLATFORM(WIN)
 static cairo_t* createCairoContextWithHDC(HDC hdc, bool hasAlpha)
 {
+#if !OS(WINCE)
     // Put the HDC In advanced mode so it will honor affine transforms.
     SetGraphicsMode(hdc, GM_ADVANCED);
+#endif
 
     cairo_surface_t* surface = 0;
 
@@ -155,6 +157,7 @@ void GraphicsContext::releaseWindowsContext(HDC hdc, const IntRect& dstRect, boo
 }
 
 #if PLATFORM(WIN)
+#if !OS(WINCE)
 void GraphicsContext::drawWindowsBitmap(WindowsBitmap* bitmap, const IntPoint& point)
 {
     drawBitmapToContext(m_data, platformContext()->cr(), bitmap->windowsDIB(), IntSize(point.x(), bitmap->size().height() + point.y()));
@@ -170,6 +173,7 @@ void GraphicsContextPlatformPrivate::syncContext(cairo_t* cr)
 
     SetGraphicsMode(m_hdc, GM_ADVANCED); // We need this call for themes to honor world transforms.
 }
+#endif
 
 void GraphicsContextPlatformPrivate::flush()
 {

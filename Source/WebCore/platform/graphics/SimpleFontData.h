@@ -245,7 +245,7 @@ private:
     PassRefPtr<SimpleFontData> createScaledFontData(const FontDescription&, float scaleFactor) const;
     PassRefPtr<SimpleFontData> platformCreateScaledFontData(const FontDescription&, float scaleFactor) const;
 
-#if (PLATFORM(WIN) && !OS(WINCE))
+#if PLATFORM(WIN) && (!OS(WINCE) || USE(CAIRO))
     void initGDIFont();
     void platformCommonDestroy();
     FloatRect boundsForGDIGlyph(Glyph glyph) const;

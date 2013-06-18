@@ -88,7 +88,13 @@ void Icon::paint(GraphicsContext* context, const IntRect& r)
         return;
 
 #if OS(WINCE)
+#if !USE(CAIRO)
     context->drawIcon(m_hIcon, r, DI_NORMAL);
+#else
+    IntRect translatedRect = context->getCTM().mapRect(r);
+    LocalWindowsContext windowContext(context, translatedRect);
+    DrawIconEx(windowContext.hdc(), translatedRect.x(), translatedRect.y(), m_hIcon, r.width(), r.height(), 0, 0, DI_NORMAL);
+#endif
 #else
     LocalWindowsContext windowContext(context, r);
     DrawIconEx(windowContext.hdc(), r.x(), r.y(), m_hIcon, r.width(), r.height(), 0, 0, DI_NORMAL);

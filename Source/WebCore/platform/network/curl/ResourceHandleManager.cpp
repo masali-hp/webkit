@@ -62,7 +62,11 @@ const int selectTimeoutMS = 5;
 const double pollTimeSeconds = 0.05;
 const int maxRunningJobs = 5;
 
+#if OS(WINCE)
+static const bool ignoreSSLErrors = false;
+#else
 static const bool ignoreSSLErrors = getenv("WEBKIT_IGNORE_SSL_ERRORS");
+#endif
 
 static CString certificatePath()
 {
@@ -77,18 +81,22 @@ static CString certificatePath()
         }
     }
 #endif
+#if !OS(WINCE)
     char* envPath = getenv("CURL_CA_BUNDLE_PATH");
     if (envPath)
        return envPath;
+#endif
 
     return CString();
 }
 
 static char* cookieJarPath()
 {
+#if !OS(WINCE)
     char* cookieJarPath = getenv("CURL_COOKIE_JAR_PATH");
     if (cookieJarPath)
         return fastStrDup(cookieJarPath);
+#endif
 
     return fastStrDup("cookies.dat");
 }
@@ -380,7 +388,7 @@ void ResourceHandleManager::downloadTimerCallback(Timer<ResourceHandleManager>* 
     } while (rc == -1 && errno == EINTR);
 
     if (-1 == rc) {
-#ifndef NDEBUG
+#if !defined(NDEBUG) && !OS(WINCE)
         perror("bad: select() returned -1: ");
 #endif
         return;
@@ -685,7 +693,7 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
         // header callback. So just assert here.
         ASSERT_UNUSED(error, error == CURLE_OK);
     }
-#ifndef NDEBUG
+#if !defined(NDEBUG) && !OS(WINCE)
     if (getenv("DEBUG_CURL"))
         curl_easy_setopt(d->m_handle, CURLOPT_VERBOSE, 1);
 #endif

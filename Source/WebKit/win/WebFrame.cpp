@@ -2147,7 +2147,7 @@ void WebFrame::spoolPage(PlatformGraphicsContext* pctx, GraphicsContext* spoolCt
     CGContextEndPage(pctx);
     CGContextRestoreGState(pctx);
 }
-#elif USE(CAIRO)
+#elif USE(CAIRO) && !OS(WINCE)
 static float scaleFactor(HDC printDC, const IntRect& marginRect, const IntRect& pageRect)
 {
     const IntRect& printRect = printerRect(printDC);

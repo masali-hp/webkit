@@ -137,7 +137,12 @@ PassRefPtr<SimpleFontData> SimpleFontData::platformCreateScaledFontData(const Fo
 
     LOGFONT winfont;
     GetObject(m_platformData.hfont(), sizeof(LOGFONT), &winfont);
+#if OS(WINCE)
+    // WinCE does not support sub-pixel precision.  Font size is not scaled by 32.  (See cairo-win32-font.c)
+    winfont.lfHeight = -lroundf(scaledSize);
+#else
     winfont.lfHeight = -lroundf(scaledSize * (m_platformData.useGDI() ? 1 : 32));
+#endif
     HFONT hfont = CreateFontIndirect(&winfont);
     return SimpleFontData::create(FontPlatformData(hfont, scaledSize, m_platformData.syntheticBold(), m_platformData.syntheticOblique(), m_platformData.useGDI()), isCustomFont(), false);
 }
@@ -148,6 +153,7 @@ bool SimpleFontData::containsCharacters(const UChar* characters, int length) con
     if (isCustomFont())
         return false;
 
+#if !OS(WINCE)
     // FIXME: Microsoft documentation seems to imply that characters can be output using a given font and DC
     // merely by testing code page intersection.  This seems suspect though.  Can't a font only partially
     // cover a given code page?
@@ -172,6 +178,7 @@ bool SimpleFontData::containsCharacters(const UChar* characters, int length) con
             return false;
         offset += numCharactersProcessed;
     }
+#endif
 
     return true;
 }
@@ -199,10 +206,28 @@ void SimpleFontData::determinePitch()
 
 FloatRect SimpleFontData::boundsForGDIGlyph(Glyph glyph) const
 {
-#if OS(WINCE)
-    return FloatRect();
-#else
     HWndDC hdc(0);
+#if OS(WINCE)
+    // For CE, the glyph is not a glyph index but a wchar.
+    HGDIOBJ oldFont = SelectObject(hdc, m_platformData.hfont());
+    TEXTMETRIC tm;
+    GetTextMetrics(hdc, &tm);
+    FloatRect result;
+    if (tm.tmPitchAndFamily & TMPF_TRUETYPE) {
+        ABC abc;
+        BOOL success = GetCharABCWidths(hdc, glyph, glyph, &abc);
+        ASSERT(success);
+        result = FloatRect(abc.abcA, 0, abc.abcB + m_syntheticBoldOffset, tm.tmAscent);
+    }
+    else {
+        int width;
+        BOOL success = GetCharWidth32(hdc, glyph, glyph, &width);
+        ASSERT(success);
+        result = FloatRect(0, 0, width, tm.tmAscent);
+    }
+    SelectObject(hdc, oldFont);
+    return result;
+#else
     SetGraphicsMode(hdc, GM_ADVANCED);
     HGDIOBJ oldFont = SelectObject(hdc, m_platformData.hfont());
 
@@ -219,27 +244,22 @@ FloatRect SimpleFontData::boundsForGDIGlyph(Glyph glyph) const
 
 float SimpleFontData::widthForGDIGlyph(Glyph glyph) const
 {
+#if OS(WINCE)
+    return boundsForGDIGlyph(glyph).width();
+#else
     HWndDC hdc(0);
-#if !OS(WINCE)
     SetGraphicsMode(hdc, GM_ADVANCED);
-#endif
     HGDIOBJ oldFont = SelectObject(hdc, m_platformData.hfont());
 
-#if OS(WINCE)
-    WCHAR c = glyph;
-    SIZE fontSize;
-    GetTextExtentPoint32W(hdc, &c, 1, &fontSize);
-    float result = fontSize.cx * m_platformData.size() / 72.f;
-#else
     GLYPHMETRICS gdiMetrics;
     static const MAT2 identity = { 0, 1,  0, 0,  0, 0,  0, 1 };
     GetGlyphOutline(hdc, glyph, GGO_METRICS | GGO_GLYPH_INDEX, &gdiMetrics, 0, 0, &identity);
     float result = gdiMetrics.gmCellIncX + m_syntheticBoldOffset;
-#endif
 
     SelectObject(hdc, oldFont);
 
     return result;
+#endif
 }
 
 #if !OS(WINCE)

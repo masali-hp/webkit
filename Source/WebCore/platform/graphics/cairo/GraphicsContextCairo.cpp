@@ -480,7 +480,14 @@ void GraphicsContext::clip(const FloatRect& rect)
     cairo_clip(cr);
     cairo_set_fill_rule(cr, savedFillRule);
     cairo_set_antialias(cr, savedAntialiasRule);
+#if OS(WINCE)
+    // On WinCE native windows device contexts do not support transforms,
+    // so we must translate the clip rect manually.
+    FloatRect translatedRect = getCTM().mapRect(rect);
+    m_data->clip(translatedRect);
+#else
     m_data->clip(rect);
+#endif
 }
 
 void GraphicsContext::clipPath(const Path& path, WindRule clipRule)

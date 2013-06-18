@@ -72,12 +72,14 @@ public:
     void flush();
     void clip(const FloatRect&);
     void clip(const Path&);
+#if !OS(WINCE)
     void scale(const FloatSize&);
     void rotate(float);
     void translate(float, float);
     void concatCTM(const AffineTransform&);
     void setCTM(const AffineTransform&);
     void syncContext(cairo_t* cr);
+#endif
 #else
     // On everything else, we do nothing.
     void save() {}
@@ -85,6 +87,8 @@ public:
     void flush() {}
     void clip(const FloatRect&) {}
     void clip(const Path&) {}
+#endif
+#if !PLATFORM(WIN) || OS(WINCE)
     void scale(const FloatSize&) {}
     void rotate(float) {}
     void translate(float, float) {}

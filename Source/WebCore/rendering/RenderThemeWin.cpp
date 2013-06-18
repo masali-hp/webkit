@@ -42,6 +42,10 @@
 
 #include <tchar.h>
 
+#if OS(WINCE)
+#include "NotImplemented.h"
+#endif
+
 /* 
  * The following constants are used to determine how a widget is drawn using
  * Windows' Theme API. For more information on theme parts and states see
@@ -299,6 +303,9 @@ static void fillFontDescription(FontDescription& fontDescription, LOGFONT& logFo
 
 void RenderThemeWin::systemFont(int propId, FontDescription& fontDescription) const
 {
+#if OS(WINCE)
+    notImplemented();
+#else
     static FontDescription captionFont;
     static FontDescription controlFont;
     static FontDescription smallCaptionFont;
@@ -377,6 +384,7 @@ void RenderThemeWin::systemFont(int propId, FontDescription& fontDescription) co
             fontDescription = systemFont;
         }
     }
+#endif
 }
 
 bool RenderThemeWin::supportsFocus(ControlPart appearance) const
@@ -433,8 +441,10 @@ unsigned RenderThemeWin::determineClassicState(RenderObject* o, ControlSubPart s
                 state |= DFCS_INACTIVE;
             else if (isPressed(o) && isUpButton == isSpinUpButtonPartPressed(o))
                 state |= DFCS_PUSHED;
+#if !OS(WINCE)
             else if (isHovered(o) && isUpButton == isSpinUpButtonPartHovered(o))
                 state |= DFCS_HOT;
+#endif
             break;
         }
         default:
@@ -622,14 +632,22 @@ ThemeData RenderThemeWin::getThemeData(RenderObject* o, ControlSubPart subPart)
 static void drawControl(GraphicsContext* context, RenderObject* o, HANDLE theme, const ThemeData& themeData, const IntRect& r)
 {
     bool alphaBlend = false;
+#if OS(WINCE)
+    // WinCE does not support setting a transform on a windows context, so the coordinates
+    // not to be manually translated here.
+    RECT widgetRect = context->getCTM().mapRect(r);
+    LocalWindowsContext windowsContext(context, r, alphaBlend, false);
+#else
     if (theme)
         alphaBlend = IsThemeBackgroundPartiallyTransparent(theme, themeData.m_part, themeData.m_state);
     LocalWindowsContext windowsContext(context, r, alphaBlend);
     RECT widgetRect = r;
+#endif
+    HDC hdc = windowsContext.hdc();
+
     if (theme)
-        DrawThemeBackground(theme, windowsContext.hdc(), themeData.m_part, themeData.m_state, &widgetRect, 0);
+        DrawThemeBackground(theme, hdc, themeData.m_part, themeData.m_state, &widgetRect, 0);
     else {
-        HDC hdc = windowsContext.hdc();
         if (themeData.m_part == TFP_TEXTFIELD) {
             ::DrawEdge(hdc, &widgetRect, EDGE_SUNKEN, BF_RECT | BF_ADJUST);
             if (themeData.m_state == TS_DISABLED || themeData.m_state ==  TFS_READONLY)
@@ -666,12 +684,14 @@ static void drawControl(GraphicsContext* context, RenderObject* o, HANDLE theme,
             }
         } else {
             // Push buttons, buttons, checkboxes and radios, and the dropdown arrow in menulists.
+#if !OS(WINCE)
             if (o->style()->appearance() == DefaultButtonPart) {
                 HBRUSH brush = ::GetSysColorBrush(COLOR_3DDKSHADOW);
                 ::FrameRect(hdc, &widgetRect, brush);
                 ::InflateRect(&widgetRect, -1, -1);
                 ::DrawEdge(hdc, &widgetRect, BDR_RAISEDOUTER, BF_RECT | BF_MIDDLE);
             }
+#endif
             ::DrawFrameControl(hdc, &widgetRect, themeData.m_part, themeData.m_state);
         }
     }

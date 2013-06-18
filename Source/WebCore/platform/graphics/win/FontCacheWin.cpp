@@ -54,6 +54,7 @@ void FontCache::platformInit()
 #endif
 }
 
+#if !OS(WINCE)
 IMLangFontLinkType* FontCache::getFontLinkInterface()
 {
     static IMultiLanguage *multiLanguage;
@@ -185,9 +186,13 @@ static HFONT createMLangFont(IMLangFontLinkType* langFontLink, HDC hdc, DWORD co
     }
     return hfont;
 }
+#endif
 
 PassRefPtr<SimpleFontData> FontCache::getFontDataForCharacters(const Font& font, const UChar* characters, int length)
 {
+#if OS(WINCE)
+    return 0;
+#else
     UChar character = characters[0];
     RefPtr<SimpleFontData> fontData;
     HWndDC hdc(0);
@@ -294,6 +299,7 @@ PassRefPtr<SimpleFontData> FontCache::getFontDataForCharacters(const Font& font,
     }
 
     return fontData.release();
+#endif
 }
 
 PassRefPtr<SimpleFontData> FontCache::getSimilarFontPlatformData(const Font& font)
@@ -337,6 +343,7 @@ PassRefPtr<SimpleFontData> FontCache::getLastResortFallbackFont(const FontDescri
         }
     }
 
+#if !OS(WINCE)
     // Fall back to the DEFAULT_GUI_FONT if no known Unicode fonts are available.
     if (HFONT defaultGUIFont = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT))) {
         LOGFONT defaultGUILogFont;
@@ -360,7 +367,7 @@ PassRefPtr<SimpleFontData> FontCache::getLastResortFallbackFont(const FontDescri
         if (simpleFont = fontDataFromDescriptionAndLogFont(fontDescription, shouldRetain, nonClientMetrics.lfSmCaptionFont, fallbackFontName))
             return simpleFont.release();
     }
-    
+#endif
     ASSERT_NOT_REACHED();
     return 0;
 }
@@ -450,37 +457,50 @@ static HFONT createGDIFont(const AtomicString& family, LONG desiredWeight, bool 
     HWndDC hdc(0);
 
     LOGFONT logFont;
-    logFont.lfCharSet = DEFAULT_CHARSET;
+
     unsigned familyLength = min(family.length(), static_cast<unsigned>(LF_FACESIZE - 1));
     memcpy(logFont.lfFaceName, family.characters(), familyLength * sizeof(UChar));
     logFont.lfFaceName[familyLength] = 0;
-    logFont.lfPitchAndFamily = 0;
 
+#if !OS(WINCE)
+    logFont.lfCharSet = DEFAULT_CHARSET;
+    logFont.lfPitchAndFamily = 0;
     MatchImprovingProcData matchData(desiredWeight, desiredItalic);
     EnumFontFamiliesEx(hdc, &logFont, matchImprovingEnumProc, reinterpret_cast<LPARAM>(&matchData), 0);
 
     if (!matchData.m_hasMatched)
         return 0;
-
-    matchData.m_chosen.lfHeight = -size;
-    matchData.m_chosen.lfWidth = 0;
-    matchData.m_chosen.lfEscapement = 0;
-    matchData.m_chosen.lfOrientation = 0;
-    matchData.m_chosen.lfUnderline = false;
-    matchData.m_chosen.lfStrikeOut = false;
-    matchData.m_chosen.lfCharSet = DEFAULT_CHARSET;
-#if USE(CG) || USE(CAIRO)
-    matchData.m_chosen.lfOutPrecision = OUT_TT_ONLY_PRECIS;
+    logFont = matchData.m_chosen;
 #else
-    matchData.m_chosen.lfOutPrecision = OUT_TT_PRECIS;
+    logFont.lfWeight = desiredWeight;
+    logFont.lfItalic = desiredItalic;
 #endif
-    matchData.m_chosen.lfQuality = DEFAULT_QUALITY;
-    matchData.m_chosen.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
 
-   if (desiredItalic && !matchData.m_chosen.lfItalic && synthesizeItalic)
-       matchData.m_chosen.lfItalic = 1;
+    logFont.lfHeight = -size;
+    logFont.lfWidth = 0;
+    logFont.lfEscapement = 0;
+    logFont.lfOrientation = 0;
+    logFont.lfUnderline = false;
+    logFont.lfStrikeOut = false;
+    logFont.lfCharSet = DEFAULT_CHARSET;
+#if OS(WINCE)
+    logFont.lfOutPrecision = OUT_DEFAULT_PRECIS;
+#elif USE(CG) || USE(CAIRO)
+    logFont.lfOutPrecision = OUT_TT_ONLY_PRECIS;
+#else
+    logFont.lfOutPrecision = OUT_TT_PRECIS;
+#endif
+#if OS(WINCE)
+    logFont.lfQuality = ANTIALIASED_QUALITY;
+#else
+    logFont.lfQuality = DEFAULT_QUALITY;
+#endif
+    logFont.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
 
-    HFONT result = CreateFontIndirect(&matchData.m_chosen);
+   if (desiredItalic && !logFont.lfItalic && synthesizeItalic)
+       logFont.lfItalic = 1;
+
+    HFONT result = CreateFontIndirect(&logFont);
     if (!result)
         return 0;
 
@@ -491,7 +511,7 @@ static HFONT createGDIFont(const AtomicString& family, LONG desiredWeight, bool 
     GetTextFace(dc, LF_FACESIZE, actualName);
     RestoreDC(dc, -1);
 
-    if (wcsicmp(matchData.m_chosen.lfFaceName, actualName)) {
+    if (wcsicmp(logFont.lfFaceName, actualName)) {
         DeleteObject(result);
         result = 0;
     }
@@ -559,8 +579,13 @@ PassOwnPtr<FontPlatformData> FontCache::createFontPlatformData(const FontDescrip
     // FIXME: We will eventually want subpixel precision for GDI mode, but the scaled rendering doesn't
     // look as nice. That may be solvable though.
     LONG weight = adjustedGDIFontWeight(toGDIFontWeight(fontDescription.weight()), family);
-    HFONT hfont = createGDIFont(family, weight, fontDescription.italic(),
-                                fontDescription.computedPixelSize() * (useGDI ? 1 : 32), useGDI);
+#if OS(WINCE)
+    // WinCE does not support sub-pixel precision.  Font size is not scaled by 32.  (See cairo-win32-font.c)
+    int size = fontDescription.computedPixelSize();
+#else
+    int size = fontDescription.computedPixelSize() * (useGDI ? 1 : 32);
+#endif
+    HFONT hfont = createGDIFont(family, weight, fontDescription.italic(), size, useGDI);
 
     if (!hfont)
         return nullptr;

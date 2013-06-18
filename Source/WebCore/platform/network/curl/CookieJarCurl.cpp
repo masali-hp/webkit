@@ -27,6 +27,10 @@
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
+#if OS(WINCE)
+#include <wce_time.h>
+#endif
+
 namespace WebCore {
 
 static void readCurlCookieToken(const char*& cookie, String& token)

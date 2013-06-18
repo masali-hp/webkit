@@ -138,7 +138,7 @@ namespace WebCore {
 
         float aspectRatio() const { return m_aspectRatio; }
 
-#if OS(WINCE) && !PLATFORM(QT)
+#if OS(WINCE) && !PLATFORM(QT) && !USE(CAIRO)
         const Vector<ColorStop, 2>& getStops() const;
 #else
         PlatformGradient platformGradient();

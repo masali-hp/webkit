@@ -355,7 +355,6 @@ elseif (WINOS MATCHES CE)
 
     list (APPEND WebCore_SOURCES
         platform/graphics/win/GDIExtras.cpp
-        platform/graphics/wince/ImageWinCE.cpp
         platform/graphics/wince/FontWince.cpp
         platform/text/TextEncodingDetectorNone.cpp
         platform/text/wchar/TextBreakIteratorWchar.cpp

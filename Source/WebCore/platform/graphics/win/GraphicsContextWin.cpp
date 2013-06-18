@@ -51,7 +51,7 @@ static void fillWithClearColor(HBITMAP bitmap)
     memset(bmpInfo.bmBits, 0, bufferSize);
 }
 
-#if PLATFORM(WIN)
+#if PLATFORM(WIN) && !OS(WINCE)
 void GraphicsContext::setShouldIncludeChildWindows(bool include)
 {
     m_data->m_shouldIncludeChildWindows = include;
@@ -119,6 +119,7 @@ HDC GraphicsContext::getWindowsContext(const IntRect& dstRect, bool supportAlpha
         if (supportAlphaBlend)
            fillWithClearColor(bitmap);
 
+#if !OS(WINCE)
         // Make sure we can do world transforms.
         SetGraphicsMode(bitmapDC, GM_ADVANCED);
 
@@ -126,6 +127,7 @@ HDC GraphicsContext::getWindowsContext(const IntRect& dstRect, bool supportAlpha
         XFORM xform = TransformationMatrix().translate(-dstRect.x(), -dstRect.y());
 
         ::SetWorldTransform(bitmapDC, &xform);
+#endif
 
         return bitmapDC;
     }
@@ -162,6 +164,7 @@ void GraphicsContextPlatformPrivate::clip(const Path&)
     notImplemented();
 }
 
+#if !OS(WINCE)
 void GraphicsContextPlatformPrivate::scale(const FloatSize& size)
 {
     if (!m_hdc)
@@ -205,6 +208,7 @@ void GraphicsContextPlatformPrivate::setCTM(const AffineTransform& transform)
     XFORM xform = transform.toTransformationMatrix();
     SetWorldTransform(m_hdc, &xform);
 }
+#endif
 #endif
 
 }

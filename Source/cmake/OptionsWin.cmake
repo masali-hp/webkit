@@ -38,3 +38,7 @@ WEBKIT_DEFINE_IF_SET(WTF_USE_WININET)
 if (NOT ENABLE_ACCESSIBILITY)
     add_definitions(-DHAVE_ACCESSIBILITY=0)
 endif ()
+
+if (WTF_USE_CURL AND WINOS MATCHES CE)
+  include_directories(${3RDPARTY_DIR}/wcelibcex-1.0/src)
+endif ()

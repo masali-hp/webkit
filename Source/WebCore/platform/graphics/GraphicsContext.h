@@ -187,7 +187,7 @@ namespace WebCore {
         GraphicsContext(PlatformGraphicsContext*);
         ~GraphicsContext();
 
-#if !OS(WINCE) || PLATFORM(QT)
+#if !OS(WINCE) || PLATFORM(QT) || USE(CAIRO)
         PlatformGraphicsContext* platformContext() const;
 #endif
 
@@ -416,7 +416,7 @@ namespace WebCore {
         HDC getWindowsContext(const IntRect&, bool supportAlphaBlend, bool mayCreateBitmap); // The passed in rect is used to create a bitmap for compositing inside transparency layers.
         void releaseWindowsContext(HDC, const IntRect&, bool supportAlphaBlend, bool mayCreateBitmap); // The passed in HDC should be the one handed back by getWindowsContext.
 #if PLATFORM(WIN)
-#if OS(WINCE)
+#if OS(WINCE) && !USE(CAIRO)
         void setBitmap(PassRefPtr<SharedBitmap>);
         const AffineTransform& affineTransform() const;
         AffineTransform& affineTransform();
@@ -494,7 +494,7 @@ namespace WebCore {
         void platformInit(PlatformGraphicsContext*);
         void platformDestroy();
 
-#if PLATFORM(WIN) && !OS(WINCE)
+#if PLATFORM(WIN) && (!OS(WINCE) || USE(CAIRO))
         void platformInit(HDC, bool hasAlpha = false);
 #endif
 
