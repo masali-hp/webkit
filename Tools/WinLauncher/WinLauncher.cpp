@@ -260,6 +260,12 @@ static void computeFullDesktopFrame()
     s_windowSize.cy = desktop.bottom - desktop.top;
 }
 
+#ifdef _WIN32_WCE
+namespace WTF {
+__declspec(dllimport) void setMainThreadStackBounds(void *, void*);
+}
+#endif
+
 #ifdef BUILD_WINLAUNCHER_EXE
 #if defined(_WIN32_WCE)
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpstrCmdLine, int nCmdShow)
@@ -316,6 +322,16 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
 
     // Init COM
 #ifdef _WIN32_WCE
+    // Take the address of the first variable in this function, aligned
+    // to a 4k boundary as the start of the stack, then substract the stack
+    // size (because the stack is growing downward).
+    SYSTEM_INFO systemInfo;
+    GetSystemInfo(&systemInfo);
+    DWORD pageSize = systemInfo.dwPageSize;
+    void * stackStart = (void*)((reinterpret_cast<unsigned>(&msg) & ~(pageSize - 1)) + pageSize);
+    void * stackBound = static_cast<char*>(stackStart) - (508 * 1024); // assume up to 4K stack above us
+    WTF::setMainThreadStackBounds(stackStart, stackBound);
+
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 #else
     OleInitialize(NULL);
@@ -404,6 +420,7 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
     if (FAILED(hr))
         goto exit;
 
+#ifndef BUILD_WINLAUNCHER_EXE
     IWebFrame* frame;
     hr = gWebView->mainFrame(&frame);
     if (FAILED(hr))
@@ -412,6 +429,7 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
     static BSTR defaultHTML = SysAllocString(TEXT("<p style=\"background-color: #00FF00\">Testing</p><img id=\"webkit logo\" src=\"http://webkit.org/images/icon-gold.png\" alt=\"Face\"><div style=\"border: solid blue; background: white;\" contenteditable=\"true\">div with blue border</div><ul><li>foo<li>bar<li>baz</ul>"));
     frame->loadHTMLString(defaultHTML, 0);
     frame->Release();
+#endif
 
     hr = gWebViewPrivate->setTransparent(usesLayeredWebView());
     if (FAILED(hr))
@@ -432,6 +450,12 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
 
     ShowWindow(gViewWindow, nCmdShow);
     UpdateWindow(gViewWindow);
+
+#ifdef BUILD_WINLAUNCHER_EXE
+    BSTR url = SysAllocString(lpstrCmdLine);
+    loadURL(url);
+    SysFreeString(url);
+#endif
 
     hAccelTable = LoadAccelerators(hInst, MAKEINTRESOURCE(IDC_WINLAUNCHER));
 

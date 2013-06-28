@@ -498,6 +498,12 @@ EncodedJSValue JSC_HOST_CALL functionQuit(ExecState*)
 
 int jscmain(int argc, char** argv);
 
+#if OS(WINCE)
+namespace WTF {
+extern void setMainThreadStackBounds(void *, void*);
+}
+#endif
+
 int main(int argc, char** argv)
 {
 #if PLATFORM(IOS)
@@ -537,6 +543,22 @@ int main(int argc, char** argv)
     QCoreApplication app(argc, argv);
 #endif
 
+    int res = 0;
+
+#if OS(WINCE)
+    // We don't get the right answer from the code that determines the stack
+    // size, so we use this workaround on WinCE.
+    // Take the address of the first variable in this function, aligned
+    // to a 4k boundary as the start of the stack, then substract the stack
+    // size (because the stack is growing downward).
+    SYSTEM_INFO systemInfo;
+    GetSystemInfo(&systemInfo);
+    DWORD pageSize = systemInfo.dwPageSize;
+    void * stackStart = (void*)((reinterpret_cast<unsigned>(&res) & ~(pageSize - 1)) + pageSize);
+    void * stackBound = static_cast<char*>(stackStart) - (508 * 1024); // assume up to 4K stack above us
+    WTF::setMainThreadStackBounds(stackStart, stackBound);
+#endif
+
     // Initialize JSC before getting VM.
 #if ENABLE(SAMPLING_REGIONS)
     WTF::initializeMainThread();
@@ -545,7 +567,6 @@ int main(int argc, char** argv)
 
     // We can't use destructors in the following code because it uses Windows
     // Structured Exception Handling
-    int res = 0;
     TRY
         res = jscmain(argc, argv);
     EXCEPT(res = 3)

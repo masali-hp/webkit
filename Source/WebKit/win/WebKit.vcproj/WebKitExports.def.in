@@ -1,4 +1,5 @@
 #include "config.h"
+#include <wtf/Assertions.h>
 
 EXPORTS
         DllGetClassObject   PRIVATE
@@ -158,7 +159,9 @@ EXPORTS
         ?waitForThreadCompletion@WTF@@YAHI@Z
         ?waitForThreadCompletion@WTF@@YAHIPAPAX@Z
         ?createThread@WTF@@YAIP6APAXPAX@Z0@Z
-
+#ifdef _WIN32_WCE
+        ?setMainThreadStackBounds@WTF@@YAXPAX0@Z
+#endif
         ; Re-exports from WebCore for test harnesses
         ??0HitTestResult@WebCore@@QAE@ABVLayoutPoint@1@@Z
         ??0HitTestResult@WebCore@@QAE@ABVLayoutPoint@1@IIII@Z

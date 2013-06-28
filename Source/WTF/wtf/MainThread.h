@@ -85,6 +85,13 @@ WTF_EXPORT_PRIVATE void initializeMainThreadToProcessMainThread();
 void initializeMainThreadToProcessMainThreadPlatform();
 #endif
 
+#if OS(WINCE)
+// There are instances where we don't have any good way to figure out
+// the stack bounds (WinCE, running on top of a .NET thread), so we just
+// need someone to tell us what the bounds are.
+WTF_EXPORT_PRIVATE void setMainThreadStackBounds(void * origin, void * bounds);
+#endif
+
 } // namespace WTF
 
 using WTF::callOnMainThread;

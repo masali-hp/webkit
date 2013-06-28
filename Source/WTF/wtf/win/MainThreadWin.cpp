@@ -32,6 +32,9 @@
 
 #include "Assertions.h"
 #include "Threading.h"
+#if OS(WINCE)
+#include "StackBounds.h"
+#endif
 #include <windows.h>
 
 namespace WTF {
@@ -76,5 +79,12 @@ void scheduleDispatchFunctionsOnMainThread()
     ASSERT(threadingWindowHandle);
     PostMessage(threadingWindowHandle, threadingFiredMessage, 0, 0);
 }
+
+#if OS(WINCE)
+void setMainThreadStackBounds(void * origin, void * bounds)
+{
+    StackBounds::setCurrentThreadBounds(origin, bounds);
+}
+#endif
 
 } // namespace WTF
