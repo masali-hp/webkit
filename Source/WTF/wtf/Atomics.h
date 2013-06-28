@@ -211,7 +211,7 @@ inline void compilerFence()
 #endif
 }
 
-#if CPU(ARM_THUMB2)
+#if CPU(ARM_THUMB2) && !COMPILER(MSVC)
 
 // Full memory fence. No accesses will float above this, and no accesses will sink
 // below it.

@@ -1158,7 +1158,11 @@ public:
     void push(RegisterID src)
     {
         // store preindexed with writeback
+#if COMPILER(MSVC)
+        m_assembler.str(src, ARMRegisters::sp, 0 - sizeof(void*), true, true);
+#else
         m_assembler.str(src, ARMRegisters::sp, -sizeof(void*), true, true);
+#endif
     }
 
     void push(Address address)
@@ -1771,7 +1775,7 @@ public:
     
     static CodeLocationLabel startOfBranchPtrWithPatchOnRegister(CodeLocationDataLabelPtr label)
     {
-        const unsigned twoWordOpSize = 4;
+        const int twoWordOpSize = 4;
         return label.labelAtOffset(-twoWordOpSize * 2);
     }
     
