@@ -330,12 +330,13 @@ void WTFInvokeCrashHook()
 {
 }
 
-void WTFCrash()
+void WTFCrash(const char * file, int line)
 {
     if (globalHook)
-        globalHook();
+        globalHook(file, line);
 
-    WTFReportBacktrace();
+    WTFReportFatalError(file, line, "CRASH()", "Unexpected program state");
+
     *(int *)(uintptr_t)0xbbadbeef = 0;
     // More reliable, but doesn't say BBADBEEF.
 #if COMPILER(CLANG)

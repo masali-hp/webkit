@@ -40,6 +40,10 @@
 
 #include <stddef.h>
 
+#if PLATFORM(HP)
+#include "hp/HPWebkitOS.h"
+#endif
+
 #if !COMPILER(MSVC)
 #include <inttypes.h>
 #endif
@@ -121,7 +125,7 @@ WTF_EXPORT_PRIVATE void WTFGetBacktrace(void** stack, int* size);
 WTF_EXPORT_PRIVATE void WTFReportBacktrace();
 WTF_EXPORT_PRIVATE void WTFPrintBacktrace(void** stack, int size);
 
-typedef void (*WTFCrashHookFunction)();
+typedef void (*WTFCrashHookFunction)(const char * file, int line);
 WTF_EXPORT_PRIVATE void WTFSetCrashHook(WTFCrashHookFunction);
 WTF_EXPORT_PRIVATE void WTFInstallReportBacktraceOnCrashHook();
 
@@ -139,6 +143,13 @@ WTF_EXPORT_PRIVATE void WTFInvokeCrashHook();
 
    Signals are ignored by the crash reporter on OS X so we must do better.
 */
+#if PLATFORM(HP)
+#define CRASH_WITH_ERROR_CODE(code) \
+    do { HPFatalError((code), __FILE__, __LINE__); } while(0)
+#define CRASH() \
+    do { HPFatalError(HP_WEBKIT_FATAL_ERROR_UNKNOWN, __FILE__, __LINE__); } while(0)
+#endif
+
 #if COMPILER(CLANG)
 #define NO_RETURN_DUE_TO_CRASH NO_RETURN
 #else
@@ -146,13 +157,13 @@ WTF_EXPORT_PRIVATE void WTFInvokeCrashHook();
 #endif
 
 #ifndef CRASH
-#define CRASH() WTFCrash()
+#define CRASH() WTFCrash(__FILE__, __LINE__)
 #endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-WTF_EXPORT_PRIVATE void WTFCrash() NO_RETURN_DUE_TO_CRASH;
+WTF_EXPORT_PRIVATE void WTFCrash(const char * file, int line) NO_RETURN_DUE_TO_CRASH;
 #ifdef __cplusplus
 }
 #endif
@@ -210,6 +221,29 @@ inline void assertUnused(T& x) { (void)x; }
 
 #else
 
+#if PLATFORM(HP)
+
+#define ASSERT(assertion) do \
+    if (!(assertion)) { \
+        HPWebkitAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion); \
+        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_ERROR_ASSERT_FAILURE); \
+    } \
+while (0)
+
+#define ASSERT_AT(assertion, file, line, function) do  \
+    if (!(assertion)) { \
+        HPWebkitAssertionFailed(file, line, function, #assertion); \
+        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_ERROR_ASSERT_FAILURE); \
+    } \
+while (0)
+
+#define ASSERT_NOT_REACHED() do { \
+    HPWebkitAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, 0); \
+    CRASH_WITH_ERROR_CODE(HP_FATAL_ERROR_ASSERT_FAILURE); \
+} while (0)
+
+#else
+
 #define ASSERT(assertion) \
     (!(assertion) ? \
         (WTFReportAssertionFailure(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion), \
@@ -226,6 +260,7 @@ inline void assertUnused(T& x) { (void)x; }
     WTFReportAssertionFailure(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, 0); \
     CRASH(); \
 } while (0)
+#endif
 
 #define ASSERT_UNUSED(variable, assertion) ASSERT(assertion)
 
@@ -259,6 +294,14 @@ inline void assertUnused(T& x) { (void)x; }
 
 #if ASSERT_MSG_DISABLED
 #define ASSERT_WITH_MESSAGE(assertion, ...) ((void)0)
+#elif PLATFORM(HP)
+#define ASSERT_WITH_MESSAGE(assertion, ...) do \
+    if (!(assertion)) { \
+        HP_TRACE_FATAL(__VA_ARGS__);    \
+        HPWebkitAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion); \
+        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_ERROR_ASSERT_FAILURE); \
+    } \
+while (0)
 #else
 #define ASSERT_WITH_MESSAGE(assertion, ...) do \
     if (!(assertion)) { \
@@ -275,6 +318,14 @@ while (0)
 template<typename T>
 inline void assertWithMessageUnused(T& x) { (void)x; }
 #define ASSERT_WITH_MESSAGE_UNUSED(variable, assertion, ...) (assertWithMessageUnused(variable))
+#elif PLATFORM(HP)
+#define ASSERT_WITH_MESSAGE_UNUSED(variable, assertion, ...) do \
+    if (!(assertion)) { \
+        HP_TRACE_FATAL(__VA_ARGS__);    \
+        HPWebkitAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion); \
+        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_ERROR_ASSERT_FAILURE); \
+    } \
+while (0)
 #else
 #define ASSERT_WITH_MESSAGE_UNUSED(variable, assertion, ...) ((void)variable)
 #endif
@@ -293,6 +344,15 @@ while (0)
 #if ASSERT_ARG_DISABLED
 
 #define ASSERT_ARG(argName, assertion) ((void)0)
+
+#elif PLATFORM(HP)
+
+#define ASSERT_ARG(argName, assertion) do \
+    if (!(assertion)) { \
+        HPWebkitArgumentAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #argName, #assertion); \
+        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_ERROR_ASSERT_FAILURE); \
+    } \
+while (0)
 
 #else
 
