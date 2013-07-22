@@ -123,6 +123,7 @@ list(APPEND WebKit_SOURCES_Classes
     win/WebKitStatistics.cpp
     win/WebMutableURLRequest.cpp
     win/WebNavigationData.cpp
+    win/WebNetworkConfiguration.cpp
     win/WebNotification.cpp
     win/WebNotificationCenter.cpp
     win/WebPreferences.cpp
@@ -248,7 +249,7 @@ elseif (WTF_USE_CURL)
         "${WEBCORE_DIR}/platform/network/curl"
     )
     if (3RDPARTY_DIR)
-        list(APPEND WebCore_INCLUDE_DIRECTORIES
+        list(APPEND WebKit_INCLUDE_DIRECTORIES
             "${3RDPARTY_DIR}/libcurl/include"
         )
     endif ()
@@ -304,6 +305,27 @@ if (ENABLE_INSPECTOR)
         win/WebCoreSupport/WebInspectorDelegate.cpp
         win/WebCoreSupport/WebInspectorDelegate.h
     )
+
+if (ENABLE_INSPECTOR_SERVER)
+    list(APPEND WebKit_SOURCES_WebCoreSupport
+        win/WebCoreSupport/InspectorServer/WebInspectorServer.cpp
+        win/WebCoreSupport/InspectorServer/TcpServerWin.cpp
+        win/WebCoreSupport/InspectorServer/WebSocketServer.cpp
+        win/WebCoreSupport/InspectorServer/WebSocketServerWin.cpp
+        win/WebCoreSupport/InspectorServer/WebSocketServerConnection.cpp
+        win/WebCoreSupport/InspectorServer/WebInspectorServerWin.cpp
+        win/WebCoreSupport/InspectorServer/HTTPRequest.cpp
+    )
+	# Generate inspectorPageIndex.h
+    ADD_CUSTOM_COMMAND(
+        OUTPUT "${DERIVED_SOURCES_WEBKIT_DIR}/include/inspectorPageIndex.h"
+        MAIN_DEPENDENCY win/WebCoreSupport/InspectorServer/inspectorPageIndex.html
+        COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/inspector/xxd.pl inspectorPageIndex_html ${WEBKIT_DIR}/win/WebCoreSupport/InspectorServer/inspectorPageIndex.html "${DERIVED_SOURCES_WEBKIT_DIR}/include/inspectorPageIndex.h"
+        VERBATIM)
+        SET_SOURCE_FILES_PROPERTIES("${DERIVED_SOURCES_WEBKIT_DIR}/include/inspectorPageIndex.h" PROPERTIES GENERATED TRUE)
+        LIST(APPEND WebKit_SOURCES_WebCoreSupport "${DERIVED_SOURCES_WEBKIT_DIR}/include/inspectorPageIndex.h")
+endif()
+
     if (WINOS MATCHES XP)
         list(APPEND WebKit_INCLUDES
             win/WebNodeHighlight.h

@@ -44,6 +44,14 @@
 
 namespace WebCore {
 
+class CurlDebugCallback {
+public:
+    virtual void jobStarted(int jobId, const String & url, bool synchronous) = 0;
+    virtual void jobDataComplete(int jobId, int httpCode) = 0;
+    virtual void jobFinished(int jobId, BOOL success, int errorCode) = 0;
+    virtual void jobDebug(int jobId, int debugType, unsigned char * data, int totalSize) = 0;
+};
+
 class ResourceHandleManager {
 public:
     enum ProxyType {
@@ -56,6 +64,8 @@ public:
     static ResourceHandleManager* sharedInstance();
     void add(ResourceHandle*);
     void cancel(ResourceHandle*);
+    void pause(ResourceHandle*);
+    void resume(ResourceHandle*);
 
     CURLSH* getCurlShareHandle() const;
 
@@ -72,6 +82,11 @@ public:
                       ProxyType type = HTTP,
                       const String& username = "",
                       const String& password = "");
+
+    const String & getProxyString() { return m_proxy; }
+    ProxyType getProxyType() { return m_proxyType; }
+
+    void setCurlDebugCallback(CurlDebugCallback * callback);
 
 private:
     ResourceHandleManager();
@@ -97,6 +112,11 @@ private:
     
     String m_proxy;
     ProxyType m_proxyType;
+
+    static int cURL_debug(CURL *handle, curl_infotype type,
+               char *ptr, size_t size,
+               void *userptr);
+    static CurlDebugCallback * m_debugCallback;
 };
 
 }

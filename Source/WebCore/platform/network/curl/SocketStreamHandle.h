@@ -35,7 +35,14 @@
 #include "SocketStreamHandleBase.h"
 
 #include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
+#include <wtf/ThreadSafeRefCounted.h>
+
+#if PLATFORM(WIN)
+#include <winsock2.h>
+#include <windows.h>
+#endif
+
+#include <curl/curl.h>
 
 namespace WebCore {
 
@@ -43,9 +50,10 @@ namespace WebCore {
     class Credential;
     class SocketStreamHandleClient;
 
-    class SocketStreamHandle : public RefCounted<SocketStreamHandle>, public SocketStreamHandleBase {
+    class SocketStreamHandle : public ThreadSafeRefCounted<SocketStreamHandle>, public SocketStreamHandleBase {
     public:
         static PassRefPtr<SocketStreamHandle> create(const KURL& url, SocketStreamHandleClient* client) { return adoptRef(new SocketStreamHandle(url, client)); }
+        static PassRefPtr<SocketStreamHandle> create(int fd, SocketStreamHandleClient* client) { return adoptRef(new SocketStreamHandle(fd, client)); }
 
         virtual ~SocketStreamHandle();
 
@@ -55,12 +63,75 @@ namespace WebCore {
 
     private:
         SocketStreamHandle(const KURL&, SocketStreamHandleClient*);
+        SocketStreamHandle(int fd, SocketStreamHandleClient*);
+
+        bool isConnected() { return (m_state == Open || m_state == Closing) && m_curl_code == CURLE_OK && m_curlHandle != NULL; }
+        bool connect();
+
+#if OS(WINDOWS)
+        friend LRESULT CALLBACK SocketStreamWindowWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+#endif
+        enum StreamMessage {
+            DidFail,
+            DidOpen,
+            DidReceiveData,
+            DidClose,
+            DidSelectForWrite,
+            DidStopRecvLoop,
+        };
+
+        // This method needs to be implemented in a platform dependent
+        // manner.  It MUST NOT use WTF::callFunctionOnMainThread,
+        // as calls marshalled to the main thread this way are paused
+        // when the JS debugger is paused.
+        void sendMessageToMainThread(StreamMessage msg);
+
+        static void initMainThreadMessagesStatic();
+
+        // The platform implementation of sendMessageToMainThread
+        // will invoke this function when it processes messages:
+        void processMessageOnMainThread(StreamMessage msg);
+
+        void didReceiveData();
+        int privateSend(char * buf, int length);
+        void privateReceive();
 
         // No authentication for streams per se, but proxy may ask for credentials.
+        /*
         void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
         void receivedCredential(const AuthenticationChallenge&, const Credential&);
         void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&);
         void receivedCancellation(const AuthenticationChallenge&);
+        */
+
+        static void recvThreadStart(void * thread);
+        void runRecvThread();
+
+        static void sendThreadStart(void * thread);
+        void runSendThread();
+
+        static int progressFunctionStatic(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow);
+        int progressFunction(double dltotal, double dlnow, double ultotal, double ulnow);
+
+    private:
+        CURL * m_curlHandle;
+        long m_socket;
+        CURLcode m_curl_code;
+        char m_curl_error_buffer[256];
+        bool m_platformCloseRequested;
+
+        struct SocketBuffer {
+            char * m_data;
+            size_t m_size;
+            size_t m_sent;
+        };
+
+        Mutex m_close_mutex;
+        Vector<SocketBuffer> m_receive_buffers;
+        Mutex m_receive_buffer_mutex;
+
+        char * m_receive_buffer;
+        bool m_use_curl_easy_send_recv;
     };
 
 }  // namespace WebCore

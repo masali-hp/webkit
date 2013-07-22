@@ -108,6 +108,7 @@ namespace WebCore {
             , m_customHeaders(0)
             , m_cancelled(false)
             , m_formDataStream(loader)
+            , m_jobId(s_jobCount++)
 #endif
 #if USE(SOUP)
             , m_cancelled(false)
@@ -188,6 +189,8 @@ namespace WebCore {
 
         FormDataStream m_formDataStream;
         Vector<char> m_postBytes;
+        int m_jobId;
+        static int s_jobCount;
 #endif
 #if USE(SOUP)
         GRefPtr<SoupMessage> m_soupMessage;

@@ -1,0 +1,51 @@
+/*
+ * Copyright (C) 2012, Hewlett-Packard Development Co.  All rights reserved.
+ */
+
+#ifndef DO_NO_IMPORTS
+import "oaidl.idl";
+import "ocidl.idl";
+#endif
+
+typedef enum {
+    Text = 0,
+    HeaderIn,
+    HeaderOut,
+    DataIn,
+    DataOut
+} DebugInformation;
+
+[
+    object,
+    oleautomation,
+    uuid(8A4DC3EE-AF35-4ACE-A877-7A7729F1066D),
+    pointer_default(unique)
+]
+interface IWebNetworkDebugDelegate : IUnknown
+{
+    HRESULT jobStarted([in] int jobId, BSTR url, BOOL synchronous);
+    HRESULT jobDataComplete([in] int jobId, [in] int httpCode);
+    HRESULT jobFinished([in] int jobId, [in] BOOL success, [in] int errorCode);
+    HRESULT jobDebug([in] int jobId, [in] DebugInformation, [in] char * data, [in] int totalSize);
+}
+
+[
+    object,
+    oleautomation,
+    uuid(4E1F6D2A-F829-4C0A-846C-78CBD18E0B0D),
+    pointer_default(unique)
+]
+interface IWebNetworkConfiguration : IUnknown
+{
+    /*!
+        @method setProxy:
+        @abstract Used to configure network to use proxy server.
+      */
+    HRESULT setProxyInfo([in] BSTR proxyHost, [in] int port, [in] BSTR username, [in] BSTR password);
+
+    /*!
+        @method setDebugDelegate:
+        @abstract Used to set a callback for debug data.
+      */
+    HRESULT setDebugDelegate([in] IWebNetworkDebugDelegate * delegate);
+}

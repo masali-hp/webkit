@@ -42,6 +42,8 @@
 
 namespace WebCore {
 
+int ResourceHandleInternal::s_jobCount = 0;
+
 class WebCoreSynchronousLoader : public ResourceHandleClient {
 public:
     WebCoreSynchronousLoader();

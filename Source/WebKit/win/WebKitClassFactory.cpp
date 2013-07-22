@@ -57,6 +57,7 @@
 #include "WebUserContentURLPattern.h"
 #include "WebView.h"
 #include "WebWorkersPrivate.h"
+#include "WebNetworkConfiguration.h"
 #include <JavaScriptCore/InitializeThreading.h>
 #include <WebCore/SoftLinking.h>
 #include <wtf/MainThread.h>

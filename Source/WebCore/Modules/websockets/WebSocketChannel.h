@@ -33,7 +33,16 @@
 
 #if ENABLE(WEB_SOCKETS)
 
+
+#if PLATFORM(WIN) && USE(CURL)
+#include <winsock2.h>
+#include <windows.h>
+#endif
+
+#if ENABLE(BLOB)
 #include "FileReaderLoaderClient.h"
+#endif
+
 #include "SocketStreamHandleClient.h"
 #include "ThreadableWebSocketChannel.h"
 #include "Timer.h"

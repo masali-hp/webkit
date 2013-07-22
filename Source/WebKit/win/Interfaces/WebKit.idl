@@ -109,6 +109,7 @@ import "ocidl.idl";
 #include "IWebMutableURLRequestPrivate.idl"
 #include "IWebNavigationData.idl"
 #include "IWebNotification.idl"
+#include "IWebNetworkConfiguration.idl"
 #include "IWebNotificationCenter.idl"
 #include "IWebNotificationObserver.idl"
 #include "IWebPolicyDelegate.idl"
@@ -304,5 +305,10 @@ library WebKit
     [uuid(2D62AE25-DEAA-4945-A76E-CCE05E899664)]
     coclass WebUserContentURLPattern {
         [default] interface IWebUserContentURLPattern;
+    }
+
+    [uuid(2DC404E0-6043-45AE-BA64-FC2901C00040)]
+    coclass WebNetworkConfiguration {
+        [default] interface IWebNetworkConfiguration;
     }
 }

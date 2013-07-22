@@ -62,6 +62,8 @@ const int selectTimeoutMS = 5;
 const double pollTimeSeconds = 0.05;
 const int maxRunningJobs = 5;
 
+CurlDebugCallback * ResourceHandleManager::m_debugCallback = 0;
+
 #if OS(WINCE)
 static const bool ignoreSSLErrors = false;
 #else
@@ -434,8 +436,13 @@ void ResourceHandleManager::downloadTimerCallback(Timer<ResourceHandleManager>* 
                 }
             }
 
-            if (d->client())
+            if (d->client()){
+                if (m_debugCallback)
+                    m_debugCallback->jobDataComplete(d->m_jobId, d->m_response.httpStatusCode());
                 d->client()->didFinishLoading(job, 0);
+                if (m_debugCallback)
+                    m_debugCallback->jobFinished(d->m_jobId, TRUE, 0);
+            }
         } else {
             char* url = 0;
             curl_easy_getinfo(d->m_handle, CURLINFO_EFFECTIVE_URL, &url);
@@ -444,6 +451,8 @@ void ResourceHandleManager::downloadTimerCallback(Timer<ResourceHandleManager>* 
 #endif
             if (d->client())
                 d->client()->didFail(job, ResourceError(String(), msg->data.result, String(url), String(curl_easy_strerror(msg->data.result))));
+            if (m_debugCallback)
+                m_debugCallback->jobFinished(d->m_jobId, FALSE, msg->data.result);
         }
 
         removeFromCurl(job);
@@ -583,6 +592,40 @@ void ResourceHandleManager::add(ResourceHandle* job)
         m_downloadTimer.startOneShot(pollTimeSeconds);
 }
 
+void ResourceHandleManager::pause(ResourceHandle* job)
+{
+    ResourceHandleInternal* d = job->getInternal();
+
+    if (!d->m_handle)
+        return;
+
+    curl_easy_pause(d->m_handle, CURLPAUSE_ALL);
+}
+
+void ResourceHandleManager::resume(ResourceHandle* job)
+{
+    ResourceHandleInternal* d = job->getInternal();
+
+    if (!d->m_handle)
+        return;
+
+    CURLcode error = curl_easy_pause(d->m_handle, CURLPAUSE_CONT);
+    if (error != CURLE_OK) {
+        // Restarting the handle has failed so just cancel it.
+        cancel(job);
+        return;
+    }
+
+    // has the job been added to the multi interface yet?
+    CURLMcode ret = curl_multi_add_handle(m_curlMultiHandle, job->getInternal()->m_handle);
+    if (ret != CURLM_BAD_EASY_HANDLE) {
+        m_runningJobs++;
+    }
+
+    if (!m_downloadTimer.isActive())
+        m_downloadTimer.startOneShot(pollTimeSeconds);
+}
+
 bool ResourceHandleManager::removeScheduledJob(ResourceHandle* job)
 {
     int size = m_resourceHandleList.size();
@@ -628,6 +671,10 @@ void ResourceHandleManager::dispatchSynchronousJob(ResourceHandle* job)
 
     initializeHandle(job);
 
+    if (m_debugCallback) {
+        m_debugCallback->jobStarted(handle->m_jobId, kurl.string(), true);
+    }
+
     // curl_easy_perform blocks until the transfert is finished.
     CURLcode ret =  curl_easy_perform(handle->m_handle);
 
@@ -636,7 +683,16 @@ void ResourceHandleManager::dispatchSynchronousJob(ResourceHandle* job)
         handle->client()->didFail(job, error);
     }
 
+    if (m_debugCallback) {
+        m_debugCallback->jobDataComplete(handle->m_jobId, handle->m_response.httpStatusCode());
+        // it would be better to wait until webkit had finished processing this job
+        // to send the jobFinished callback, but we don't have that ability for
+        // synchronous jobs.
+        m_debugCallback->jobFinished(handle->m_jobId, ret == 0, ret);
+    }
+
     curl_easy_cleanup(handle->m_handle);
+    handle->m_handle = 0;
 }
 
 void ResourceHandleManager::startJob(ResourceHandle* job)
@@ -648,7 +704,14 @@ void ResourceHandleManager::startJob(ResourceHandle* job)
         return;
     }
 
+    if (m_debugCallback) {
+        m_debugCallback->jobStarted(job->getInternal()->m_jobId, kurl.string(), false);
+    }
+
     initializeHandle(job);
+
+    if (job->getInternal()->m_defersLoading)
+        return;
 
     m_runningJobs++;
     CURLMcode ret = curl_multi_add_handle(m_curlMultiHandle, job->getInternal()->m_handle);
@@ -697,6 +760,11 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
     if (getenv("DEBUG_CURL"))
         curl_easy_setopt(d->m_handle, CURLOPT_VERBOSE, 1);
 #endif
+    if (m_debugCallback != NULL) {
+        curl_easy_setopt(d->m_handle, CURLOPT_VERBOSE, 1);
+        curl_easy_setopt(d->m_handle, CURLOPT_DEBUGFUNCTION, cURL_debug);
+    }
+
     curl_easy_setopt(d->m_handle, CURLOPT_PRIVATE, job);
     curl_easy_setopt(d->m_handle, CURLOPT_ERRORBUFFER, m_curlErrorBuffer);
     curl_easy_setopt(d->m_handle, CURLOPT_WRITEFUNCTION, writeCallback);
@@ -727,8 +795,10 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
     d->m_url = fastStrDup(url.latin1().data());
     curl_easy_setopt(d->m_handle, CURLOPT_URL, d->m_url);
 
-    if (m_cookieJarFileName)
+    if (m_cookieJarFileName){
+        curl_easy_setopt(d->m_handle, CURLOPT_COOKIEFILE, m_cookieJarFileName);
         curl_easy_setopt(d->m_handle, CURLOPT_COOKIEJAR, m_cookieJarFileName);
+    }
 
     struct curl_slist* headers = 0;
     if (job->firstRequest().httpHeaderFields().size() > 0) {
@@ -802,6 +872,27 @@ void ResourceHandleManager::cancel(ResourceHandle* job)
     d->m_cancelled = true;
     if (!m_downloadTimer.isActive())
         m_downloadTimer.startOneShot(pollTimeSeconds);
+    // The destructor calls cancel.
+    // Only send this 'cancel' notification if the job is actually still running.
+    if (m_debugCallback && d->m_handle)
+        m_debugCallback->jobFinished(d->m_jobId, FALSE, 0);
+}
+
+int ResourceHandleManager::cURL_debug(CURL *handle, curl_infotype type,
+               char *ptr, size_t size,
+               void *userptr)
+{
+    ResourceHandle* job;
+    curl_easy_getinfo(handle, CURLINFO_PRIVATE, &job);
+    if (m_debugCallback) {
+        m_debugCallback->jobDebug(job->getInternal()->m_jobId, type, (unsigned char *) ptr, size);
+    }
+    return 0;
+}
+
+void ResourceHandleManager::setCurlDebugCallback(CurlDebugCallback * callback)
+{
+    m_debugCallback = callback;
 }
 
 } // namespace WebCore
