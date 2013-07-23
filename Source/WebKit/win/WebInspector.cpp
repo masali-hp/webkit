@@ -38,6 +38,10 @@
 #include <WebCore/Page.h>
 #include <wtf/Assertions.h>
 
+#if ENABLE(INSPECTOR_SERVER)
+#include "InspectorServer/WebInspectorServer.h"
+#endif
+
 using namespace WebCore;
 
 WebInspector* WebInspector::createInstance(WebView* webView, WebInspectorClient* inspectorClient)
@@ -274,6 +278,16 @@ HRESULT STDMETHODCALLTYPE WebInspector::setTimelineProfilingEnabled(BOOL enabled
 
     frontendClient()->setTimelineProfilingEnabled(enabled);
     return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebInspector::setRemoteInspectorDelegate(IWebRemoteInspectorDelegate * inspectorDelegate)
+{
+#if ENABLE(INSPECTOR_SERVER)
+    WebInspectorServer::shared().setDelegate(inspectorDelegate);
+    return S_OK;
+#else
+    return E_NOTIMPL;
+#endif
 }
 
 #endif // ENABLE(INSPECTOR)

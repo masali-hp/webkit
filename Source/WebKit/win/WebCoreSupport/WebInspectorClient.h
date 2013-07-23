@@ -79,6 +79,21 @@ public:
 
     void updateHighlight();
 
+#if ENABLE(INSPECTOR_SERVER)
+    WebCore::Page* getInspectedPage();
+
+    virtual void enableRemoteInspection();
+    virtual bool hasRemoteFrontendConnected() const { return m_remoteFrontendConnected; }
+    virtual void sendMessageToRemoteFrontend(const String& message);
+    virtual void dispatchMessageFromRemoteFrontend(const String& message);
+    virtual void remoteFrontendConnected(const String& address);
+    virtual void remoteFrontendDisconnected();
+    void enableDeveloperExtras(BOOL enable);
+    WebView * inspectedWebView() { return m_inspectedWebView; }
+    const String & remoteClientAddress() { return m_remoteClientAddress; }
+#endif
+
+
 private:
     virtual ~WebInspectorClient();
     WTF::PassOwnPtr<WebCore::InspectorFrontendClientLocal::Settings> createFrontendSettings();
@@ -92,6 +107,13 @@ private:
 #if !OS(WINCE)
     OwnPtr<WebNodeHighlight> m_highlight;
 #endif
+#if ENABLE(INSPECTOR_SERVER)
+    bool m_remoteFrontendConnected;
+    int  m_remoteInspectionPageId;
+    bool m_didEnableDeveloperExtras;
+    WTF::String m_remoteClientAddress;
+#endif
+
 };
 
 class WebInspectorFrontendClient : public WebCore::InspectorFrontendClientLocal

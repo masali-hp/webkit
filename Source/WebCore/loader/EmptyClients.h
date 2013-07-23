@@ -570,6 +570,16 @@ public:
 
     virtual void highlight() { }
     virtual void hideHighlight() { }
+
+#if ENABLE(INSPECTOR_SERVER)
+    virtual void enableRemoteInspection() { }
+    virtual bool hasRemoteFrontendConnected() const { return false; }
+    virtual void sendMessageToRemoteFrontend(const String& message) { }
+    virtual void dispatchMessageFromRemoteFrontend(const String& message) { }
+    virtual void remoteFrontendConnected(const String& remoteaddress) { }
+    virtual void remoteFrontendDisconnected() { }
+#endif
+
 };
 
 class EmptyDeviceClient : public DeviceClient {

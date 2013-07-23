@@ -145,4 +145,12 @@ interface IWebPreferencesPrivate : IUnknown
 
     HRESULT setRequestAnimationFrameEnabled([in] BOOL);
     HRESULT requestAnimationFrameEnabled([out, retval] BOOL*);
+
+#if !defined(WTF_USE_CF) || !WTF_USE_CF
+    HRESULT inspectorURL([out, retval] BSTR* url);
+    HRESULT setInspectorURL([in] BSTR url);
+
+    HRESULT inspectorServerAddress([out, retval] BSTR* address);
+    HRESULT setInspectorServerAddress([in] BSTR address);
+#endif
 }

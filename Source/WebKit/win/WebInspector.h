@@ -68,6 +68,9 @@ public:
     virtual HRESULT STDMETHODCALLTYPE isTimelineProfilingEnabled(BOOL* isEnabled);
     virtual HRESULT STDMETHODCALLTYPE setTimelineProfilingEnabled(BOOL);
 
+    virtual HRESULT STDMETHODCALLTYPE setRemoteInspectorDelegate(IWebRemoteInspectorDelegate * inspectorDelegate);
+
+
 private:
     WebInspector(WebView*, WebInspectorClient*);
     ~WebInspector();

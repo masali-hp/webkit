@@ -51,6 +51,10 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/text/StringConcatenate.h>
 
+#if ENABLE(INSPECTOR_SERVER)
+#include "InspectorServer/WebInspectorServer.h"
+#endif
+
 using namespace WebCore;
 
 #ifndef WS_OVERLAPPEDWINDOW
@@ -82,13 +86,24 @@ WebInspectorClient::WebInspectorClient(WebView* webView)
     : m_inspectedWebView(webView)
     , m_frontendPage(0)
     , m_frontendClient(0)
+#if ENABLE(INSPECTOR_SERVER)
+    , m_remoteFrontendConnected(false)
+    , m_remoteInspectionPageId(0)
+#endif
 {
     ASSERT(m_inspectedWebView);
     m_inspectedWebView->viewWindow((OLE_HANDLE*)&m_inspectedWebViewHwnd);
+#if ENABLE(INSPECTOR_SERVER)
+    enableRemoteInspection();
+#endif
 }
 
 WebInspectorClient::~WebInspectorClient()
 {
+#if ENABLE(INSPECTOR_SERVER)
+    if (m_remoteInspectionPageId)
+        WebInspectorServer::shared().unregisterPage(m_remoteInspectionPageId);
+#endif
 }
 
 void WebInspectorClient::inspectorDestroyed()
@@ -99,6 +114,12 @@ void WebInspectorClient::inspectorDestroyed()
 
 WebCore::InspectorFrontendChannel* WebInspectorClient::openInspectorFrontend(InspectorController* inspectorController)
 {
+#if ENABLE(INSPECTOR_SERVER)
+    if (m_remoteFrontendConnected) {
+      return 0;
+    }
+#endif
+
     registerWindowClass();
 
     HWND frontendHwnd = ::CreateWindowEx(0, kWebInspectorWindowClassName, 0, WS_OVERLAPPEDWINDOW,
@@ -161,6 +182,15 @@ WebCore::InspectorFrontendChannel* WebInspectorClient::openInspectorFrontend(Ins
     if (FAILED(preferences->setDefaultFixedFontSize(13)))
         return 0;
 
+    // If the local storage database path is not set, we need to set it now.
+    BSTR location;
+    preferences->localStorageDatabasePath(&location);
+    if (!location || SysStringLen(location) == 0) {
+        if (FAILED(preferences->setLocalStorageDatabasePath(BString(L".\\"))))
+            return 0;
+    }
+    SysFreeString(location);
+
     if (FAILED(frontendWebView->setPreferences(preferences.get())))
         return 0;
 
@@ -181,7 +211,20 @@ WebCore::InspectorFrontendChannel* WebInspectorClient::openInspectorFrontend(Ins
     if (FAILED(request->initWithURL(BString(urlStringRef), WebURLRequestUseProtocolCachePolicy, 60)))
         return 0;
 #else
-    notImplemented();
+    IWebPreferences * prefs = NULL;
+    IWebPreferencesPrivate * prefsPrivate = NULL;
+    m_inspectedWebView->preferences(&prefs);
+    prefs->QueryInterface(IID_IWebPreferencesPrivate, (void**)&prefsPrivate);
+    BSTR url;
+    prefsPrivate->inspectorURL(&url);
+    prefsPrivate->Release();
+    prefs->Release();
+    if (!url)
+        return 0;
+    HRESULT hr = request->initWithURL(url, WebURLRequestUseProtocolCachePolicy, 60);
+    SysFreeString(url);
+    if (FAILED(hr))
+        return 0;
 #endif
 
     if (FAILED(frontendWebView->topLevelFrame()->loadRequest(request.get())))
@@ -261,6 +304,76 @@ void WebInspectorClient::releaseFrontend()
     m_frontendPage = 0;
     m_frontendHwnd = 0;
 }
+
+#if ENABLE(INSPECTOR_SERVER)
+WebCore::Page * WebInspectorClient::getInspectedPage()
+{
+    if (!m_inspectedWebView) {
+        return NULL;
+    }
+    return m_inspectedWebView->page();
+}
+
+void WebInspectorClient::enableRemoteInspection()
+{
+    if (!m_remoteInspectionPageId)
+        m_remoteInspectionPageId = WebInspectorServer::shared().registerPage(this);
+}
+
+void WebInspectorClient::sendMessageToRemoteFrontend(const String& message)
+{
+    ASSERT(m_remoteFrontendConnected);
+    WebInspectorServer::shared().sendMessageOverConnection(m_remoteInspectionPageId, message);
+}
+
+void WebInspectorClient::dispatchMessageFromRemoteFrontend(const String& message)
+{
+    getInspectedPage()->inspectorController()->dispatchMessageFromFrontend(message);
+}
+
+void WebInspectorClient::remoteFrontendConnected(const String& address)
+{
+    ASSERT(!m_remoteFrontendConnected);
+
+    // If developer extras aren't already enabled, enable them now.
+    // This will impact performance but enable important
+    // inspector instrumentation.
+    enableDeveloperExtras(TRUE);
+
+    m_remoteClientAddress = address;
+
+    getInspectedPage()->inspectorController()->connectFrontend(this);
+    m_remoteFrontendConnected = true;
+}
+
+void WebInspectorClient::remoteFrontendDisconnected()
+{
+    ASSERT(m_remoteFrontendConnected);
+    getInspectedPage()->inspectorController()->disconnectFrontend();
+
+    if (m_didEnableDeveloperExtras)
+        enableDeveloperExtras(FALSE);
+
+    m_remoteFrontendConnected = false;
+}
+
+void WebInspectorClient::enableDeveloperExtras(BOOL enable)
+{
+    IWebPreferences * prefs = NULL;
+    IWebPreferencesPrivate * prefsPrivate = NULL;
+    m_inspectedWebView->preferences(&prefs);
+    prefs->QueryInterface(IID_IWebPreferencesPrivate, (void**)&prefsPrivate);
+    BOOL enabled;
+    prefsPrivate->developerExtrasEnabled(&enabled);
+    if (enable != enabled) {
+        prefsPrivate->setDeveloperExtrasEnabled(enable);
+        m_didEnableDeveloperExtras = enable;
+    }
+    prefsPrivate->Release();
+    prefs->Release();
+}
+
+#endif
 
 WebInspectorFrontendClient::WebInspectorFrontendClient(WebView* inspectedWebView, HWND inspectedWebViewHwnd, HWND frontendHwnd, const COMPtr<WebView>& frontendWebView, HWND frontendWebViewHwnd, WebInspectorClient* inspectorClient, PassOwnPtr<Settings> settings)
     : InspectorFrontendClientLocal(inspectedWebView->page()->inspectorController(),  core(frontendWebView.get()), settings)

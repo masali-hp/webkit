@@ -485,6 +485,14 @@ public:
     virtual HRESULT STDMETHODCALLTYPE requestAnimationFrameEnabled(BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setRequestAnimationFrameEnabled(BOOL);
 
+#if !USE(CF)
+    virtual HRESULT STDMETHODCALLTYPE inspectorURL(BSTR *url);
+    virtual HRESULT STDMETHODCALLTYPE setInspectorURL(BSTR url);
+
+    virtual HRESULT STDMETHODCALLTYPE inspectorServerAddress(BSTR *address);
+    virtual HRESULT STDMETHODCALLTYPE setInspectorServerAddress(BSTR address);
+#endif
+
     virtual HRESULT STDMETHODCALLTYPE emulateTouchEvents(BOOL* emulateTouchEvents);
     virtual HRESULT STDMETHODCALLTYPE setEmulateTouchEvents(BOOL emulateTouchEvents);
 

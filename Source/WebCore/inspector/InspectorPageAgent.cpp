@@ -51,6 +51,7 @@
 #include "DocumentLoader.h"
 #include "Frame.h"
 #include "FrameLoader.h"
+#include "FrameLoadRequest.h"
 #include "FrameView.h"
 #include "GeolocationController.h"
 #include "GeolocationError.h"
@@ -503,7 +504,10 @@ void InspectorPageAgent::navigate(ErrorString*, const String& url)
 {
     UserGestureIndicator indicator(DefinitelyProcessingNewUserGesture);
     Frame* frame = m_page->mainFrame();
-    frame->loader()->changeLocation(frame->document()->securityOrigin(), frame->document()->completeURL(url), "", false, false);
+    // This type of load is the most secure.  It simulates a user clicking this link on the active page.
+    // It's too restrictive though.  I want to be able to use the remote interface to load any URI.
+    //frame->loader()->changeLocation(frame->document()->securityOrigin(), frame->document()->completeURL(url), "", false, false);
+    frame->loader()->load(FrameLoadRequest(frame, ResourceRequest(KURL(KURL(),url))));
 }
 
 static PassRefPtr<TypeBuilder::Page::Cookie> buildObjectForCookie(const Cookie& cookie)

@@ -292,6 +292,7 @@ void WebPreferences::initializeDefaultSettings()
     SET_DEFAULT(WebKitCacheModelPreferenceKey, cacheModelRef.get());
 #else
     SET_DEFAULT(WebKitCacheModelPreferenceKey, String::format("%d", WebCacheModelDocumentViewer));
+    SET_DEFAULT(WebKitInspectorURLPreferenceKey, "");
 #endif
 
     SET_DEFAULT(WebKitAuthorAndUserStylesEnabledPreferenceKey, TRUE_VALUE);
@@ -1945,5 +1946,29 @@ HRESULT WebPreferences::emulateTouchEvents(BOOL* emulateTouchEvents)
 HRESULT WebPreferences::setEmulateTouchEvents(BOOL emulateTouchEvents)
 {
     setBoolValue(STRING(WebKitEmulateTouchEventsKey), emulateTouchEvents);
+    return S_OK;
+}
+
+HRESULT WebPreferences::inspectorURL(BSTR *url)
+{
+    *url = stringValueForKey(STRING(WebKitInspectorURLPreferenceKey));
+    return (*url) ? S_OK : E_FAIL;
+}
+
+HRESULT WebPreferences::setInspectorURL(BSTR url)
+{
+    setStringValue(STRING(WebKitInspectorURLPreferenceKey), url);
+    return S_OK;
+}
+
+HRESULT WebPreferences::inspectorServerAddress(BSTR *url)
+{
+    *url = stringValueForKey(STRING(WebKitInspectorServerAddressKey));
+    return (*url) ? S_OK : E_FAIL;
+}
+
+HRESULT WebPreferences::setInspectorServerAddress(BSTR address)
+{
+    setStringValue(STRING(WebKitInspectorServerAddressKey), address);
     return S_OK;
 }

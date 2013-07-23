@@ -53,6 +53,15 @@ public:
     virtual void highlight() = 0;
     virtual void hideHighlight() = 0;
 
+#if ENABLE(INSPECTOR_SERVER)
+    virtual void enableRemoteInspection()= 0;
+    virtual bool hasRemoteFrontendConnected() const = 0;
+    virtual void sendMessageToRemoteFrontend(const String& message)= 0;
+    virtual void dispatchMessageFromRemoteFrontend(const String& message)= 0;
+    virtual void remoteFrontendConnected(const String& remoteaddress)= 0;
+    virtual void remoteFrontendDisconnected()= 0;
+#endif
+
     virtual bool canClearBrowserCache() { return false; }
     virtual void clearBrowserCache() { }
     virtual bool canClearBrowserCookies() { return false; }

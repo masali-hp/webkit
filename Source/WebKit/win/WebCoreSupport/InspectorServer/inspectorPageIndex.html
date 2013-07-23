@@ -1,0 +1,42 @@
+<html>
+<head><title>Web Inspector</title>
+<script type="text/javascript">
+function createPageList() {
+    var xhr = new XMLHttpRequest;
+    xhr.open("GET", "/pagelist.json");
+    xhr.onload = function(e) {
+        if (xhr.status == 200) {
+            var pages = JSON.parse(xhr.responseText);
+            if (pages.length)
+                document.getElementById("noPageNotice").style.display = "none";
+            else
+                document.getElementById("noPageNotice").innerHTML = 'None found, make sure that you have set the developerExtrasEnabled preference property on your WebView.';
+            for (var i in pages) {
+                var link = document.createElement("a");
+                var description = pages[i].description ? pages[i].description : ("Page " + (Number(i) + 1));
+                var url = pages[i].url;
+                if (url && url != description)
+                    description += " [" + url + "]";
+                if (pages[i].clientConnected) {
+                    document.body.appendChild(document.createTextNode(description + " "));					
+                    link.appendChild(document.createTextNode("Disconnect Remote Client [" + pages[i].remoteClientAddress + "]"));
+                    link.setAttribute("href", "/inspector/disconnect/" + pages[i].pageId);
+                }
+                else {
+                    link.appendChild(document.createTextNode(description));
+                    link.setAttribute("href", pages[i].inspectorLocation);
+                }
+                document.body.appendChild(link);
+                document.body.appendChild(document.createElement("br"));
+            }
+        }
+    };
+    xhr.send();
+}
+
+document.addEventListener("DOMContentLoaded", createPageList, false);
+</script>
+</head><body style="font-family: Arial">
+<h1>Inspectable Pages</h1>
+<p id="noPageNotice" style="color:gray">Loading...</p>
+</body></html>

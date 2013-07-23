@@ -40,6 +40,7 @@
 #include <string>
 #include <wininet.h>
 
+
 #ifdef _WIN32_WCE
 #define SetWindowLongPtr(x, y, z) SetWindowLong(x, y, z)
 #define GetWindowLongPtr(x, y) GetWindowLong(x, y)
@@ -294,7 +295,9 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
      // TODO: Place code here.
     MSG msg = {0};
     HACCEL hAccelTable;
-
+    BSTR inspectorURL = NULL;
+    BSTR inspectorServer = NULL;
+    BSTR frameUrl = NULL;
     INITCOMMONCONTROLSEX InitCtrlEx;
 
     InitCtrlEx.dwSize = sizeof(INITCOMMONCONTROLSEX);
@@ -309,6 +312,12 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
             s_usesLayeredWebView = true;
         else if (!wcsicmp(argv[i], L"--desktop"))
             s_fullDesktop = true;
+        else if (!_wcsnicmp(argv[i], L"--inspector-url=", 16))
+            inspectorURL = SysAllocString(argv[i] + 16);
+        else if (!_wcsnicmp(argv[i], L"--inspector-server=", 19))
+            inspectorServer = SysAllocString(argv[i] + 19);
+        else if (!_wcsnicmp(argv[i], L"--frame-url=", 12))
+            frameUrl = SysAllocString(argv[i] + 12);
     }
 #endif
 
@@ -389,6 +398,14 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
     IWebPreferencesPrivate * prefsPrivate = NULL;
     if (SUCCEEDED(standardPreferences->QueryInterface(IID_IWebPreferencesPrivate, (void**)&prefsPrivate))) {
         prefsPrivate->setLocalStorageDatabasePath(SysAllocString(L"\\."));
+
+        if(inspectorURL != NULL){
+            prefsPrivate->setInspectorURL(inspectorURL);
+        }
+        if(inspectorServer != NULL){
+            prefsPrivate->setInspectorServerAddress(inspectorServer);
+            SysFreeString(inspectorServer);
+        }
         prefsPrivate->Release();
     }
 
@@ -420,16 +437,20 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
     if (FAILED(hr))
         goto exit;
 
-#ifndef BUILD_WINLAUNCHER_EXE
     IWebFrame* frame;
     hr = gWebView->mainFrame(&frame);
     if (FAILED(hr))
         goto exit;
 
-    static BSTR defaultHTML = SysAllocString(TEXT("<p style=\"background-color: #00FF00\">Testing</p><img id=\"webkit logo\" src=\"http://webkit.org/images/icon-gold.png\" alt=\"Face\"><div style=\"border: solid blue; background: white;\" contenteditable=\"true\">div with blue border</div><ul><li>foo<li>bar<li>baz</ul>"));
-    frame->loadHTMLString(defaultHTML, 0);
-    frame->Release();
-#endif
+    if(frameUrl != NULL){
+        loadURL(frameUrl);
+        SysFreeString(frameUrl);
+    }
+    else{
+        static BSTR defaultHTML = SysAllocString(TEXT("<p style=\"background-color: #00FF00\">Testing</p><img id=\"webkit logo\" src=\"http://webkit.org/images/icon-gold.png\" alt=\"Face\"><div style=\"border: solid blue; background: white;\" contenteditable=\"true\">div with blue border</div><ul><li>foo<li>bar<li>baz</ul>"));
+        frame->loadHTMLString(defaultHTML, 0);
+        frame->Release();
+    }
 
     hr = gWebViewPrivate->setTransparent(usesLayeredWebView());
     if (FAILED(hr))
@@ -450,12 +471,6 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
 
     ShowWindow(gViewWindow, nCmdShow);
     UpdateWindow(gViewWindow);
-
-#ifdef BUILD_WINLAUNCHER_EXE
-    BSTR url = SysAllocString(lpstrCmdLine);
-    loadURL(url);
-    SysFreeString(url);
-#endif
 
     hAccelTable = LoadAccelerators(hInst, MAKEINTRESOURCE(IDC_WINLAUNCHER));
 

@@ -168,3 +168,7 @@
 #define WebKitRequestAnimationFrameEnabledPreferenceKey "WebKitRequestAnimationFrameEnabled"
 
 #define WebKitEmulateTouchEventsKey "WebKitEmulateTouchEvents"
+
+#define WebKitInspectorServerAddressKey "WebKitInspectorServerAddress"
+
+#define WebKitInspectorURLPreferenceKey "WebKitInspectorURL"

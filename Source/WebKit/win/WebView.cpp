@@ -175,6 +175,14 @@
 #include <WebCore/FullScreenController.h>
 #endif
 
+#if ENABLE(INSPECTOR)
+#include "InspectorController.h"
+#endif
+
+#if ENABLE(INSPECTOR_SERVER)
+#include "InspectorServer/WebInspectorServer.h"
+#endif
+
 #include <ShlObj.h>
 #include <comutil.h>
 #include <dimm.h>
@@ -2799,6 +2807,41 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
 #if ENABLE(INSPECTOR)
     m_inspectorClient = new WebInspectorClient(this);
 #endif // ENABLE(INSPECTOR)
+
+#if ENABLE(INSPECTOR_SERVER)
+    // localAddress may include the port number too; if it's not specified
+    // we will default to 9222.
+    BSTR localAddress;
+    if (SUCCEEDED(m_preferences->inspectorServerAddress(&localAddress))) {
+        String hostUrl(localAddress, SysStringLen(localAddress));
+        SysFreeString(localAddress);
+        //This is where we tell clients to get their inspector front end bits from
+        String frontendUrl;
+        BSTR frontendUrlPref;
+        if (SUCCEEDED(m_preferences->inspectorURL(&frontendUrlPref))) {
+            frontendUrl = String(frontendUrlPref, SysStringLen(frontendUrlPref));
+            SysFreeString(frontendUrlPref);
+        }
+        else {
+            frontendUrl = String("http://");
+            frontendUrl.append(hostUrl);
+            frontendUrl.append("/inspector/front-end/inspector.html");
+        }
+
+        unsigned short port = 9222;
+        size_t portPosition = hostUrl.find(L':');
+        if (portPosition == notFound) {
+            hostUrl = String::format("%s:%hu", hostUrl.ascii().data(), port);
+        }
+        else {
+            port = hostUrl.substring(portPosition + 1).toUInt();
+        }
+
+        //This is where we tell inspector to get its page content from
+        WebCore::WebInspectorServer::shared().setFrontendUrl(frontendUrl, hostUrl);
+        WebCore::WebInspectorServer::shared().listen("0.0.0.0", port);
+    }
+#endif
 
     Page::PageClients pageClients;
     pageClients.chromeClient = new WebChromeClient(this);

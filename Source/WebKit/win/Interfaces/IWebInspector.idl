@@ -30,6 +30,117 @@
 import "oaidl.idl";
 import "ocidl.idl";
 #endif
+/*!
+    @category IWebInspectorHttpHeader
+    @discussion An http request/response header
+*/
+[
+    object,
+    oleautomation,
+    uuid(FD32FBFC-7721-49F1-B441-792F7511510D),
+    pointer_default(unique)
+]
+interface IWebInspectorHttpHeader : IUnknown
+{
+    HRESULT name([out, retval] BSTR * name);
+    HRESULT value([out, retval] BSTR * value);
+}
+
+/*!
+    @category IWebInspectorHttpRequest
+    @discussion The web inspector http request
+    describes an HTTP request
+*/
+[
+    object,
+    oleautomation,
+    uuid(7895B7E3-6AE6-45CF-B530-FF797BA2757C),
+    pointer_default(unique)
+]
+interface IWebInspectorHttpRequest : IUnknown
+{
+    HRESULT header([in] BSTR name, [out, retval] BSTR * value);
+    HRESULT path([out, retval] BSTR * path);
+    HRESULT method([out, retval] BSTR * method);
+    HRESULT body([out, retval] BSTR * out);
+}
+
+/*!
+    @category IWebInspectorHttpResponse
+    @discussion The web inspector http response
+    describes an HTTP response
+*/
+[
+    object,
+    oleautomation,
+    uuid(D5BD096F-5623-465A-94C1-67B2C5E7105B),
+    pointer_default(unique)
+]
+interface IWebInspectorHttpResponse : IUnknown
+{
+    HRESULT responseCode([out] int * responseCode);
+    HRESULT headers([out] IWebInspectorHttpHeader ** headers, [out] int * headerCount);
+    HRESULT responseBody([out] char ** body, [out] unsigned int * bodySize);
+    HRESULT shutdownConnection([out, retval] BOOL * forceClose);
+}
+
+/*!
+    @category IWebRemoteInspectorDelegate
+    @discussion The web inspector provides notifications
+    through this interface of web inspector server activity.
+*/
+[
+    object,
+    oleautomation,
+    uuid(8D4ECBC7-229B-472D-A8DC-2392D00A3E72),
+    pointer_default(unique)
+]
+interface IWebRemoteInspectorDelegate : IUnknown
+{
+    /*!
+        @method connectionAccepted:
+        @abstract Notify delegate that connection has been made, client can
+        cancel connection by setting allowConnection to FALSE.
+        @param webView The webview being debugged
+        @param connectionId An integer uniquely identifying the connection.
+        @param remoteAddress The IP address and port number of the remote client.
+        @param allowConnection Set to TRUE if connection should be allowed.
+    */
+    HRESULT connectionAccepted([in] IWebView * webView, [in] int connectionId, [in] BSTR remoteAddress, [out, retval] BOOL* allowConnection);
+
+    /*!
+        @method connectionClosed:
+        @abstract Notify when connection is closed.
+        @param connectionId The connection identifier.
+    */
+    HRESULT connectionClosed([in] int connectionId);
+
+    /*!
+        @method connectionBytesReceived:
+        @abstract Notification when a connection receives data.
+        @param connectionId The connection identifier.
+        @param bytes The number of bytes received.
+    */
+    HRESULT connectionBytesReceived([in] int connectionId, [in] int bytes);
+
+    /*!
+        @method connectionBytesSent:
+        @abstract Notification when data is sent over the connection.
+        @param connectionId The connection identifier.
+        @param bytes The number of bytes sent.
+    */
+    HRESULT connectionBytesSent([in] int connectionId, [in] int bytes);
+
+    /*!
+        @method didReceiveUnrecognizedHTTPRequest:
+        @abstract When an http request is received that the web inspector
+        server does not know how to respond to, this method is invoked to
+        give the delegate an opportunity to respond.
+        @param request The http request.
+        @param response The http response.  The caller will deref the response upon receiving.
+    */
+    HRESULT didReceiveUnrecognizedHTTPRequest([in] IWebInspectorHttpRequest * request, [out, retval] IWebInspectorHttpResponse ** response);
+}
 
 [
     object,
@@ -57,4 +168,12 @@ interface IWebInspector : IUnknown
 
     HRESULT isTimelineProfilingEnabled(BOOL* isEnabled);
     HRESULT setTimelineProfilingEnabled(BOOL enabled);
+
+    /*!
+        @method setRemoteInspectorDelegate:
+        @abstract Enables notification for activity with remote inspector server
+        @param delegate The delegate that is notified of activity.
+    */
+    HRESULT setRemoteInspectorDelegate([in] IWebRemoteInspectorDelegate * delegate);
+
 }

@@ -130,6 +130,7 @@ EXPORTS
         ?addTextMatchMarker@DocumentMarkerController@WebCore@@QAEXPBVRange@2@_N@Z
         ?broadcast@ThreadCondition@WTF@@QAEXXZ
         ?callOnMainThread@WTF@@YAXP6AXPAX@Z0@Z
+        WTFSetCrashHook
 #if ENABLE(INSPECTOR)
         ?counterValue@InspectorCounters@WebCore@@SAHW4CounterType@12@@Z
         ?didBeginFrame@InspectorController@WebCore@@QAEXXZ
