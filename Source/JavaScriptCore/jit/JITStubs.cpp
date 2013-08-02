@@ -199,7 +199,7 @@ SYMBOL_STRING(ctiOpThrowNotCaught) ":" "\n"
     "ret" "\n"
 );
 
-#elif (COMPILER(GCC) || COMPILER(RVCT)) && CPU(ARM_THUMB2)
+#elif (COMPILER(GCC) || COMPILER(MSVC) || COMPILER(RVCT)) && CPU(ARM_THUMB2)
 
 #define THUNK_RETURN_ADDRESS_OFFSET      0x38
 #define PRESERVED_RETURN_ADDRESS_OFFSET  0x3C
@@ -794,7 +794,6 @@ __asm void ctiVMThrowTrampoline()
     ldr r8, [sp, # PRESERVED_R8_OFFSET ]
     ldr r7, [sp, # PRESERVED_R7_OFFSET ]
     ldr r6, [sp, # PRESERVED_R6_OFFSET ]
-    ldr r6, [sp, # PRESERVED_R6_OFFSET ]
     ldr r5, [sp, # PRESERVED_R5_OFFSET ]
     ldr r4, [sp, # PRESERVED_R4_OFFSET ]
     ldr lr, [sp, # PRESERVED_RETURN_ADDRESS_OFFSET ]
@@ -810,7 +809,6 @@ __asm void ctiOpThrowNotCaught()
     ldr r9, [sp, # PRESERVED_R9_OFFSET ]
     ldr r8, [sp, # PRESERVED_R8_OFFSET ]
     ldr r7, [sp, # PRESERVED_R7_OFFSET ]
-    ldr r6, [sp, # PRESERVED_R6_OFFSET ]
     ldr r6, [sp, # PRESERVED_R6_OFFSET ]
     ldr r5, [sp, # PRESERVED_R5_OFFSET ]
     ldr r4, [sp, # PRESERVED_R4_OFFSET ]
@@ -1292,6 +1290,93 @@ RVCT()
 /* Include the generated file */
 #include "GeneratedJITStubs_RVCT.h"
 
+#elif CPU(ARM_THUMB2) && COMPILER(MSVC)
+
+#define DEFINE_STUB_FUNCTION(rtype, op) extern "C" rtype JITStubThunked_##op(STUB_ARGS_DECLARATION)
+
+/* The following is a workaround for MSVC toolchain; inline assembler is not supported */
+
+/* The following section is a template to generate code for GeneratedJITStubs_MSVC.asm */
+/* The pattern "#xxx#" will be replaced with "xxx" */
+
+/*
+MSVC_THUMB2_BEGIN(    AREA Trampoline, CODE)
+MSVC_THUMB2_BEGIN()
+MSVC_THUMB2_BEGIN(    EXPORT ctiTrampoline)
+MSVC_THUMB2_BEGIN(    EXPORT ctiVMThrowTrampoline)
+MSVC_THUMB2_BEGIN(    EXPORT ctiOpThrowNotCaught)
+MSVC_THUMB2_BEGIN()
+MSVC_THUMB2_BEGIN(ctiTrampoline PROC)
+MSVC_THUMB2_BEGIN(    sub sp, sp, #68 ; sync with FIRST_STACK_ARGUMENT)
+MSVC_THUMB2_BEGIN(    str lr, [sp, #3C] ; sync with PRESERVED_RETURN_ADDRESS_OFFSET)
+MSVC_THUMB2_BEGIN(    str r4, [sp, #40] ; sync with PRESERVED_R4_OFFSET)
+MSVC_THUMB2_BEGIN(    str r5, [sp, #44] ; sync with PRESERVED_R5_OFFSET)
+MSVC_THUMB2_BEGIN(    str r6, [sp, #48] ; sync with PRESERVED_R6_OFFSET)
+MSVC_THUMB2_BEGIN(    str r7, [sp, #4C] ; sync with PRESERVED_R7_OFFSET)
+MSVC_THUMB2_BEGIN(    str r8, [sp, #50] ; sync with PRESERVED_R8_OFFSET)
+MSVC_THUMB2_BEGIN(    str r9, [sp, #54] ; sync with PRESERVED_R9_OFFSET)
+MSVC_THUMB2_BEGIN(    str r10, [sp, #58] ; sync with PRESERVED_R10_OFFSET)
+MSVC_THUMB2_BEGIN(    str r11, [sp, #5C] ; sync with PRESERVED_R11_OFFSET)
+MSVC_THUMB2_BEGIN(    str r1, [sp, #60] ; sync with REGISTER_FILE_OFFSET)
+MSVC_THUMB2_BEGIN(    mov r5, r2
+MSVC_THUMB2_BEGIN(    mov r6, #512
+MSVC_THUMB2_BEGIN(    blx r0
+MSVC_THUMB2_BEGIN(    ldr r11, [sp, #5C] ; sync with PRESERVED_R11_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r10, [sp, #58] ; sync with PRESERVED_R10_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r9, [sp, #54] ; sync with PRESERVED_R9_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r8, [sp, #50] ; sync with PRESERVED_R8_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r7, [sp, #4C] ; sync with PRESERVED_R7_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r6, [sp, #48] ; sync with PRESERVED_R6_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r5, [sp, #44] ; sync with PRESERVED_R5_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r4, [sp, #40] ; sync with PRESERVED_R4_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr lr, [sp, #3C] ; sync with PRESERVED_RETURN_ADDRESS_OFFSET)
+MSVC_THUMB2_BEGIN(    add sp, sp, #68 ; sync with FIRST_STACK_ARGUMENT)
+MSVC_THUMB2_BEGIN(    bx lr
+MSVC_THUMB2_BEGIN(ctiTrampoline ENDP)
+MSVC_THUMB2_BEGIN()
+MSVC_THUMB2_BEGIN(ctiVMThrowTrampoline PROC)
+MSVC_THUMB2_BEGIN(    mov r0, sp
+MSVC_THUMB2_BEGIN(    bl cti_vm_throw
+MSVC_THUMB2_BEGIN(    ldr r11, [sp, #5C] ; sync with PRESERVED_R11_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r10, [sp, #58] ; sync with PRESERVED_R10_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r9, [sp, #54] ; sync with PRESERVED_R9_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r8, [sp, #50] ; sync with PRESERVED_R8_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r7, [sp, #4C] ; sync with PRESERVED_R7_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r6, [sp, #48] ; sync with PRESERVED_R6_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r5, [sp, #44] ; sync with PRESERVED_R5_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r4, [sp, #40] ; sync with PRESERVED_R4_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr lr, [sp, #3C] ; sync with PRESERVED_RETURN_ADDRESS_OFFSET)
+MSVC_THUMB2_BEGIN(    add sp, sp, #68 ; sync with FIRST_STACK_ARGUMENT)
+MSVC_THUMB2_BEGIN(    bx lr
+MSVC_THUMB2_BEGIN(ctiVMThrowTrampoline ENDP)
+MSVC_THUMB2_BEGIN()
+MSVC_THUMB2_BEGIN(ctiOpThrowNotCaught PROC)
+MSVC_THUMB2_BEGIN(    ldr r11, [sp, #5C] ; sync with PRESERVED_R11_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r10, [sp, #58] ; sync with PRESERVED_R10_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r9, [sp, #54] ; sync with PRESERVED_R9_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r8, [sp, #50] ; sync with PRESERVED_R8_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r7, [sp, #4C] ; sync with PRESERVED_R7_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r6, [sp, #48] ; sync with PRESERVED_R6_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r5, [sp, #44] ; sync with PRESERVED_R5_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr r4, [sp, #40] ; sync with PRESERVED_R4_OFFSET)
+MSVC_THUMB2_BEGIN(    ldr lr, [sp, #3C] ; sync with PRESERVED_RETURN_ADDRESS_OFFSET)
+MSVC_THUMB2_BEGIN(    add sp, sp, #68 ; sync with FIRST_STACK_ARGUMENT)
+MSVC_THUMB2_BEGIN(    bx lr
+MSVC_THUMB2_BEGIN(ctiOpThrowNotCaught ENDP)
+MSVC_THUMB2_BEGIN()
+
+MSVC_THUMB2(    EXPORT cti_#op#)
+MSVC_THUMB2(    IMPORT JITStubThunked_#op#)
+MSVC_THUMB2(cti_#op# PROC)
+MSVC_THUMB2(    str lr, [sp, #64] ; sync with THUNK_RETURN_ADDRESS_OFFSET)
+MSVC_THUMB2(    bl JITStubThunked_#op#)
+MSVC_THUMB2(    ldr lr, [sp, #64] ; sync with THUNK_RETURN_ADDRESS_OFFSET)
+MSVC_THUMB2(    bx lr)
+MSVC_THUMB2(cti_#op# ENDP)
+MSVC_THUMB2()
+
+MSVC_THUMB2_END(    END)
+*/
 #elif CPU(ARM_TRADITIONAL) && COMPILER(MSVC)
 
 #define DEFINE_STUB_FUNCTION(rtype, op) extern "C" rtype JITStubThunked_##op(STUB_ARGS_DECLARATION)
@@ -1302,53 +1387,52 @@ RVCT()
 /* The pattern "#xxx#" will be replaced with "xxx" */
 
 /*
-MSVC_BEGIN(    AREA Trampoline, CODE)
-MSVC_BEGIN()
-MSVC_BEGIN(    EXPORT ctiTrampoline)
-MSVC_BEGIN(    EXPORT ctiTrampolineEnd)
-MSVC_BEGIN(    EXPORT ctiVMThrowTrampoline)
-MSVC_BEGIN(    EXPORT ctiOpThrowNotCaught)
-MSVC_BEGIN()
-MSVC_BEGIN(ctiTrampoline PROC)
-MSVC_BEGIN(    stmdb sp!, {r1-r3})
-MSVC_BEGIN(    stmdb sp!, {r4-r6, r8-r11, lr})
-MSVC_BEGIN(    sub sp, sp, #68 ; sync with PRESERVEDR4_OFFSET)
-MSVC_BEGIN(    mov r5, r2)
-MSVC_BEGIN(    mov r6, #512)
-MSVC_BEGIN(    ; r0 contains the code)
-MSVC_BEGIN(    mov lr, pc)
-MSVC_BEGIN(    bx r0)
-MSVC_BEGIN(    add sp, sp, #68 ; sync with PRESERVEDR4_OFFSET)
-MSVC_BEGIN(    ldmia sp!, {r4-r6, r8-r11, lr})
-MSVC_BEGIN(    add sp, sp, #12)
-MSVC_BEGIN(    bx lr)
-MSVC_BEGIN(ctiTrampolineEnd)
-MSVC_BEGIN(ctiTrampoline ENDP)
-MSVC_BEGIN()
-MSVC_BEGIN(ctiVMThrowTrampoline PROC)
-MSVC_BEGIN(    mov r0, sp)
-MSVC_BEGIN(    bl cti_vm_throw)
-MSVC_BEGIN(ctiOpThrowNotCaught)
-MSVC_BEGIN(    add sp, sp, #68 ; sync with PRESERVEDR4_OFFSET)
-MSVC_BEGIN(    ldmia sp!, {r4-r6, r8-r11, lr})
-MSVC_BEGIN(    add sp, sp, #12)
-MSVC_BEGIN(    bx lr)
-MSVC_BEGIN(ctiVMThrowTrampoline ENDP)
-MSVC_BEGIN()
+MSVC_ARM_BEGIN(    AREA Trampoline, CODE)
+MSVC_ARM_BEGIN()
+MSVC_ARM_BEGIN(    EXPORT ctiTrampoline)
+MSVC_ARM_BEGIN(    EXPORT ctiTrampolineEnd)
+MSVC_ARM_BEGIN(    EXPORT ctiVMThrowTrampoline)
+MSVC_ARM_BEGIN(    EXPORT ctiOpThrowNotCaught)
+MSVC_ARM_BEGIN()
+MSVC_ARM_BEGIN(ctiTrampoline PROC)
+MSVC_ARM_BEGIN(    stmdb sp!, {r1-r3})
+MSVC_ARM_BEGIN(    stmdb sp!, {r4-r6, r8-r11, lr})
+MSVC_ARM_BEGIN(    sub sp, sp, #68 ; sync with PRESERVEDR4_OFFSET)
+MSVC_ARM_BEGIN(    mov r5, r2)
+MSVC_ARM_BEGIN(    mov r6, #512)
+MSVC_ARM_BEGIN(    ; r0 contains the code)
+MSVC_ARM_BEGIN(    mov lr, pc)
+MSVC_ARM_BEGIN(    bx r0)
+MSVC_ARM_BEGIN(    add sp, sp, #68 ; sync with PRESERVEDR4_OFFSET)
+MSVC_ARM_BEGIN(    ldmia sp!, {r4-r6, r8-r11, lr})
+MSVC_ARM_BEGIN(    add sp, sp, #12)
+MSVC_ARM_BEGIN(    bx lr)
+MSVC_ARM_BEGIN(ctiTrampolineEnd)
+MSVC_ARM_BEGIN(ctiTrampoline ENDP)
+MSVC_ARM_BEGIN()
+MSVC_ARM_BEGIN(ctiVMThrowTrampoline PROC)
+MSVC_ARM_BEGIN(    mov r0, sp)
+MSVC_ARM_BEGIN(    bl cti_vm_throw)
+MSVC_ARM_BEGIN(ctiOpThrowNotCaught)
+MSVC_ARM_BEGIN(    add sp, sp, #68 ; sync with PRESERVEDR4_OFFSET)
+MSVC_ARM_BEGIN(    ldmia sp!, {r4-r6, r8-r11, lr})
+MSVC_ARM_BEGIN(    add sp, sp, #12)
+MSVC_ARM_BEGIN(    bx lr)
+MSVC_ARM_BEGIN(ctiVMThrowTrampoline ENDP)
+MSVC_ARM_BEGIN()
 
-MSVC(    EXPORT cti_#op#)
-MSVC(    IMPORT JITStubThunked_#op#)
-MSVC(cti_#op# PROC)
-MSVC(    str lr, [sp, #64] ; sync with THUNK_RETURN_ADDRESS_OFFSET)
-MSVC(    bl JITStubThunked_#op#)
-MSVC(    ldr lr, [sp, #64] ; sync with THUNK_RETURN_ADDRESS_OFFSET)
-MSVC(    bx lr)
-MSVC(cti_#op# ENDP)
-MSVC()
+MSVC_ARM(    EXPORT cti_#op#)
+MSVC_ARM(    IMPORT JITStubThunked_#op#)
+MSVC_ARM(cti_#op# PROC)
+MSVC_ARM(    str lr, [sp, #64] ; sync with THUNK_RETURN_ADDRESS_OFFSET)
+MSVC_ARM(    bl JITStubThunked_#op#)
+MSVC_ARM(    ldr lr, [sp, #64] ; sync with THUNK_RETURN_ADDRESS_OFFSET)
+MSVC_ARM(    bx lr)
+MSVC_ARM(cti_#op# ENDP)
+MSVC_ARM()
 
-MSVC_END(    END)
+MSVC_ARM_END(    END)
 */
-
 #elif CPU(SH4)
 #define DEFINE_STUB_FUNCTION(rtype, op) \
     extern "C" { \

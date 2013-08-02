@@ -7,7 +7,10 @@ else ()
     set(WINOS "XP")
 endif ()
 
-include_directories(${JAVASCRIPTCORE_DIR}/os-win32)
+# Windows XP SP2
+# With these macros our binaries should run on XP SP2 and above, even when built on Win7.
+add_definitions(-DWINVER=0x502)
+add_definitions(-D_WIN32_WINNT=0x502)
 
 if (MSVC)
     add_definitions(/WX
