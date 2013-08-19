@@ -87,6 +87,8 @@ void ImplicitAnimation::animate(CompositeAnimation*, RenderObject*, const Render
         // that is animating are correctly detected during the animation (e.g. when a transition
         // gets interrupted).
         animatedStyle->setIsRunningAcceleratedAnimation();
+#else
+    CSSPropertyAnimation::blendProperties(this, m_animatingProperty, animatedStyle.get(), m_fromStyle.get(), m_toStyle.get(), progress(1, 0, 0));
 #endif
 
     // Fire the start timeout if needed

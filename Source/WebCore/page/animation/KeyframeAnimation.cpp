@@ -191,6 +191,8 @@ void KeyframeAnimation::animate(CompositeAnimation* compositeAnimation, RenderOb
             // to indicate it. This can be used to make sure we get an updated
             // style for hit testing, etc.
             animatedStyle->setIsRunningAcceleratedAnimation();
+#else
+        CSSPropertyAnimation::blendProperties(this, *it, animatedStyle.get(), fromStyle, toStyle, progress);
 #endif
     }
 }
