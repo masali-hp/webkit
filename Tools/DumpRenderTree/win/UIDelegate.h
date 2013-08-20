@@ -29,7 +29,7 @@
 #ifndef UIDelegate_h
 #define UIDelegate_h
 
-#include <WebCore/COMPtr.h>
+#include <WebCore/platform/win/COMPtr.h>
 #include <WebKit/WebKit.h>
 #include <wtf/OwnPtr.h>
 #include <windef.h>

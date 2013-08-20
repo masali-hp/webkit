@@ -30,3 +30,6 @@ if (NOT USE_SYSTEM_MALLOC)
     # FastMalloc.cpp uses pthreads when not using system malloc.
     set(WTF_USE_PTHREADS 1)
 endif ()
+
+# Using DLL launchers requires Safari to be installed.
+set(DONT_USE_DLLLAUNCHERS 1)

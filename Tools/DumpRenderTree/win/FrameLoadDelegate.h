@@ -45,7 +45,9 @@ public:
 
     void resetToConsistentState();
 
+#if HAVE(ACCESSIBILITY)
     AccessibilityController* accessibilityController() const { return m_accessibilityController.get(); }
+#endif
 
     // IUnknown
     virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
@@ -170,7 +172,9 @@ private:
 
     ULONG m_refCount;
     OwnPtr<GCController> m_gcController;
+#if HAVE(ACCESSIBILITY)
     OwnPtr<AccessibilityController> m_accessibilityController;
+#endif
     OwnPtr<TextInputController> m_textInputController;
 };
 

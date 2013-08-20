@@ -66,7 +66,9 @@
 #endif
 
 #if PLATFORM(WIN)
-#define WTF_USE_CF 1 
+#if !defined(WTF_USE_CF)
+#define WTF_USE_CF 1
+#endif
 #if PLATFORM(WIN_CAIRO)
 #define WTF_USE_CAIRO 1
 #define WTF_USE_CURL 1

@@ -20,5 +20,6 @@ set(WTF_USE_WCHAR_UNICODE 1)
 #set(WTF_USE_CURL 1)
 set(WTF_USE_WININET 1)
 set(WTF_USE_CF 0)
-set(BUILD_WIN_LAUNCHER_AS_EXE 1)
 
+# Using DLL launchers requires Safari to be installed.
+set(DONT_USE_DLLLAUNCHERS 1)

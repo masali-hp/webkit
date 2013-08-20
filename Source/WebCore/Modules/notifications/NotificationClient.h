@@ -33,7 +33,7 @@
 #define NotificationClient_h
 
 #include "NotificationPermissionCallback.h"
-#include "VoidCallback.h"
+#include <WebCore/html/VoidCallback.h>
 #include <wtf/PassRefPtr.h>
 
 namespace WebCore {

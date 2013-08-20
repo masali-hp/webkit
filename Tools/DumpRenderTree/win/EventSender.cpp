@@ -36,7 +36,7 @@
 #include "DumpRenderTree.h"
 
 #include <JavaScriptCore/JavaScriptCore.h>
-#include <WebCore/COMPtr.h>
+#include <WebCore/platform/win/COMPtr.h>
 #include <WebKit/WebKit.h>
 #include <windows.h>
 #include <wtf/ASCIICType.h>

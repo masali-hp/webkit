@@ -35,7 +35,7 @@
 #include "TestRunner.h"
 #include <JavaScriptCore/JSStringRef.h>
 #include <JavaScriptCore/JSStringRefBSTR.h>
-#include <WebCore/NotificationClient.h>
+#include <WebCore/Modules/notifications/NotificationClient.h>
 
 DRTDesktopNotificationPresenter::DRTDesktopNotificationPresenter()
     : m_refCount(1) {} 

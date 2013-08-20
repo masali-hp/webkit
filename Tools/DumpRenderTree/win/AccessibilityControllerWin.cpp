@@ -31,7 +31,7 @@
 #include "FrameLoadDelegate.h"
 #include <JavaScriptCore/JSRetainPtr.h>
 #include <JavaScriptCore/JSStringRef.h>
-#include <WebCore/COMPtr.h>
+#include <WebCore/platform/win/COMPtr.h>
 #include <WebKit/WebKit.h>
 #include <oleacc.h>
 #include <string>

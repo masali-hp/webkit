@@ -34,7 +34,7 @@
 #include "EventSender.h"
 #include "DRTDesktopNotificationPresenter.h"
 #include "TestRunner.h"
-#include <WebCore/COMPtr.h>
+#include <WebCore/platform/win/COMPtr.h>
 #include <wtf/Assertions.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/Platform.h>

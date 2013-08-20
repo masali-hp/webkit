@@ -41,7 +41,7 @@ typedef struct objc_object* PlatformUIElement;
 #undef _WINSOCKAPI_
 #define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
 
-#include <WebCore/COMPtr.h>
+#include <WebCore/platform/win/COMPtr.h>
 #include <oleacc.h>
 
 typedef COMPtr<IAccessible> PlatformUIElement;

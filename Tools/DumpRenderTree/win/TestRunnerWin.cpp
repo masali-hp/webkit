@@ -34,11 +34,13 @@
 #include "PolicyDelegate.h"
 #include "WorkQueue.h"
 #include "WorkQueueItem.h"
+#if USE(CF)
 #include <CoreFoundation/CoreFoundation.h>
+#endif
 #include <JavaScriptCore/JSRetainPtr.h>
 #include <JavaScriptCore/JSStringRefBSTR.h>
 #include <JavaScriptCore/JavaScriptCore.h>
-#include <WebCore/COMPtr.h>
+#include <WebCore/platform/win/COMPtr.h>
 #include <WebKit/WebKit.h>
 #include <WebKit/WebKitCOMAPI.h>
 #include <comutil.h>
@@ -633,6 +635,7 @@ void TestRunner::setUserStyleSheetLocation(JSStringRef jsURL)
     if (FAILED(webView->preferences(&preferences)))
         return;
 
+#if USE(CF)
     RetainPtr<CFStringRef> urlString = adoptCF(JSStringCopyCFString(0, jsURL));
     RetainPtr<CFURLRef> url = adoptCF(CFURLCreateWithString(0, urlString.get(), 0));
     if (!url)
@@ -644,11 +647,23 @@ void TestRunner::setUserStyleSheetLocation(JSStringRef jsURL)
         return;
 
     wstring path = cfStringRefToWString(pathCF.get());
+#else
+    BSTR urlString = JSStringCopyBSTR(jsURL);
+    if (!urlString)
+        return;
+
+    wchar_t pathBuffer[MAX_PATH];
+    DWORD pathSize = MAX_PATH;
+    if (FAILED(PathCreateFromUrl(urlString, pathBuffer, &pathSize, NULL)))
+        return;
+    wstring path(pathBuffer);
+#endif
 
     wstring resultPath;
     if (!resolveCygwinPath(path, resultPath))
         return;
 
+#if USE(CF)
     // The path has been resolved, now convert it back to a CFURL.
     int result = WideCharToMultiByte(CP_UTF8, 0, resultPath.c_str(), resultPath.size() + 1, 0, 0, 0, 0);
     Vector<char> utf8Vector(result);
@@ -661,8 +676,15 @@ void TestRunner::setUserStyleSheetLocation(JSStringRef jsURL)
         return;
 
     resultPath = cfStringRefToWString(CFURLGetString(url.get()));
-
     BSTR resultPathBSTR = SysAllocStringLen(resultPath.data(), resultPath.size());
+#else
+    wchar_t urlBuffer[MAX_PATH];
+    pathSize = MAX_PATH;
+    if (FAILED(UrlCreateFromPath(resultPath.c_str(), urlBuffer, &pathSize, NULL)))
+        return;
+    BSTR resultPathBSTR = SysAllocStringLen(urlBuffer, pathSize);
+#endif
+
     preferences->setUserStyleSheetLocation(resultPathBSTR);
     SysFreeString(resultPathBSTR);
 }
@@ -697,8 +719,7 @@ void TestRunner::setViewModeMediaFeature(JSStringRef mode)
 
 void TestRunner::setPersistentUserStyleSheetLocation(JSStringRef jsURL)
 {
-    RetainPtr<CFStringRef> urlString = adoptCF(JSStringCopyCFString(0, jsURL));
-    ::setPersistentUserStyleSheetLocation(urlString.get());
+    ::setPersistentUserStyleSheetLocation(JSStringCopyBSTR(jsURL));
 }
 
 void TestRunner::clearPersistentUserStyleSheet()
@@ -723,7 +744,7 @@ void TestRunner::setWindowIsKey(bool flag)
     ::SendMessage(webViewWindow, flag ? WM_SETFOCUS : WM_KILLFOCUS, (WPARAM)::GetDesktopWindow(), 0);
 }
 
-static const CFTimeInterval waitToDumpWatchdogInterval = 30.0;
+static const double waitToDumpWatchdogInterval = 30.0; // seconds
 
 static void CALLBACK waitUntilDoneWatchdogFired(HWND, UINT, UINT_PTR, DWORD)
 {

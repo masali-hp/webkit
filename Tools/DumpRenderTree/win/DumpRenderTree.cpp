@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2005, 2006, 2007, 2008, 2009 Apple Inc.  All rights reserved.
+ * Copyright (C) 2013 Hewlett-Packard Development Co. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,7 +54,9 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/Vector.h>
 #include <windows.h>
+#if USE(CF)
 #include <CoreFoundation/CoreFoundation.h>
+#endif
 #include <WebKit/WebKit.h>
 #include <WebKit/WebKitCOMAPI.h>
 
@@ -87,7 +90,7 @@ static bool leakChecking = false;
 static bool threaded = false;
 static bool forceComplexText = false;
 static bool printSupportedFeatures = false;
-static RetainPtr<CFStringRef> persistentUserStyleSheetLocation;
+static BSTR persistentUserStyleSheetLocation;
 
 volatile bool done;
 // This is the topmost frame that is loading, during a given load, or nil when no load is 
@@ -109,8 +112,10 @@ RefPtr<TestRunner> gTestRunner;
 
 UINT_PTR waitToDumpWatchdog = 0;
 
-void setPersistentUserStyleSheetLocation(CFStringRef url)
+void setPersistentUserStyleSheetLocation(BSTR url)
 {
+    if (persistentUserStyleSheetLocation)
+        SysFreeString(persistentUserStyleSheetLocation);
     persistentUserStyleSheetLocation = url;
 }
 
@@ -133,13 +138,16 @@ bool setAlwaysAcceptCookies(bool alwaysAcceptCookies)
 #endif
 }
 
+#if USE(CF)
 static RetainPtr<CFStringRef> substringFromIndex(CFStringRef string, CFIndex index)
 {
     return adoptCF(CFStringCreateWithSubstring(kCFAllocatorDefault, string, CFRangeMake(index, CFStringGetLength(string) - index)));
 }
+#endif
 
 wstring urlSuitableForTestResult(const wstring& urlString)
 {
+#if USE(CF)
     RetainPtr<CFURLRef> url = adoptCF(CFURLCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(urlString.c_str()), urlString.length() * sizeof(wstring::value_type), kCFStringEncodingUTF16, 0));
 
     RetainPtr<CFStringRef> scheme = adoptCF(CFURLCopyScheme(url.get()));
@@ -167,6 +175,11 @@ wstring urlSuitableForTestResult(const wstring& urlString)
     RetainPtr<CFStringRef> path = adoptCF(CFURLCopyPath(url.get()));
 
     return cfStringRefToWString(substringFromIndex(path.get(), CFStringGetLength(basePath.get())).get());
+#else
+    if (!urlString.c_str() || urlString.find(L"file://") == wstring::npos)
+        return urlString;
+    return PathFindFileNameW(urlString.c_str());
+#endif
 }
 
 wstring lastPathComponent(const wstring& urlString)
@@ -174,10 +187,14 @@ wstring lastPathComponent(const wstring& urlString)
     if (urlString.empty())
         return urlString;
 
+#if USE(CF)
     RetainPtr<CFURLRef> url = adoptCF(CFURLCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(urlString.c_str()), urlString.length() * sizeof(wstring::value_type), kCFStringEncodingUTF16, 0));
     RetainPtr<CFStringRef> lastPathComponent = adoptCF(CFURLCopyLastPathComponent(url.get()));
 
     return cfStringRefToWString(lastPathComponent.get());
+#else
+    return PathFindFileNameW(urlString.c_str());
+#endif
 }
 
 static string toUTF8(const wchar_t* wideString, size_t length)
@@ -201,6 +218,7 @@ string toUTF8(const wstring& wideString)
     return toUTF8(wideString.c_str(), wideString.length());
 }
 
+#if USE(CF)
 wstring cfStringRefToWString(CFStringRef cfStr)
 {
     Vector<wchar_t> v(CFStringGetLength(cfStr));
@@ -208,6 +226,7 @@ wstring cfStringRefToWString(CFStringRef cfStr)
 
     return wstring(v.data(), v.size());
 }
+#endif
 
 static LRESULT CALLBACK DumpRenderTreeWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -845,11 +864,7 @@ static void resetDefaultsToConsistentValues(IWebPreferences* preferences)
     preferences->setSeamlessIFramesEnabled(TRUE);
 
     if (persistentUserStyleSheetLocation) {
-        Vector<wchar_t> urlCharacters(CFStringGetLength(persistentUserStyleSheetLocation.get()));
-        CFStringGetCharacters(persistentUserStyleSheetLocation.get(), CFRangeMake(0, CFStringGetLength(persistentUserStyleSheetLocation.get())), (UniChar *)urlCharacters.data());
-        BSTR url = SysAllocStringLen(urlCharacters.data(), urlCharacters.size());
-        preferences->setUserStyleSheetLocation(url);
-        SysFreeString(url);
+        preferences->setUserStyleSheetLocation(persistentUserStyleSheetLocation);
         preferences->setUserStyleSheetEnabled(TRUE);
     } else
         preferences->setUserStyleSheetEnabled(FALSE);
@@ -950,6 +965,7 @@ static void runTest(const string& inputLine)
 
     BSTR urlBStr;
  
+#if USE(CF)
     CFStringRef str = CFStringCreateWithCString(0, pathOrURL.c_str(), kCFStringEncodingWindowsLatin1);
     CFURLRef url = CFURLCreateWithString(0, str, 0);
 
@@ -968,6 +984,18 @@ static void runTest(const string& inputLine)
     delete[] buffer;
 
     CFRelease(url);
+#else
+    wstring wideUrlStr;
+    wideUrlStr.resize(pathOrURL.size());
+    mbstowcs(&wideUrlStr[0], pathOrURL.c_str(), pathOrURL.length());
+    urlBStr = SysAllocStringLen(wideUrlStr.c_str(), wideUrlStr.length());
+    if (urlBStr && urlBStr[0] && (PathFileExists(urlBStr) || PathIsUNC(urlBStr))) {
+        wchar_t fileURL[255];
+        DWORD fileURLLength = 255;
+        if (SUCCEEDED(UrlCreateFromPath(urlBStr, fileURL, &fileURLLength, 0)))
+            SysReAllocString(&urlBStr, fileURL);
+    }
+#endif
 
     ::gTestRunner = TestRunner::create(pathOrURL, command.expectedPixelHash);
     done = false;
@@ -1115,6 +1143,7 @@ IWebView* createWebViewAndOffscreenWindow(HWND* webViewWindow)
     viewPrivate->setShouldApplyMacFontAscentHack(TRUE);
     viewPrivate->setAlwaysUsesComplexTextCodePath(forceComplexText);
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     BSTR pluginPath = SysAllocStringLen(0, exePath().length() + _tcslen(TestPluginDir));
     _tcscpy(pluginPath, exePath().c_str());
     _tcscat(pluginPath, TestPluginDir);
@@ -1122,6 +1151,7 @@ IWebView* createWebViewAndOffscreenWindow(HWND* webViewWindow)
     SysFreeString(pluginPath);
     if (failed)
         return 0;
+#endif
 
     HWND viewWindow;
     if (FAILED(viewPrivate->viewWindow(reinterpret_cast<OLE_HANDLE*>(&viewWindow))))
@@ -1189,7 +1219,11 @@ static LONG WINAPI exceptionFilter(EXCEPTION_POINTERS*)
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
+#ifdef NO_DLL_LAUNCHER
+int main(int argc, const char* argv[])
+#else
 extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(int argc, const char* argv[])
+#endif
 {
     // Cygwin calls ::SetErrorMode(SEM_FAILCRITICALERRORS), which we will inherit. This is bad for
     // testing/debugging, as it causes the post-mortem debugger not to be invoked. We reset the
@@ -1274,6 +1308,13 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(int argc, cons
         printf("SupportedFeatures:%s %s\n", acceleratedCompositingAvailable ? "AcceleratedCompositing" : "", threeDRenderingAvailable ? "3DRendering" : "");
         return 0;
     }
+
+#if !USE(CF)
+    // If we don't specify a local storage path, webview fails to set all preferences and javascript never gets enabled...
+    // When CF is enabled, local storage path get initialized from Safari's settings.
+    BSTR localStoragePath = SysAllocString(L"\\.");
+    standardPreferencesPrivate->setLocalStorageDatabasePath(localStoragePath);
+#endif
 
     COMPtr<IWebView> webView(AdoptCOM, createWebViewAndOffscreenWindow(&webViewWindow));
     if (!webView)

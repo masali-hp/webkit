@@ -31,7 +31,7 @@
 
 #include "DumpRenderTree.h"
 #include "TestRunner.h"
-#include <WebCore/COMPtr.h>
+#include <WebCore/platform/win/COMPtr.h>
 #include <wtf/Assertions.h>
 #include <wtf/Platform.h>
 #include <string>

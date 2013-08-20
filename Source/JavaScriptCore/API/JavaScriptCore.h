@@ -27,7 +27,8 @@
 #define JavaScriptCore_h
 
 #include <JavaScriptCore/JavaScript.h>
-#include <JavaScriptCore/JSStringRefCF.h>
+//Using CF should be optional.  This include shouldn't be here.
+//#include <JavaScriptCore/JSStringRefCF.h>
 
 #if defined(__OBJC__) && JSC_OBJC_API_ENABLED
 

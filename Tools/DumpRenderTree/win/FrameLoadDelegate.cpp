@@ -39,7 +39,7 @@
 #include "WebCoreTestSupport.h"
 #include "WorkQueueItem.h"
 #include "WorkQueue.h"
-#include <WebCore/COMPtr.h>
+#include <WebCore/platform/win/COMPtr.h>
 #include <JavaScriptCore/JavaScriptCore.h>
 #include <WebKit/WebKit.h>
 #include <stdio.h>
@@ -76,7 +76,9 @@ string descriptionSuitableForTestResult(IWebFrame* webFrame)
 FrameLoadDelegate::FrameLoadDelegate()
     : m_refCount(1)
     , m_gcController(adoptPtr(new GCController))
+#if HAVE(ACCESSIBILITY)
     , m_accessibilityController(adoptPtr(new AccessibilityController))
+#endif
     , m_textInputController(adoptPtr(new TextInputController))
 {
 }
@@ -207,7 +209,9 @@ void FrameLoadDelegate::processWork()
 
 void FrameLoadDelegate::resetToConsistentState()
 {
+#if HAVE(ACCESSIBILITY)
     m_accessibilityController->resetToConsistentState();
+#endif
 }
 
 typedef Vector<COMPtr<FrameLoadDelegate> > DelegateVector;
@@ -366,8 +370,10 @@ void FrameLoadDelegate::didClearWindowObjectForFrameInStandardWorld(IWebFrame* f
     m_gcController->makeWindowObject(context, windowObject, &exception);
     ASSERT(!exception);
 
+#if HAVE(ACCESSIBILITY)
     m_accessibilityController->makeWindowObject(context, windowObject, &exception);
     ASSERT(!exception);
+#endif
 
     m_textInputController->makeWindowObject(context, windowObject, &exception);
     ASSERT(!exception);

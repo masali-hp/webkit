@@ -24,6 +24,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef BUILDING_WebCore
+// WebCoreTestSupport is not linked into WebKit.dll, it is linked into DumpRenderTree/WebKitTestRunner.
+// Therefore symbols like JSDOMGlobalObject::s_info need to be imported, not exported.
+#undef BUILDING_WebCore
+#endif
+
 #include "config.h"
 #include "InternalSettings.h"
 

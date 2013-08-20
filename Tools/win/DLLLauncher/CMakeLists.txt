@@ -1,21 +1,19 @@
-SET(WinLauncherLauncher_INCLUDE_DIRECTORIES
-    "${WEBKIT_DIR}/win"
-    "${WEBCORE_DIR}"
-    "${WEBCORE_DIR}/platform"
-    "${WEBCORE_DIR}/platform/graphics"
-    "${WEBCORE_DIR}/platform/network"
-    "${WEBCORE_DIR}/platform/text"
-    "${JAVASCRIPTCORE_DIR}"
-    "${JAVASCRIPTCORE_DIR}/wtf"
-    "${DERIVED_SOURCES_DIR}"
-    "${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces"
-    "${CMAKE_BINARY_DIR}"
+set(DLLLauncher_SOURCES
+    DLLLauncherMain.cpp
 )
 
-INCLUDE_DIRECTORIES(${WinLauncherLauncher_INCLUDE_DIRECTORIES})
-ADD_EXECUTABLE (WinLauncherLauncher WIN32 DLLLauncherMain.cpp)
-ADD_DEPENDENCIES(WinLauncherLauncher WinLauncher)
-TARGET_LINK_LIBRARIES(WinLauncherLauncher WinLauncher)
-SET_TARGET_PROPERTIES(WinLauncherLauncher PROPERTIES OUTPUT_NAME "WinLauncher")
+set(DLLLauncher_LIBRARIES
+    shlwapi
+)
 
+add_definitions(-DUSE_CONSOLE_ENTRY_POINT=1)
 
+add_executable(DumpRenderTreeLauncher ${DLLLauncher_SOURCES})
+target_link_libraries(DumpRenderTreeLauncher ${DLLLauncher_LIBRARIES})
+set_target_properties(DumpRenderTreeLauncher PROPERTIES FOLDER "Tools")
+set_target_properties(DumpRenderTreeLauncher PROPERTIES OUTPUT_NAME "DumpRenderTree")
+
+add_executable(ImageDiffLauncher ${DLLLauncher_SOURCES})
+target_link_libraries(ImageDiffLauncher ${DLLLauncher_LIBRARIES})
+set_target_properties(ImageDiffLauncher PROPERTIES FOLDER "Tools")
+set_target_properties(ImageDiffLauncher PROPERTIES OUTPUT_NAME "ImageDiff")

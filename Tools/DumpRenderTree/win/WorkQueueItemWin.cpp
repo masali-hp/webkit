@@ -30,11 +30,13 @@
 #include "WorkQueueItem.h"
 
 #include "DumpRenderTree.h"
-#include <WebCore/COMPtr.h>
+#include <WebCore/platform/win/COMPtr.h>
 #include <WebKit/WebKit.h>
 #include <WebKit/WebKitCOMAPI.h>
 #include <JavaScriptCore/JSStringRef.h>
+#if USE(CF)
 #include <JavaScriptCore/JSStringRefCF.h>
+#endif
 #include <wtf/RetainPtr.h>
 #include <wtf/Vector.h>
 #include <string>

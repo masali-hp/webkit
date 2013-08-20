@@ -98,5 +98,9 @@ if (isQt()) {
 
 my $harnessPath = File::Spec->catfile(relativeScriptsDir(), $harnessName);
 unshift(@ARGV, $harnessPath);
+
+# To launch the perl debugger when running tests, uncomment this line:
+# unshift(@ARGV, "-d");
+
 unshift(@ARGV, $script);
 system(@ARGV) == 0 or die "Failed to execute $harnessPath";

@@ -30,7 +30,7 @@
 #include "TextInputController.h"
 
 #include "DumpRenderTree.h"
-#include <WebCore/COMPtr.h>
+#include <WebCore/platform/win/COMPtr.h>
 #include <WebKit/WebKit.h>
 #include <comutil.h>
 #include <string>

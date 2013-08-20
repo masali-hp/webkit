@@ -60,18 +60,25 @@ STRING(REPLACE " " "\;" CXX_LIBS ${CMAKE_CXX_STANDARD_LIBRARIES})
 LIST(APPEND WinLauncher_LIBRARIES ${CXX_LIBS})
 SET(CMAKE_CXX_STANDARD_LIBRARIES "")
 
-# If you want to build DLLLauncher as the EXE that launches WinLauncher, then set
-# BUILD_WIN_LAUNCHER_AS_EXE.
-IF (BUILD_WIN_LAUNCHER_AS_EXE)
+# If you want to build WinLauncher as a standalone EXE, then set DONT_USE_DLLLAUNCHERS.
+# Otherwise it is built as a DLL and WinLauncherLauncher is expected to start it.
+IF (DONT_USE_DLLLAUNCHERS)
     ADD_DEFINITIONS(-DBUILD_WINLAUNCHER_EXE)
     ADD_EXECUTABLE (WinLauncher WIN32 ${WinLauncher_INCLUDES} ${WinLauncher_SOURCES} ${WinLauncher_RESOURCES})
 ELSE()
     ADD_LIBRARY (WinLauncher SHARED ${WinLauncher_INCLUDES} ${WinLauncher_SOURCES} ${WinLauncher_RESOURCES})
 ENDIF()
-
+set_target_properties(WinLauncher PROPERTIES FOLDER "Tools")
 
 ADD_DEPENDENCIES(WinLauncher WebKit)
 TARGET_LINK_LIBRARIES(WinLauncher ${WinLauncher_LIBRARIES})
+
+if (NOT DONT_USE_DLLLAUNCHERS)
+    add_executable (WinLauncherLauncher WIN32 ${TOOLS_DIR}/win/DLLLauncher/DLLLauncherMain.cpp WinLauncher.vcxproj/WinLauncher.rc)
+    target_link_libraries(WinLauncherLauncher shlwapi)
+    set_target_properties(WinLauncherLauncher PROPERTIES FOLDER "Tools")
+    set_target_properties(WinLauncherLauncher PROPERTIES OUTPUT_NAME "WinLauncher")
+endif ()
 
 # When building with corefoundation (and hence depending on the webkitlibraries
 # bundle), the libraries in the bundle need to be copied to the build bin

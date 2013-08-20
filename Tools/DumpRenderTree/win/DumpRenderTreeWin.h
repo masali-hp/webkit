@@ -43,7 +43,7 @@ extern PolicyDelegate* policyDelegate;
 
 extern HWND webViewWindow;
 
-#include <WebCore/COMPtr.h>
+#include <WebCore/platform/win/COMPtr.h>
 #include <string>
 #include <wtf/HashMap.h>
 #include <wtf/Vector.h>
@@ -59,7 +59,8 @@ Vector<HWND>& openWindows();
 typedef HashMap<HWND, COMPtr<IWebView> > WindowToWebViewMap;
 WindowToWebViewMap& windowToWebViewMap();
 
-void setPersistentUserStyleSheetLocation(CFStringRef);
+void setPersistentUserStyleSheetLocation(BSTR);
+
 bool setAlwaysAcceptCookies(bool alwaysAcceptCookies);
 
 unsigned worldIDForWorld(IWebScriptWorld*);

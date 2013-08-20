@@ -2,6 +2,7 @@
  * Copyright (C) 2005, 2007 Apple Inc. All rights reserved.
  * Copyright (C) 2005 Ben La Monica <ben.lamonica@gmail.com>.  All rights reserved.
  * Copyright (C) 2011 Brent Fulgham. All rights reserved.
+ * Copyright (C) 2013 Hewlett-Packard Development Co. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,6 +35,7 @@
 #include <wtf/Platform.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/Vector.h>
 
 #if PLATFORM(WIN)
 #include <fcntl.h>
@@ -41,6 +43,8 @@
 #include <windows.h>
 #include <wtf/MathExtras.h>
 #endif
+
+#include <png.h>
 
 using namespace std;
 
@@ -59,30 +63,65 @@ static inline float strtof(const char* inputString, char** endptr)
 }
 #endif
 
+struct Buffer {
+    char * data;
+    unsigned int capacity;
+    unsigned int position;
+
+    Buffer()
+        : data(NULL)
+        , capacity(0)
+        , position(0) {
+    }
+
+    ~Buffer() {
+        delete data;
+    }
+
+    void append(unsigned char* bytes, unsigned int length) {
+        if (capacity < length + position) {
+            size_t newCapacity = length + position;
+            char * newBuffer = new char[newCapacity];
+            memcpy(newBuffer, data, position);
+            delete data;
+            data = newBuffer;
+            capacity = newCapacity;
+        }
+        memcpy(data + position, bytes, length);
+        position += length;
+    }
+
+    void readFromBuffer(unsigned char* bytes, unsigned int length) {
+        memcpy(bytes, data + position, length);
+        position += length;
+    }
+
+    void reset() {
+        capacity = position;
+        position = 0;
+    }
+};
+
 static cairo_status_t readFromData(void* closure, unsigned char* data, unsigned int length)
 {
-    CFMutableDataRef dataSource = reinterpret_cast<CFMutableDataRef>(closure);
-
-    CFRange range = CFRangeMake(0, length);
-    CFDataGetBytes(dataSource, range, data);
-    CFDataDeleteBytes(dataSource, range);
-
+    reinterpret_cast<Buffer*>(closure)->readFromBuffer(data, length);
     return CAIRO_STATUS_SUCCESS;
 }
 
 static cairo_surface_t* createImageFromStdin(int bytesRemaining)
 {
+    Buffer readBuffer;
     unsigned char buffer[s_bufferSize];
-    RetainPtr<CFMutableDataRef> data = adoptCF(CFDataCreateMutable(0, bytesRemaining));
 
     while (bytesRemaining > 0) {
         size_t bytesToRead = min(bytesRemaining, s_bufferSize);
         size_t bytesRead = fread(buffer, 1, bytesToRead, stdin);
-        CFDataAppendBytes(data.get(), buffer, static_cast<CFIndex>(bytesRead));
+        readBuffer.append(buffer, bytesRead);
         bytesRemaining -= static_cast<int>(bytesRead);
     }
 
-    return cairo_image_surface_create_from_png_stream (static_cast<cairo_read_func_t>(readFromData), data.get());
+    readBuffer.reset();
+    return cairo_image_surface_create_from_png_stream (static_cast<cairo_read_func_t>(readFromData), &readBuffer);
 }
 
 static void releaseMallocBuffer(void* data)
@@ -104,7 +143,7 @@ static inline void normalizeBuffer(float maxDistance, unsigned char* buffer, siz
         buffer[p] /= maxDistance;
 }
 
-static cairo_surface_t* createDifferenceImage(cairo_surface_t* baselineImage, cairo_surface_t* actualImage, float& difference)
+static unsigned char* createDifferenceImage(cairo_surface_t* baselineImage, cairo_surface_t* actualImage, float& difference)
 {
     size_t width = cairo_image_surface_get_width(baselineImage);
     size_t height = cairo_image_surface_get_height(baselineImage);
@@ -113,8 +152,8 @@ static cairo_surface_t* createDifferenceImage(cairo_surface_t* baselineImage, ca
     unsigned char* actualPixel = cairo_image_surface_get_data(actualImage);
 
     // Compare the content of the 2 bitmaps
-    void* diffBuffer = malloc(width * height);
-    unsigned char* diffPixel = reinterpret_cast<unsigned char*>(diffBuffer);
+    unsigned char* diffBuffer = reinterpret_cast<unsigned char*>(malloc(width * height));
+    unsigned char* diffPixel = diffBuffer;
 
     float count = 0;
     float sum = 0;
@@ -155,11 +194,8 @@ static cairo_surface_t* createDifferenceImage(cairo_surface_t* baselineImage, ca
 
     // Generate a normalized diff image
     normalizeBuffer(maxDistance, reinterpret_cast<unsigned char*>(diffBuffer), height * width);
-        
-    cairo_surface_t* diffImage = cairo_image_surface_create_for_data(diffPixel, CAIRO_FORMAT_ARGB32, width, height, width * s_bytesPerPixel); 
-    cairo_surface_set_user_data(diffImage, &s_imageDataKey, diffBuffer, releaseMallocBuffer);
     
-    return diffImage;
+    return diffBuffer;
 }
 
 static inline bool imageHasAlpha(cairo_surface_t* image)
@@ -167,13 +203,29 @@ static inline bool imageHasAlpha(cairo_surface_t* image)
     return (cairo_image_surface_get_format(image) == CAIRO_FORMAT_ARGB32);
 }
 
-static cairo_status_t writeToData(void* closure, unsigned char* data, unsigned int length)
+static void writeToVector(png_struct * png, png_byte * data, png_size_t length)
 {
-    CFMutableDataRef dataTarget = reinterpret_cast<CFMutableDataRef>(closure);
+    Vector<unsigned char>* in = reinterpret_cast<Vector<unsigned char>*>(png_get_io_ptr (png));
+    in->append(data, length);
+}
 
-    CFDataAppendBytes(dataTarget, data, length);
-
-    return CAIRO_STATUS_SUCCESS;
+void convert_grayscale_bmp_to_png(unsigned char * bmp, int width, int height, Vector<unsigned char> & imageData) {
+    png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    png_infop info = png_create_info_struct(png);
+    int bitsPixel = 8;
+    png_set_IHDR(png, info, width, height,
+             bitsPixel, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_NONE,
+             PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+    png_set_write_fn (png, &imageData, writeToVector, NULL);
+    png_write_info(png, info);
+    png_bytepp row_pointers = new png_bytep[height];
+    for (int y=0; y < height; y++){
+        row_pointers[y] = bmp + y * width;
+    }
+    png_write_image(png, row_pointers);
+    png_write_end(png, NULL);
+    delete [] row_pointers;
+    png_destroy_write_struct(&png, &info);
 }
 
 int main(int argc, const char* argv[])
@@ -217,7 +269,7 @@ int main(int argc, const char* argv[])
         }
 
         if (actualImage && baselineImage) {
-            cairo_surface_t* diffImage = 0;
+            unsigned char* diffImage = 0;
             float difference = 100.0;
             
             if ((cairo_image_surface_get_width(actualImage) == cairo_image_surface_get_width(baselineImage))
@@ -235,12 +287,10 @@ int main(int argc, const char* argv[])
                 
             if (difference > 0.0) {
                 if (diffImage) {
-                    RetainPtr<CFMutableDataRef> imageData = adoptCF(CFDataCreateMutable(0, 0));
-                    cairo_surface_write_to_png_stream(diffImage, (cairo_write_func_t)writeToData, imageData.get());
-                    printf("Content-Length: %lu\n", CFDataGetLength(imageData.get()));
-                    fwrite(CFDataGetBytePtr(imageData.get()), 1, CFDataGetLength(imageData.get()), stdout);
-                    cairo_surface_destroy(diffImage);
-                    diffImage = 0;
+                    Vector<unsigned char> imageData;
+                    convert_grayscale_bmp_to_png(diffImage, cairo_image_surface_get_width(actualImage), cairo_image_surface_get_height(actualImage), imageData);
+                    printf("Content-Length: %lu\n", imageData.size());
+                    fwrite(imageData.data(), 1, imageData.size(), stdout);
                 }
                 
                 fprintf(stdout, "diff: %01.2f%% failed\n", difference);
@@ -251,6 +301,8 @@ int main(int argc, const char* argv[])
             cairo_surface_destroy(baselineImage);
             actualImage = 0;
             baselineImage = 0;
+            if (diffImage)
+                free(diffImage);
         }
 
         fflush(stdout);
