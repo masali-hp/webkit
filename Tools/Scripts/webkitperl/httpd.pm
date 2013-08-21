@@ -76,7 +76,10 @@ $SIG{'TERM'} = 'handleInterrupt';
 sub getHTTPDPath
 {
     my $httpdPath;
-    if (isDebianBased()) {
+    if (isCygwin()) {
+        $httpdPath = "/usr/sbin/httpd2.exe";
+    }
+    elsif (isDebianBased()) {
         $httpdPath = "/usr/sbin/apache2";
     } else {
         $httpdPath = "/usr/sbin/httpd";
@@ -128,10 +131,8 @@ sub getDefaultConfigForTestDirectory
         push(@httpdArgs, "-c", "LockFile \"$httpdLockFile\"");
     }
 
-    # FIXME: Enable this on Windows once <rdar://problem/5345985> is fixed
-    # The version of Apache we use with Cygwin does not support SSL
     my $sslCertificate = "$testDirectory/http/conf/webkit-httpd.pem";
-    push(@httpdArgs, "-c", "SSLCertificateFile \"$sslCertificate\"") unless isCygwin();
+    push(@httpdArgs, "-c", "SSLCertificateFile \"$sslCertificate\"");
 
     return @httpdArgs;
 
@@ -148,13 +149,7 @@ sub getHTTPDConfigPathForTestDirectory
     my $apacheVersion = getApacheVersion();
 
     if (isCygwin()) {
-        my $libPHP4DllPath = "/usr/lib/apache/libphp4.dll";
-        # FIXME: run-webkit-tests should not modify the user's system, especially not in this method!
-        unless (-x $libPHP4DllPath) {
-            copy("$httpdConfDirectory/libphp4.dll", $libPHP4DllPath);
-            chmod(0755, $libPHP4DllPath);
-        }
-        $httpdConfig = "cygwin-httpd.conf";  # This is an apache 1.3 config.
+        $httpdConfig = "apache2-cygwin-httpd.conf";
     } elsif (isDebianBased()) {
         $httpdConfig = "apache2-debian-httpd.conf";
     } elsif (isFedoraBased()) {
