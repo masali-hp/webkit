@@ -82,6 +82,7 @@
     WEB_GEOLOCATION(macro) \
     macro(WebSerializedJSValue) \
     macro(WebUserContentURLPattern) \
+    macro(WebNetworkConfiguration) \
     // end of macro
 
 // Everything below this point is deprecated. Please do not use.
