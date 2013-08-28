@@ -154,7 +154,6 @@ set(WTF_SOURCES
     DataLog.cpp
     DecimalNumber.cpp
     DynamicAnnotations.cpp
-    FastMalloc.cpp
     FilePrintStream.cpp
     FunctionDispatcher.cpp
     GregorianDateTime.cpp
@@ -258,6 +257,29 @@ else ()
         OSAllocatorPosix.cpp
         ThreadIdentifierDataPthreads.cpp
         ThreadingPthreads.cpp
+    )
+endif ()
+
+if(PLATFORM MATCHES "HP")
+    list(APPEND WTF_HEADERS
+        hp/HPWebkitMalloc.h
+        hp/HPWebkitOS.h
+    )
+    list(APPEND WTF_SOURCES
+        hp/HPWebkitMalloc.cpp
+        hp/HPWebkitOS.cpp
+    )
+    list(APPEND WTF_LIBRARIES
+        HP.Common.System.OS
+    )
+    list(APPEND WTF_INCLUDE_DIRECTORIES
+        "${WTF_DIR}/wtf/hp"
+        "${3RDPARTY_DIR}/../HP"
+        "${3RDPARTY_DIR}/../HP/HPCommonSystemOS"
+    )
+else ()
+    list(APPEND WTF_SOURCES
+        FastMalloc.cpp
     )
 endif ()
 

@@ -124,7 +124,7 @@ if %ENABLE_SVG% == "ON" (set BUILD_DIR=%BUILD_DIR%-svg)
 if %USE_WININET% EQU 1 (set BUILD_DIR=%BUILD_DIR%-wininet)
 
 if %USE_HP% EQU 1 (
-    set PLATFORM=-DPLATFORM=HP_JEDI
+    set PLATFORM=-DPLATFORM=HP
 )
 
 set REL_PATH=..\Source\WebCore

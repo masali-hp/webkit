@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 Brent Fulgham.  All rights reserved.
  * Copyright (C) 2009 Google Inc.  All rights reserved.
+ * Copyright (C) 2013 Hewlett-Packard Development Company
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are

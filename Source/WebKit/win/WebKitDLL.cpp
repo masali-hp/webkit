@@ -46,7 +46,10 @@ using namespace WebCore;
 
 ULONG gLockCount;
 ULONG gClassCount;
-HashCountedSet<String> gClassNameCount;
+
+HashCountedSet<String> *pgClassNameCount = NULL;
+
+
 HINSTANCE gInstance;
 
 #define CLSID_FOR_CLASS(cls) CLSID_##cls,
@@ -83,6 +86,9 @@ STDAPI_(BOOL) DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID /*lpRe
 
 STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
+    if(!pgClassNameCount)
+        pgClassNameCount = new HashCountedSet<String>();
+
     bool found = false;
     for (size_t i = 0; i < WTF_ARRAY_LENGTH(gRegCLSIDs); ++i) {
         if (IsEqualGUID(rclsid, gRegCLSIDs[i])) {

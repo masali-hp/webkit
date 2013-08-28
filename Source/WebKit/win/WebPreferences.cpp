@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc.  All rights reserved.
+ * Copyright (C) 2013 Hewlett-Packard Development Company.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -109,13 +110,10 @@ static bool booleanValueForPreferencesValue(CFPropertyListRef value)
 
 // WebPreferences ----------------------------------------------------------------
 
-#if USE(CF)
-static CFDictionaryRef defaultSettings;
-#else
-static HashMap<WTF::String, WTF::String> *defaultSettings = NULL;
-#endif
 
-static HashMap<WTF::String, COMPtr<WebPreferences> > webPreferencesInstances;
+static HashMap<WTF::String, WTF::String> *defaultSettings = NULL;
+static HashMap<WTF::String, COMPtr<WebPreferences> > *webPreferencesInstances = NULL;
+
 
 WebPreferences* WebPreferences::sharedStandardPreferences()
 {
@@ -143,6 +141,8 @@ WebPreferences::WebPreferences()
 {
     gClassCount++;
     gClassNameCount.add("WebPreferences");
+    webPreferencesInstances = new HashMap<WTF::String, COMPtr<WebPreferences>>();
+
 }
 
 WebPreferences::~WebPreferences()
@@ -174,7 +174,8 @@ WebPreferences* WebPreferences::getInstanceForIdentifier(BSTR identifier)
         return sharedStandardPreferences();
 
     WTF::String identifierString(identifier, SysStringLen(identifier));
-    return webPreferencesInstances.get(identifierString).get();
+    return webPreferencesInstances->get(identifierString).get();
+
 }
 
 void WebPreferences::setInstance(WebPreferences* instance, BSTR identifier)
@@ -182,18 +183,19 @@ void WebPreferences::setInstance(WebPreferences* instance, BSTR identifier)
     if (!identifier || !instance)
         return;
     WTF::String identifierString(identifier, SysStringLen(identifier));
-    webPreferencesInstances.add(identifierString, instance);
+    webPreferencesInstances->add(identifierString, instance);
+
 }
 
 void WebPreferences::removeReferenceForIdentifier(BSTR identifier)
 {
-    if (!identifier || webPreferencesInstances.isEmpty())
+    if (!identifier || webPreferencesInstances->isEmpty())
         return;
 
     WTF::String identifierString(identifier, SysStringLen(identifier));
-    WebPreferences* webPreference = webPreferencesInstances.get(identifierString).get();
+    WebPreferences* webPreference = webPreferencesInstances->get(identifierString).get();
     if (webPreference && webPreference->m_refCount == 1)
-        webPreferencesInstances.remove(identifierString);
+        webPreferencesInstances->remove(identifierString);
 }
 
 void WebPreferences::initializeDefaultSettings()

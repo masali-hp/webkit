@@ -48,7 +48,9 @@ extern "C" {
 
 extern ULONG gLockCount;
 extern ULONG gClassCount;
-extern HashCountedSet<WTF::String> gClassNameCount;
+// Allocating memory during DLL loading is not allowed.
+extern HashCountedSet<WTF::String> *pgClassNameCount;
+#define gClassNameCount (*pgClassNameCount)
 extern HINSTANCE gInstance;
 extern CLSID gRegCLSIDs[];
 

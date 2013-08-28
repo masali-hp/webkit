@@ -145,9 +145,9 @@ WTF_EXPORT_PRIVATE void WTFInvokeCrashHook();
 */
 #if PLATFORM(HP)
 #define CRASH_WITH_ERROR_CODE(code) \
-    do { HPFatalError((code), __FILE__, __LINE__); } while(0)
+    HPFatalError((code), __FILE__, __LINE__)
 #define CRASH() \
-    do { HPFatalError(HP_WEBKIT_FATAL_ERROR_UNKNOWN, __FILE__, __LINE__); } while(0)
+    HPFatalError(HP_WEBKIT_FATAL_ERROR_UNKNOWN, __FILE__, __LINE__)
 #endif
 
 #if COMPILER(CLANG)
@@ -239,7 +239,7 @@ while (0)
 
 #define ASSERT_NOT_REACHED() do { \
     HPWebkitAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, 0); \
-    CRASH_WITH_ERROR_CODE(HP_FATAL_ERROR_ASSERT_FAILURE); \
+    CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_ERROR_ASSERT_FAILURE); \
 } while (0)
 
 #else
