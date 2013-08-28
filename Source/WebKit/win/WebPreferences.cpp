@@ -111,7 +111,11 @@ static bool booleanValueForPreferencesValue(CFPropertyListRef value)
 // WebPreferences ----------------------------------------------------------------
 
 
+#if USE(CF)
+static CFDictionaryRef defaultSettings;
+#else
 static HashMap<WTF::String, WTF::String> *defaultSettings = NULL;
+#endif
 static HashMap<WTF::String, COMPtr<WebPreferences> > *webPreferencesInstances = NULL;
 
 

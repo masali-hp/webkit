@@ -7,13 +7,13 @@ if (PORT_FLAVOR)
 endif ()
 
 if (${PLATFORM} MATCHES "HP")
-  INCLUDE_DIRECTORIES(${3RDPARTY_DIR}/../HP)
-  ADD_SUBDIRECTORY(${3RDPARTY_DIR}/../HP/HPCommonSystemOS "${CMAKE_CURRENT_BINARY_DIR}/HP")
-endif()
+  include_directories(${3RDPARTY_DIR}/../HP)
+  add_subdirectory(${3RDPARTY_DIR}/../HP/HPCommonSystemOS "${CMAKE_CURRENT_BINARY_DIR}/HP")
+endif ()
 
 if (PLATFORM)
-  ADD_DEFINITIONS(-DWTF_PLATFORM_${PLATFORM}=1)
-endif()
+  add_definitions(-DWTF_PLATFORM_${PLATFORM}=1)
+endif ()
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES ARM)
     if (ARM_ARCH_VERSION)
