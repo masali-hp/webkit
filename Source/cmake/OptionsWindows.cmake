@@ -24,4 +24,9 @@ if (MSVC)
         set(CMAKE_C_FLAGS "/MP ${CMAKE_C_FLAGS}")
         set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}")
     endif ()
+
+    foreach (flag_var CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS)
+        # Disable the import/export warning, generate .map files
+        set(${flag_var} "${${flag_var}} /ignore:4049 /MAP")
+    endforeach (flag_var)
 endif ()
