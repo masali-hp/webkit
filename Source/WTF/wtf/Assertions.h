@@ -226,20 +226,20 @@ inline void assertUnused(T& x) { (void)x; }
 #define ASSERT(assertion) do \
     if (!(assertion)) { \
         HPWebkitAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion); \
-        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_ERROR_ASSERT_FAILURE); \
+        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_DEBUG_ASSERT); \
     } \
 while (0)
 
 #define ASSERT_AT(assertion, file, line, function) do  \
     if (!(assertion)) { \
         HPWebkitAssertionFailed(file, line, function, #assertion); \
-        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_ERROR_ASSERT_FAILURE); \
+        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_DEBUG_ASSERT); \
     } \
 while (0)
 
 #define ASSERT_NOT_REACHED() do { \
     HPWebkitAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, 0); \
-    CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_ERROR_ASSERT_FAILURE); \
+    CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_DEBUG_ASSERT); \
 } while (0)
 
 #else
@@ -299,7 +299,7 @@ while (0)
     if (!(assertion)) { \
         HP_TRACE_FATAL(__VA_ARGS__);    \
         HPWebkitAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion); \
-        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_ERROR_ASSERT_FAILURE); \
+        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_DEBUG_ASSERT); \
     } \
 while (0)
 #else
@@ -323,7 +323,7 @@ inline void assertWithMessageUnused(T& x) { (void)x; }
     if (!(assertion)) { \
         HP_TRACE_FATAL(__VA_ARGS__);    \
         HPWebkitAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion); \
-        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_ERROR_ASSERT_FAILURE); \
+        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_DEBUG_ASSERT); \
     } \
 while (0)
 #else
@@ -350,7 +350,7 @@ while (0)
 #define ASSERT_ARG(argName, assertion) do \
     if (!(assertion)) { \
         HPWebkitArgumentAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #argName, #assertion); \
-        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_ERROR_ASSERT_FAILURE); \
+        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_DEBUG_ASSERT); \
     } \
 while (0)
 

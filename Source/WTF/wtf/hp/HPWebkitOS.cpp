@@ -16,7 +16,7 @@
  */
 
 
-#include <wtf/Platform.h>
+#include <config.h>
 
 #if PLATFORM(HP)
 #include <windows.h>
@@ -51,10 +51,6 @@ void HPWebkitAssertionFailed(const char* file, int line, const char* function, c
     wbuff[255] = 0;
     OutputDebugStringW(wbuff);
     HPWriteToLogW(wbuff, HP_WEBKIT_TRACE_ERROR);
-
-    // How do we detect if we're running under HP?
-	// If we are not running under HP we want to assert here.
-	// If we are running under HP we want to continue.
 }
 
 void HPWebkitArgumentAssertionFailed(const char* file, int line, const char* function, const char* argument, const char* assertion)
@@ -68,10 +64,6 @@ void HPWebkitArgumentAssertionFailed(const char* file, int line, const char* fun
     wbuff[255] = 0;
     OutputDebugStringW(wbuff);
     HPWriteToLogW(wbuff, HP_WEBKIT_TRACE_ERROR);
-
-    // How do we detect if we're running under HP?
-	// If we are not running under HP we want to assert here.
-	// If we are running under HP we want to continue.
 }
 
 void HPWriteToLogA(const char * buffer, int trace_level)

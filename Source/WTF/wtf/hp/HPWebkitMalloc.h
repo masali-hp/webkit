@@ -18,9 +18,11 @@
 #ifndef _HP_WEBKIT_MALLOC_H
 #define _HP_WEBKIT_MALLOC_H
 
-#include <HPWebkitAllocIds.h>
+#if !PLATFORM(HP)
+#error HP malloc routines are only supported when compiling with PLATFORM HP
+#endif
 
-#if PLATFORM(HP)
+#include <HPWebkitAllocIds.h>
 
 void * HPAlloc(size_t n, unsigned int alloc_id);
 void * HPTryAlloc(size_t n, unsigned int alloc_id);
@@ -36,5 +38,4 @@ void HPGetMemoryStats(size_t * consumed, size_t * available, size_t * highWater,
 void HPOutputMemoryDebug(const char * info);
 void HPOutputMemoryUsage(bool showPoolStats, bool showOther, HPMemoryOutputFunc method);
 void HPRegisterMemoryDebug(HPMemoryDebugFunc method);
-#endif
 #endif

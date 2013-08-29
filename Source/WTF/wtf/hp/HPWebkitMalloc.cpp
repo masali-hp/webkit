@@ -327,8 +327,7 @@ static void HandleOutOfMemory(size_t bytes_requested, int line)
 
     handlingOutOfMemory = false;
 
-    CRASH_WITH_ERROR_CODE(0x49DE02);
-
+    CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_ERROR_MEMORYOUT);
 }
 
 namespace WTF {

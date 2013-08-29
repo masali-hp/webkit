@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2010 Hewlett-Packard Development Company, L.P.
+ * (C) Copyright 2013 Hewlett-Packard Development Company, L.P.
  * This program is free software; you can redistribute it and/or modify it under the
  * terms of version 2.1 of the GNU Lesser General Public License as published by the
  * Free Software Foundation.
@@ -18,34 +18,31 @@
 #ifndef _HP_WEBKIT_OS
 #define _HP_WEBKIT_OS
 
-#if PLATFORM(HP)
+#if !PLATFORM(HP)
+#error HP OS routines are only supported when compiling with PLATFORM HP
+#endif
 
 #include "HPCommonSystemOS/Diagnostics/HPTrace.h"
 
 // Contains non-memory related definitions for methods in the
 // HP OS layer (HP.Common.System.OS.dll).
 // Memory related definitions are in HPWebkitMalloc.h
-// Be sure to notify David Smith and update
-// <HP SCM Root>\Source\HP\Mfp\App\Framework\ServiceLogs\MasterConfig\FirmwareErrorStatus.xlsx
-// if any new usages of HPFatalError occur within WebKit.
+//
+// If any new error codes are added Rosetta needs to be updated
+// with the new error codes.
+//
 // Currently these are the usages:
+//  0x49DE00 - Assert Failure (Debug Builds Only)
 //  0x49DE01 - HP Memory Manager Pool Exhausted
-//  0x49DE02 - General WebKit Assert Failure
+//  0x49DE02 - General WebKit Crash
 
 #define HP_WEBKIT_FATAL_ERROR_BASE_CODE      (0x49de00ul)
 
+#define HP_WEBKIT_FATAL_DEBUG_ASSERT         (HP_WEBKIT_FATAL_ERROR_BASE_CODE | 0x00)
 #define HP_WEBKIT_FATAL_ERROR_MEMORYOUT      (HP_WEBKIT_FATAL_ERROR_BASE_CODE | 0x01)
-#define HP_WEBKIT_FATAL_ERROR_ASSERT_FAILURE (HP_WEBKIT_FATAL_ERROR_BASE_CODE | 0x02)
-#define HP_WEBKIT_FATAL_ERROR_UNKNOWN        (HP_WEBKIT_FATAL_ERROR_BASE_CODE | 0x03)
-#define HP_WEBKIT_FATAL_ERROR_OVERFLOW       (HP_WEBKIT_FATAL_ERROR_BASE_CODE | 0x04)
+#define HP_WEBKIT_FATAL_ERROR_UNKNOWN        (HP_WEBKIT_FATAL_ERROR_BASE_CODE | 0x02)
 
 void HPFatalError(unsigned long crashcode, const char * fileName, int lineNumber);
-#define HP_FATAL_ERROR(code) HPFatalError(code, __FILE__, __LINE__);
-
-// Custom HP webkit method that we can use to continue in the product 
-// (because many assertions occur because we can't guarantee
-//  thread IDs will be consistent between calls) but break
-// in the standalone webkit development environment.
 void HPWebkitAssertionFailed(const char* file, int line, const char* function, const char* assertion);
 void HPWebkitArgumentAssertionFailed(const char* file, int line, const char* function, const char* argument, const char* assertion);
 
@@ -67,15 +64,21 @@ extern HP::Common::System::OS::Diagnostics::HPTrace _TraceFactory;
 // These methods are also available to write to the HP system main log file,
 // but more care must be taken in using them - the format string must not
 // contain unintended % characters.
+#if defined(DEBUG) || !defined(NDEBUG)
 #define HP_TRACE_DEBUG(...) _TraceFactory.WriteDebugV(__VA_ARGS__)
 #define HP_TRACE_INFO(...)  _TraceFactory.WriteInfoV(__VA_ARGS__)
 #define HP_TRACE_PERF(...)  _TraceFactory.WritePerfV(__VA_ARGS__)
+#else
+// In release builds these macros are disabled.
+#define HP_TRACE_DEBUG(...)
+#define HP_TRACE_INFO(...)
+#define HP_TRACE_PERF(...)
+#endif
 
-//Currently WARN, ERROR and FATAL are all avaliable, but they
-//  may be OFF.
+// Currently WARN, ERROR and FATAL are all available, but they
+// may be OFF.
 #define HP_TRACE_WARN(...)  _TraceFactory.WriteWarnV(__VA_ARGS__)
 #define HP_TRACE_ERROR(...) _TraceFactory.WriteErrorV(__VA_ARGS__)
 #define HP_TRACE_FATAL(...) _TraceFactory.WriteFatalV(__VA_ARGS__)
 
-#endif
 #endif
