@@ -554,3 +554,8 @@ EXPORTS
         ?updateIndexingType@ArrayAllocationProfile@JSC@@QAEXXZ
         ?visitChildren@JSObject@JSC@@SAXPAVJSCell@2@AAVSlotVisitor@2@@Z
         ?weakClearSlowCase@JSC@@YAXAAPAVWeakImpl@1@@Z
+#if PLATFORM(HP)
+        ?HPFatalError@@YAXKPBDH@Z
+        ?HPWebkitAssertionFailed@@YAXPBDH00@Z
+        ?HPWebkitArgumentAssertionFailed@@YAXPBDH000@Z
+#endif
