@@ -2768,8 +2768,7 @@ if (WTF_USE_ICU_UNICODE)
     )
 elseif (WTF_USE_WCHAR_UNICODE)
     list(APPEND WebCore_SOURCES
-        platform/text/TextEncodingDetectorNone.cpp
-
+        platform/text/TextEncodingDetectorBasic.cpp
         platform/text/wchar/TextBreakIteratorWchar.cpp
     )
 endif ()

@@ -99,7 +99,6 @@ list(APPEND WebCore_SOURCES
     platform/win/WheelEventWin.cpp
 
     platform/text/LocaleNone.cpp
-    platform/text/TextEncodingDetectorNone.cpp
 )
 
 if (WTF_USE_CF)
@@ -200,7 +199,6 @@ if (WTF_USE_ICU_UNICODE)
 elseif (WTF_USE_WCHAR_UNICODE)
     list(APPEND WebCore_SOURCES
         platform/text/LocaleNone.cpp
-        platform/text/TextEncodingDetectorNone.cpp
         platform/text/wchar/TextBreakIteratorWchar.cpp
         platform/text/win/TextCodecWin.cpp
     )
@@ -354,8 +352,6 @@ elseif (WINOS MATCHES CE)
     list (APPEND WebCore_SOURCES
         platform/graphics/win/GDIExtras.cpp
         platform/graphics/wince/FontWince.cpp
-        platform/text/TextEncodingDetectorNone.cpp
-        platform/text/wchar/TextBreakIteratorWchar.cpp
     )
 
     if (WTF_PLATFORM_WIN_CAIRO)

@@ -4787,6 +4787,8 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
 
     Settings* settings = m_page->settings();
 
+    settings->setUsesEncodingDetector(true);
+
     hr = preferences->cursiveFontFamily(&str);
     if (FAILED(hr))
         return hr;
