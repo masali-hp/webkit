@@ -32,6 +32,10 @@
 #include "WebView.h"
 
 #include <shlobj.h>
+#if OS(WINCE)
+#include <ole2.h>
+#include <wince/DragDropManager.h>
+#endif
 
 #include <WebCore/ClipboardWin.h>
 #include <WebCore/DragController.h>
@@ -129,22 +133,25 @@ void WebDragClient::startDrag(DragImageRef image, const IntPoint& imageOrigin, c
     dataObject = static_cast<ClipboardWin*>(clipboard)->dataObject();
     if (source && (image || dataObject)) {
         if (image) {
+            SHDRAGIMAGE sdi;
+            BITMAP b;
+            GetObject(image, sizeof(BITMAP), &b);
+            sdi.sizeDragImage.cx = b.bmWidth;
+            sdi.sizeDragImage.cy = b.bmHeight;
+            sdi.crColorKey = 0xffffffff;
+            sdi.hbmpDragImage = image;
+            sdi.ptOffset.x = dragPoint.x() - imageOrigin.x();
+            sdi.ptOffset.y = dragPoint.y() - imageOrigin.y();
+            if (isLink)
+                sdi.ptOffset.y = b.bmHeight - sdi.ptOffset.y;
+#if OS(WINCE)
+            WinCE_SetDragImageForDataObject(&sdi, dataObject.get());
+#else
             if(SUCCEEDED(CoCreateInstance(CLSID_DragDropHelper, 0, CLSCTX_INPROC_SERVER,
                 IID_IDragSourceHelper,(LPVOID*)&helper))) {
-                BITMAP b;
-                GetObject(image, sizeof(BITMAP), &b);
-                SHDRAGIMAGE sdi;
-                sdi.sizeDragImage.cx = b.bmWidth;
-                sdi.sizeDragImage.cy = b.bmHeight;
-                sdi.crColorKey = 0xffffffff;
-                sdi.hbmpDragImage = image;
-                sdi.ptOffset.x = dragPoint.x() - imageOrigin.x();
-                sdi.ptOffset.y = dragPoint.y() - imageOrigin.y();
-                if (isLink)
-                    sdi.ptOffset.y = b.bmHeight - sdi.ptOffset.y;
-
                 helper->InitializeFromBitmap(&sdi, dataObject.get());
             }
+#endif
         }
 
         DWORD okEffect = draggingSourceOperationMaskToDragCursors(m_webView->page()->dragController()->sourceDragOperation());

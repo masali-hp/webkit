@@ -193,6 +193,11 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/StringConcatenate.h>
 
+#if ENABLE(DRAG_SUPPORT) && OS(WINCE)
+#include <ole2.h>
+#include <wince/DragDropManager.h>
+#endif
+
 // Soft link functions for gestures and panning feedback
 SOFT_LINK_LIBRARY(USER32);
 SOFT_LINK_OPTIONAL(USER32, GetGestureInfo, BOOL, WINAPI, (HGESTUREINFO, PGESTUREINFO));
@@ -418,7 +423,7 @@ WebView::WebView()
 
     m_backingStoreSize.cx = m_backingStoreSize.cy = 0;
 
-#if ENABLE(DRAG_SUPPORT)
+#if ENABLE(DRAG_SUPPORT) && !OS(WINCE)
     CoCreateInstance(CLSID_DragDropHelper, 0, CLSCTX_INPROC_SERVER, IID_IDropTargetHelper,(void**)&m_dropTargetHelper);
 #endif
 
@@ -5366,8 +5371,10 @@ HRESULT STDMETHODCALLTYPE WebView::DragEnter(
 {
     m_dragData = 0;
 
+#if !OS(WINCE)
     if (m_dropTargetHelper)
         m_dropTargetHelper->DragEnter(m_viewWindow, pDataObject, (POINT*)&pt, *pdwEffect);
+#endif
 
     POINTL localpt = pt;
     ::ScreenToClient(m_viewWindow, (LPPOINT)&localpt);
@@ -5384,8 +5391,10 @@ HRESULT STDMETHODCALLTYPE WebView::DragEnter(
 HRESULT STDMETHODCALLTYPE WebView::DragOver(
         DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
 {
+#if !OS(WINCE)
     if (m_dropTargetHelper)
         m_dropTargetHelper->DragOver((POINT*)&pt, *pdwEffect);
+#endif
 
     if (m_dragData) {
         POINTL localpt = pt;
@@ -5402,8 +5411,10 @@ HRESULT STDMETHODCALLTYPE WebView::DragOver(
 
 HRESULT STDMETHODCALLTYPE WebView::DragLeave()
 {
+#if !OS(WINCE)
     if (m_dropTargetHelper)
         m_dropTargetHelper->DragLeave();
+#endif
 
     if (m_dragData) {
         DragData data(m_dragData.get(), IntPoint(), IntPoint(), 
@@ -5417,8 +5428,10 @@ HRESULT STDMETHODCALLTYPE WebView::DragLeave()
 HRESULT STDMETHODCALLTYPE WebView::Drop(
         IDataObject* pDataObject, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
 {
+#if !OS(WINCE)
     if (m_dropTargetHelper)
         m_dropTargetHelper->Drop(pDataObject, (POINT*)&pt, *pdwEffect);
+#endif
 
     m_dragData = 0;
     *pdwEffect = m_lastDropEffect;

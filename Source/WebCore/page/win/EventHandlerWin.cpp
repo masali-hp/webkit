@@ -43,9 +43,7 @@
 #include "WCDataObject.h"
 #include "NotImplemented.h"
 
-#if OS(WINCE)
-#include "Clipboard.h"
-#else
+#if ENABLE(DRAG_SUPPORT)
 #include "ClipboardWin.h"
 #endif
 
@@ -98,13 +96,9 @@ bool EventHandler::eventActivatedView(const PlatformMouseEvent& event) const
 #if ENABLE(DRAG_SUPPORT)
 PassRefPtr<Clipboard> EventHandler::createDraggingClipboard() const
 {
-#if OS(WINCE)
-    return 0;
-#else
     COMPtr<WCDataObject> dataObject;
     WCDataObject::createInstance(&dataObject);
     return ClipboardWin::create(Clipboard::DragAndDrop, dataObject.get(), ClipboardWritable, m_frame);
-#endif
 }
 #endif
 

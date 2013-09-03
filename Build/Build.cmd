@@ -21,6 +21,7 @@ rem    echo    -jssharedcore   Build JavaScriptCore as a DLL
     echo    -usewinceport   Use the webkit.org wince standard webkit port
     echo    -usewininet     Use wininet ^(instead of CURL^)
     echo    -enablesvg      Enable Scalable Vector Graphics ^(SVG^) support
+    echo    -disabledrag     Disable drag and drop support
     exit /b 1
 )
 
@@ -68,6 +69,8 @@ set ENABLE_SVG=OFF
 rem With -jssharedcore build JSC as a dll
 rem set DJSSHARED_CORE=0
 rem set DWTF_USE_EXPORT_MACROS=0
+
+set ENABLE_DRAG=ON
 
 set CPU_SPECIFIC=
 
@@ -119,9 +122,10 @@ if %USE_HP% EQU 1 (set BUILD_DIR=hp-%PORT%) else (set BUILD_DIR=webkit-%PORT%)
 if %USE_CAIRO% EQU 1 (set BUILD_DIR=%BUILD_DIR%-cairo)
 if %USE_CF% EQU 1 (set BUILD_DIR=%BUILD_DIR%-cf)
 if %USE_ICU_UNICODE% EQU 1 (set BUILD_DIR=%BUILD_DIR%-icu)
-if %ENABLE_JIT% == "OFF" (set BUILD_DIR=%BUILD_DIR%-nojit)
-if %ENABLE_SVG% == "ON" (set BUILD_DIR=%BUILD_DIR%-svg)
+if %ENABLE_JIT% == OFF (set BUILD_DIR=%BUILD_DIR%-nojit)
+if %ENABLE_SVG% == ON (set BUILD_DIR=%BUILD_DIR%-svg)
 if %USE_WININET% EQU 1 (set BUILD_DIR=%BUILD_DIR%-wininet)
+if %ENABLE_DRAG% == OFF (set BUILD_DIR=%BUILD_DIR%-nodrag)
 
 if %USE_HP% EQU 1 (
     set PLATFORM=-DPLATFORM=HP
@@ -148,14 +152,13 @@ if %USE_CACHE% == "NO" (
 
 cmake -G %GENERATOR% ^
  -D3RDPARTY_DIR=D:\git\webkit\OpenSource ^
- -DBUILD_WIN_LAUNCHER_AS_EXE=1 ^
  -DPORT=%PORT% ^
  -DPORT_FLAVOR=%PORT_FLAVOR% ^
  %PLATFORM% ^
  %CPU_SPECIFIC% ^
  -DENABLE_ACCESSIBILITY=OFF ^
  -DENABLE_CONTEXT_MENUS=OFF ^
- -DENABLE_DRAG_SUPPORT=OFF ^
+ -DENABLE_DRAG_SUPPORT=%ENABLE_DRAG% ^
  -DENABLE_FTPDIR=OFF ^
  -DENABLE_GEOLOCATION=OFF ^
  -DENABLE_HIGH_DPI_CANVAS=OFF ^
@@ -238,6 +241,9 @@ rem )
 )
 @if /I "%1" == "-enablesvg" (
     set ENABLE_SVG=ON
+)
+@if /I "%1" == "-disabledrag" (
+    set ENABLE_DRAG=OFF
 )
 
 goto :eof

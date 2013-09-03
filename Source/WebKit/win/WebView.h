@@ -1133,7 +1133,9 @@ protected:
     // WebCore dragging logic needs to be able to inspect the drag data
     // this is updated in DragEnter/Leave/Drop
     COMPtr<IDataObject> m_dragData;
+#if !OS(WINCE)
     COMPtr<IDropTargetHelper> m_dropTargetHelper;
+#endif
 #endif
     UChar m_currentCharacterCode;
     bool m_isBeingDestroyed;
