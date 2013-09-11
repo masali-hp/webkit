@@ -39,13 +39,22 @@
 #include <sys/stat.h>
 #endif
 
+#if PLATFORM(HP)
+#include <hp/HPWebkitMalloc.h>
+#endif
+
 namespace WTF {
 
 static const size_t ramSizeGuess = 128 * MB;
 
 static size_t computeRAMSize()
 {
-#if OS(DARWIN)
+#if PLATFORM(HP)
+    size_t consumed;
+    size_t available;
+    HPGetMemoryStats(&consumed, &available, NULL, NULL, NULL);
+    return consumed + available;
+#elif OS(DARWIN)
     int mib[2];
     uint64_t ramSize;
     size_t length;
