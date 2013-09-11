@@ -50,6 +50,10 @@
 #include "qcms.h"
 #endif
 
+#if PLATFORM(HP)
+#include <wtf/hp/HPWebkitMalloc.h>
+#endif
+
 #if defined(PNG_LIBPNG_VER_MAJOR) && defined(PNG_LIBPNG_VER_MINOR) && (PNG_LIBPNG_VER_MAJOR > 1 || (PNG_LIBPNG_VER_MAJOR == 1 && PNG_LIBPNG_VER_MINOR >= 4))
 #define JMPBUF(png_ptr) png_jmpbuf(png_ptr)
 #else
@@ -105,6 +109,18 @@ static void PNGAPI pngComplete(png_structp png, png_infop)
     static_cast<PNGImageDecoder*>(png_get_progressive_ptr(png))->pngComplete();
 }
 
+#if PLATFORM(HP)
+void * PNGAPI pngMalloc(png_structp png_ptr, png_uint_32 size)
+{
+    return HPAlloc(size, WEBKIT_JEDI_LIBPNG);
+}
+
+void PNGAPI pngFree(png_structp png_ptr, png_voidp ptr)
+{
+    HPFree(ptr);
+}
+#endif
+
 class PNGImageReader {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -119,7 +135,11 @@ public:
         , m_rowBuffer()
 #endif
     {
+#if PLATFORM(HP)
+        m_png = png_create_read_struct_2(PNG_LIBPNG_VER_STRING, 0, decodingFailed, decodingWarning, 0, (png_malloc_ptr) pngMalloc, pngFree);
+#else
         m_png = png_create_read_struct(PNG_LIBPNG_VER_STRING, 0, decodingFailed, decodingWarning);
+#endif
         m_info = png_create_info_struct(m_png);
         png_set_progressive_read_fn(m_png, decoder, headerAvailable, rowAvailable, pngComplete);
     }
