@@ -1169,10 +1169,15 @@ void WebView::paint(HDC dc, LPARAM options)
 
     m_paintCount--;
 
+#if !PLATFORM(HP)
+    // Don't delete the backing store... we want to be able to get screen dumps even if the web view isn't presently visible.
+    // We may have to revisit this as it will use more memory.
+    // Unfortunately, CE doesn't know about the WM_PRINTCLIENT message, which is how DRT does this.
     if (active())
         cancelDeleteBackingStoreSoon();
     else
         deleteBackingStoreSoon();
+#endif
 }
 
 void WebView::paintIntoBackingStore(FrameView* frameView, HDC bitmapDC, const IntRect& dirtyRect, WindowsToPaint windowsToPaint)
@@ -1225,6 +1230,17 @@ void WebView::paintIntoBackingStore(FrameView* frameView, HDC bitmapDC, const In
         frameView->paint(&gc, dirtyRect);
         if (m_shouldInvertColors)
             gc.fillRect(dirtyRect, Color::white, ColorSpaceDeviceRGB, CompositeDifference);
+
+#if OS(WINCE) && ENABLE(INSPECTOR)
+        // WinCE does not support layered/transparent windows,
+        // so we just draw the highlighted node as part of the
+        // WebView paint.
+        // Normally this is drawing is down with a separate transparent
+        // layered child window in WebNodeHighlight.cpp.
+        if (frameView->frame()->page()->inspectorController()->highlightedNode()) {
+            frameView->frame()->page()->inspectorController()->drawHighlight(gc);
+        }
+#endif
     }
     gc.restore();
 }
@@ -3492,7 +3508,7 @@ static void systemParameterChanged(WPARAM parameter)
 void WebView::windowReceivedMessage(HWND, UINT message, WPARAM wParam, LPARAM)
 {
     switch (message) {
-#if !OS(WINCE)
+#if !OS(WINCE) && !PLATFORM(HP)
     case WM_NCACTIVATE:
         updateActiveStateSoon();
         if (!wParam)
@@ -4768,12 +4784,12 @@ HRESULT STDMETHODCALLTYPE WebView::onNotify(
 
 HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
 {
+#define ASSERT_HR_SUCCESS(x) { ASSERT(SUCCEEDED(x)); if (FAILED(x)) CRASH(); }
     HRESULT hr;
 
     COMPtr<IUnknown> unkPrefs;
     hr = notification->getObject(&unkPrefs);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
 
     COMPtr<IWebPreferences> preferences(Query, unkPrefs);
     if (!preferences)
@@ -4790,60 +4806,50 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     settings->setUsesEncodingDetector(true);
 
     hr = preferences->cursiveFontFamily(&str);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setCursiveFontFamily(toAtomicString(str));
     str.clear();
 
     hr = preferences->defaultFixedFontSize(&size);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setDefaultFixedFontSize(size);
 
     hr = preferences->defaultFontSize(&size);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setDefaultFontSize(size);
 
     hr = preferences->defaultTextEncodingName(&str);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setDefaultTextEncodingName(toString(str));
     str.clear();
 
     hr = preferences->fantasyFontFamily(&str);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setFantasyFontFamily(toAtomicString(str));
     str.clear();
 
     hr = preferences->fixedFontFamily(&str);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setFixedFontFamily(toAtomicString(str));
     str.clear();
 
 #if ENABLE(VIDEO_TRACK)
     hr = preferences->shouldDisplaySubtitles(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setShouldDisplaySubtitles(enabled);
 
     hr = preferences->shouldDisplayCaptions(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setShouldDisplayCaptions(enabled);
 
     hr = preferences->shouldDisplayTextDescriptions(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setShouldDisplayTextDescriptions(enabled);
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
     hr = preferences->emulateTouchEvents(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setTouchEventEmulationEnabled(enabled);
 #endif
 
@@ -4857,54 +4863,44 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     }
 
     hr = preferences->pictographFontFamily(&str);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setPictographFontFamily(toAtomicString(str));
     str.clear();
 
     hr = preferences->isJavaEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setJavaEnabled(!!enabled);
 
     hr = preferences->isJavaScriptEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setScriptEnabled(!!enabled);
 
     hr = preferences->javaScriptCanOpenWindowsAutomatically(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setJavaScriptCanOpenWindowsAutomatically(!!enabled);
 
     hr = preferences->minimumFontSize(&size);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setMinimumFontSize(size);
 
     hr = preferences->minimumLogicalFontSize(&size);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setMinimumLogicalFontSize(size);
 
     hr = preferences->arePlugInsEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setPluginsEnabled(!!enabled);
 
     hr = preferences->isCSSRegionsEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     RuntimeEnabledFeatures::setCSSRegionsEnabled(!!enabled);
 
     hr = preferences->areSeamlessIFramesEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     RuntimeEnabledFeatures::setSeamlessIFramesEnabled(!!enabled);
 
     hr = preferences->privateBrowsingEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
 #if PLATFORM(WIN) || USE(CFNETWORK)
     if (enabled)
         WebFrameNetworkingContext::ensurePrivateBrowsingSession();
@@ -4914,31 +4910,26 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     settings->setPrivateBrowsingEnabled(!!enabled);
 
     hr = preferences->sansSerifFontFamily(&str);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setSansSerifFontFamily(toAtomicString(str));
     str.clear();
 
     hr = preferences->serifFontFamily(&str);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setSerifFontFamily(toAtomicString(str));
     str.clear();
 
     hr = preferences->standardFontFamily(&str);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setStandardFontFamily(toAtomicString(str));
     str.clear();
 
     hr = preferences->loadsImagesAutomatically(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setLoadsImagesAutomatically(!!enabled);
 
     hr = preferences->userStyleSheetEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     if (enabled) {
         hr = preferences->userStyleSheetLocation(&str);
         if (FAILED(hr))
@@ -4969,34 +4960,28 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         settings->setUserStyleSheetLocation(KURL());
 
     hr = preferences->shouldPrintBackgrounds(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setShouldPrintBackgrounds(!!enabled);
 
     hr = preferences->textAreasAreResizable(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setTextAreasAreResizable(!!enabled);
 
     WebKitEditableLinkBehavior behavior;
     hr = preferences->editableLinkBehavior(&behavior);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setEditableLinkBehavior((EditableLinkBehavior)behavior);
 
     hr = preferences->usesPageCache(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setUsesPageCache(!!enabled);
 
     hr = preferences->isDOMPasteAllowed(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setDOMPasteAllowed(!!enabled);
 
     hr = preferences->zoomsTextOnly(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
 
     if (m_zoomsTextOnly != !!enabled)
         setZoomMultiplier(m_zoomMultiplier, enabled);
@@ -5009,14 +4994,12 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
 
     FontSmoothingType smoothingType;
     hr = preferences->fontSmoothing(&smoothingType);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setFontRenderingMode(smoothingType != FontSmoothingTypeWindows ? NormalRenderingMode : AlternateRenderingMode);
 
 #if USE(AVFOUNDATION)
     hr = preferences->avFoundationEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setAVFoundationEnabled(enabled);
 #endif
 
@@ -5028,89 +5011,73 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     }
 
     hr = prefsPrivate->inApplicationChromeMode(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setApplicationChromeMode(enabled);
 
     hr = prefsPrivate->offlineWebApplicationCacheEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setOfflineWebApplicationCacheEnabled(enabled);
 
 #if ENABLE(SQL_DATABASE)
     hr = prefsPrivate->databasesEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     DatabaseManager::manager().setIsAvailable(enabled);
 #endif
 
     hr = prefsPrivate->localStorageEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setLocalStorageEnabled(enabled);
 
     hr = prefsPrivate->experimentalNotificationsEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setExperimentalNotificationsEnabled(enabled);
 
     hr = prefsPrivate->isWebSecurityEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setWebSecurityEnabled(!!enabled);
 
     hr = prefsPrivate->allowUniversalAccessFromFileURLs(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setAllowUniversalAccessFromFileURLs(!!enabled);
 
     hr = prefsPrivate->allowFileAccessFromFileURLs(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setAllowFileAccessFromFileURLs(!!enabled);
 
     hr = prefsPrivate->javaScriptCanAccessClipboard(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setJavaScriptCanAccessClipboard(!!enabled);
 
     hr = prefsPrivate->isXSSAuditorEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setXSSAuditorEnabled(!!enabled);
 
 #if USE(SAFARI_THEME)
     hr = prefsPrivate->shouldPaintNativeControls(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setShouldPaintNativeControls(!!enabled);
 #endif
 
     hr = prefsPrivate->shouldUseHighResolutionTimers(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setShouldUseHighResolutionTimers(enabled);
 
     hr = prefsPrivate->isFrameFlatteningEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setFrameFlatteningEnabled(enabled);
 
 #if USE(ACCELERATED_COMPOSITING)
     hr = prefsPrivate->acceleratedCompositingEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setAcceleratedCompositingEnabled(enabled);
 #endif
 
     hr = prefsPrivate->showDebugBorders(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setShowDebugBorders(enabled);
 
     hr = prefsPrivate->showRepaintCounter(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setShowRepaintCounter(enabled);
 
 #if ENABLE(WEB_AUDIO)
@@ -5122,28 +5089,23 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
 #endif // ENABLE(WEBGL)
 
     hr = prefsPrivate->isDNSPrefetchingEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setDNSPrefetchingEnabled(enabled);
 
     hr = prefsPrivate->memoryInfoEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setMemoryInfoEnabled(enabled);
     
     hr = prefsPrivate->hyperlinkAuditingEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setHyperlinkAuditingEnabled(enabled);
 
     hr = prefsPrivate->loadsSiteIconsIgnoringImageLoadingPreference(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setLoadsSiteIconsIgnoringImageLoadingSetting(!!enabled);
 
     hr = prefsPrivate->showsToolTipOverTruncatedText(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
 
     settings->setShowsToolTipOverTruncatedText(enabled);
 
@@ -5151,34 +5113,28 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         m_mainFrame->invalidate(); // FIXME
 
     hr = updateSharedSettingsFromPreferencesIfNeeded(preferences.get());
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
 
 #if ENABLE(FULLSCREEN_API)
     hr = prefsPrivate->isFullScreenEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setFullScreenEnabled(enabled);
 #endif
 
     hr = prefsPrivate->mediaPlaybackRequiresUserGesture(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setMediaPlaybackRequiresUserGesture(enabled);
 
     hr = prefsPrivate->mediaPlaybackAllowsInline(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setMediaPlaybackAllowsInline(enabled);
 
     hr = prefsPrivate->shouldInvertColors(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     setShouldInvertColors(enabled);
 
     hr = prefsPrivate->requestAnimationFrameEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
+    ASSERT_HR_SUCCESS(hr);
     settings->setRequestAnimationFrameEnabled(enabled);
 
     return S_OK;
