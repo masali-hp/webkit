@@ -35,6 +35,10 @@
 #if ENABLE(MEMORY_OUT_HANDLING)
 #include <wtf/MemoryOutManager.h>
 #endif
+#if PLATFORM(HP)
+#include "CachedResource.h"
+#include <wtf/hp/HPWebkitMalloc.h>
+#endif
 
 namespace WebCore  {
 
@@ -185,6 +189,10 @@ public:
     unsigned liveSize() const { return m_liveSize; }
     unsigned deadSize() const { return m_deadSize; }
 
+#if PLATFORM(HP)
+    TypeStatistic aggregateCacheStats();
+#endif
+
 private:
     MemoryCache();
     ~MemoryCache(); // Not implemented to make sure nobody accidentally calls delete -- WebCore does not delete singletons.
@@ -197,6 +205,14 @@ private:
 
 #if ENABLE(MEMORY_OUT_HANDLING)
     virtual bool FreeMemory(WTF::MemoryOutPhase phase);
+#endif
+
+#if PLATFORM(HP)
+    void outputCacheDetailHeader(char * description, MemoryCache::TypeStatistic &stat, void(*output)(char *));
+    void outputCacheDetail(char * description, CachedResource::Type resourceType, MemoryCache::TypeStatistic &stat, void(*)(char *));
+    //  Aggregates cache data for all resource types into a single TypeStatistic
+    void aggregateCacheStatsHelper(TypeStatistic &total, const TypeStatistic detail);
+    static void OutputCacheInfo(HPMemoryOutputFunc output);
 #endif
 
     unsigned liveCapacity() const;

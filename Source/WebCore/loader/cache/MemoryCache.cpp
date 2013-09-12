@@ -43,6 +43,9 @@
 #include <wtf/MathExtras.h>
 #include <wtf/TemporaryChange.h>
 #include <wtf/text/CString.h>
+#if PLATFORM(HP)
+#include <wtf/StringExtras.h>
+#endif
 
 using namespace std;
 
@@ -74,6 +77,9 @@ MemoryCache::MemoryCache()
 {
 #if ENABLE(MEMORY_OUT_HANDLING)
     WTF::MemoryOutManager::RegisterMemoryClient(this);
+#endif
+#if PLATFORM(HP)
+    HPRegisterMemoryDebug(OutputCacheInfo);
 #endif
 }
 
@@ -895,5 +901,108 @@ bool MemoryCache::FreeMemory(WTF::MemoryOutPhase phase)
 }
 #endif
 
+#if PLATFORM(HP)
+// The problem with the getStatistics() method above is that it can cause memory to be allocated.
+// We want to get cache stats when we run out of memory so processing we do at this point needs
+// to avoid allocating more memory on the heap.
+void MemoryCache::aggregateCacheStatsHelper(MemoryCache::TypeStatistic &total, const MemoryCache::TypeStatistic detail)
+{
+    total.count += detail.count;
+    total.size += detail.size;
+    total.liveSize += detail.liveSize;
+    total.decodedSize += detail.decodedSize;
+    total.purgeableSize += detail.purgeableSize;
+    total.purgedSize += detail.purgedSize;
+}
+
+MemoryCache::TypeStatistic MemoryCache::aggregateCacheStats()
+{
+    WebCore::MemoryCache* cache = WebCore::memoryCache();
+    WebCore::MemoryCache::Statistics s = cache->getStatistics();
+
+    MemoryCache::TypeStatistic total;
+    aggregateCacheStatsHelper(total, s.images);
+    aggregateCacheStatsHelper(total, s.cssStyleSheets);
+#if ENABLE(XSLT)
+    aggregateCacheStatsHelper(total, s.xslStyleSheets);
+#endif
+    aggregateCacheStatsHelper(total, s.scripts);
+    aggregateCacheStatsHelper(total, s.fonts);
+    return total;
+}
+
+void MemoryCache::outputCacheDetailHeader(char * description, MemoryCache::TypeStatistic &stat, void(*output)(char *))
+{
+    static const int buff_size = 256;
+    char buff[buff_size];
+    snprintf(buff, buff_size, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s\n", "", "Count", "Size", "LiveSize", "DecodedSize", "PurgeableSz", "PurgedSize");
+    output(buff);
+    snprintf(buff, buff_size, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s\n", "-----------", "-----------", "-----------", "-----------", "-----------", "-----------", "-----------");
+    output(buff);
+    snprintf(buff, buff_size, "%-11s %11d %11d %11d %11d %11d %11d\n", description, stat.count, stat.size, stat.liveSize, stat.decodedSize, stat.purgeableSize, stat.purgedSize);
+    output(buff);
+}
+
+void MemoryCache::outputCacheDetail(char * description, CachedResource::Type resourceType, MemoryCache::TypeStatistic &stat, void(*output)(char *))
+{
+    static const int buff_size = 256;
+    char buff[buff_size];
+
+    outputCacheDetailHeader(description, stat, output);
+
+    CachedResourceMap::iterator e = m_resources.end();
+    for(CachedResourceMap::iterator i = m_resources.begin(); i != e; ++i){
+        CachedResource* resource = i->value;
+        if (resource->type() == resourceType) {
+            String url = i->key;
+
+            char url_buff[128];
+            int len = url.length() <= 127 ? url.length() : 127;
+            size_t l = 0;
+            for (; l < len; l++)
+                url_buff[l] = url.characters()[l];
+            url_buff[len] = 0;
+
+            if (url.length() > 127)
+                strcpy(&url_buff[116], "(truncated)");
+
+            snprintf(buff, buff_size, "  URL: %s\n", url_buff);
+            output(buff);
+            snprintf(buff, buff_size, "    Status: %s, Size: %u\n",
+                resource->status() == CachedResource::Unknown ? "Unknown" :       // let cache decide what to do with it
+                resource->status() == CachedResource::Pending ? "Pending" :       // only partially loaded
+                resource->status() == CachedResource::Cached ? "Cached" :         // regular case
+                resource->status() == CachedResource::LoadError ? "Load Error" :
+                resource->status() == CachedResource::DecodeError ? "Decode Error" : "???",
+                resource->size());
+            output(buff);
+        }
+    }
+}
+
+void MemoryCache::OutputCacheInfo(HPMemoryOutputFunc output)
+{
+    WebCore::MemoryCache* cache = WebCore::memoryCache();
+    WebCore::MemoryCache::Statistics s = cache->getStatistics();
+
+    output("WebKit Cache Statistics:\n");
+
+    cache->outputCacheDetail("Images", WebCore::CachedResource::ImageResource, s.images, (void (*)(char *))output);
+    output("\n");
+    cache->outputCacheDetail("CSS", WebCore::CachedResource::CSSStyleSheet, s.cssStyleSheets, (void (*)(char *))output);
+    output("\n");
+#if ENABLE(XSLT)
+    cache->outputCacheDetail("XSL", WebCore::CachedResource::XSLStyleSheet, s.xslStyleSheets, (void (*)(char *))output);
+    output("\n");
+#endif
+    cache->outputCacheDetail("JavaScript", WebCore::CachedResource::Script, s.scripts, (void (*)(char *))output);
+    output("\n");
+    cache->outputCacheDetail("Fonts", WebCore::CachedResource::FontResource, s.fonts, (void (*)(char *))output);
+    output("\n");
+
+    WebCore::MemoryCache::TypeStatistic total = cache->aggregateCacheStats();
+    cache->outputCacheDetailHeader("Total", total, (void (*)(char *))output);
+}
+#endif
 
 } // namespace WebCore

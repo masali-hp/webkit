@@ -42,6 +42,12 @@
 #include <algorithm>
 #include <wtf/RAMSize.h>
 #include <wtf/CurrentTime.h>
+#if PLATFORM(HP)
+#include <wtf/Vector.h>
+#include <wtf/StringExtras.h>
+#include <wtf/hp/HPWebkitMalloc.h>
+static Vector<JSC::Heap*> * heapList = NULL;
+#endif
 
 using namespace std;
 using namespace JSC;
@@ -241,6 +247,10 @@ inline PassOwnPtr<TypeCountSet> RecordType::returnValue()
 
 } // anonymous namespace
 
+#if PLATFORM(HP)
+void HeapOutputMemoryUsage(HPMemoryOutputFunc output);
+#endif
+
 Heap::Heap(VM* vm, HeapType heapType)
     : m_heapType(heapType)
     , m_ramSize(ramSize())
@@ -266,10 +276,20 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_sweeper(IncrementalSweeper::create(this))
 {
     m_storageSpace.init();
+#if PLATFORM(HP)
+    if (!heapList) {
+        HPRegisterMemoryDebug(HeapOutputMemoryUsage);
+        heapList = new Vector<JSC::Heap*>();
+    }
+    heapList->append(this);
+#endif
 }
 
 Heap::~Heap()
 {
+#if PLATFORM(HP)
+    heapList->remove(heapList->find(this));
+#endif
 }
 
 bool Heap::isPagedOut(double deadline)
@@ -892,5 +912,30 @@ void Heap::zombifyDeadObjects()
     m_objectSpace.sweep();
     m_objectSpace.forEachDeadCell<Zombify>();
 }
+
+#if PLATFORM(HP)
+void HeapOutputMemoryUsage(HPMemoryOutputFunc output)
+{
+    static const int buff_size = 256;
+    char buff[buff_size];
+
+    for (Vector<JSC::Heap*>::const_iterator it = heapList->begin();
+        it != heapList->end();
+        it++)
+    {
+        snprintf(buff, buff_size, "JS Heap at 0x%p details:\n", *it);
+        output(buff);
+
+        size_t size = (*it)->size();
+        size_t capacity =(*it)->capacity();
+        size_t objectCount = (*it)->objectCount();
+        size_t globalObjects = (*it)->globalObjectCount();
+        size_t protectedObjects = (*it)->protectedObjectCount();
+        size_t protectedGlobalObjects = (*it)->protectedGlobalObjectCount();
+        snprintf(buff, buff_size, "  size: %u\n  capacity: %u\n  objectCount %u\n globalObjectCount: %u\n  protected ObjectCount: %u\n  protected globalobjectCount: %u\n", size, capacity, objectCount, globalObjects,protectedObjects, protectedGlobalObjects);
+        output(buff);
+    }
+}
+#endif
 
 } // namespace JSC

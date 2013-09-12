@@ -198,6 +198,10 @@
 #include <wince/DragDropManager.h>
 #endif
 
+#if PLATFORM(HP)
+#include <wtf/StringExtras.h>
+#endif
+
 // Soft link functions for gestures and panning feedback
 SOFT_LINK_LIBRARY(USER32);
 SOFT_LINK_OPTIONAL(USER32, GetGestureInfo, BOOL, WINAPI, (HGESTUREINFO, PGESTUREINFO));
@@ -439,6 +443,10 @@ WebView::WebView()
     WebViewCount++;
     gClassCount++;
     gClassNameCount.add("WebView");
+
+#if PLATFORM(HP)
+    HPRegisterMemoryDebug(OutputLiveWebViewInfo);
+#endif
 }
 
 WebView::~WebView()
@@ -7273,3 +7281,32 @@ HRESULT STDMETHODCALLTYPE WebView::selectedRangeForTesting(/* [out] */ UINT* loc
     return S_OK;
 }
 
+#if PLATFORM(HP)
+void WebView::OutputLiveWebViewInfo(HPMemoryOutputFunc output)
+{
+    static const int buff_size = 2048;
+    char buff[buff_size];
+    char buff2[512];
+    size_t l = 0;
+
+    HashSet<WebView*>::iterator end = allWebViewsSet().end();
+    for (HashSet<WebView*>::iterator it = allWebViewsSet().begin(); it != end; ++it) {
+        snprintf(buff, buff_size, "WebView at 0x%p details:\n", *it);
+        output(buff);
+        if ((*it)->didClose()){
+            snprintf(buff, buff_size, "  URL: ??? (WebView->didClose()=true)\n");
+        }
+        else{
+            BSTR mainFrameURL;
+            (*it)->mainFrameURL(&mainFrameURL);
+            if (mainFrameURL){
+                for (l = 0; mainFrameURL[l] != 0 && l < 511; l++)
+                    buff2[l] = mainFrameURL[l];
+                SysFreeString(mainFrameURL);
+            }
+            buff2[l] = '\0';
+            snprintf(buff, buff_size, "  URL: %s\n", buff2);
+        }
+    }
+}
+#endif

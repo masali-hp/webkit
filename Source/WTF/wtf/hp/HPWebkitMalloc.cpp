@@ -132,6 +132,9 @@ static inline void * hp_try_malloc(size_t n, unsigned int alloc_id)
 #if ENABLE(MEMORY_OUT_HANDLING)
     } while ( WTF::MemoryOutManager::FreeMemory() );
 #endif
+    char buff[128];
+    sprintf(buff, "hp_try_malloc, FAILED TO ALLOCATE %u bytes, alloc_id = %u.\n", n, alloc_id);
+    HPOutputMemoryDebug(buff);
     return 0;
 }
 
@@ -165,6 +168,9 @@ static inline void * hp_try_realloc(void * oldBuffer, size_t newSize, unsigned i
 #if ENABLE(MEMORY_OUT_HANDLING)
     } while ( WTF::MemoryOutManager::FreeMemory() );
 #endif
+    char buff[128];
+    sprintf(buff, "hp_try_realloc, FAILED TO ALLOCATE %u bytes, alloc_id = %u.\n", newSize, alloc_id);
+    HPOutputMemoryDebug(buff);
     return 0;
 }
 

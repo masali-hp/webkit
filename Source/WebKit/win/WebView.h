@@ -52,6 +52,10 @@
 #include <WebCore/FullScreenControllerClient.h>
 #endif
 
+#if PLATFORM(HP)
+#include <wtf/hp/HPWebkitMalloc.h>
+#endif
+
 namespace WebCore {
 #if USE(ACCELERATED_COMPOSITING)
     class CACFLayerTreeHost;
@@ -1047,6 +1051,10 @@ private:
 
     // CACFLayerTreeHostClient
     virtual void flushPendingGraphicsLayerChanges();
+#endif
+
+#if PLATFORM(HP)
+    static void OutputLiveWebViewInfo(HPMemoryOutputFunc);
 #endif
 
     bool m_shouldInvertColors;
