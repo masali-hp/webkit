@@ -304,6 +304,9 @@ public:
     virtual ResourceError cannotShowMIMETypeError(const ResourceResponse&) { return ResourceError("", 0, "", ""); }
     virtual ResourceError fileDoesNotExistError(const ResourceResponse&) { return ResourceError("", 0, "", ""); }
     virtual ResourceError pluginWillHandleLoadError(const ResourceResponse&) { return ResourceError("", 0, "", ""); }
+#if ENABLE(MEMORY_OUT_HANDLING)
+    virtual ResourceError memoryOutError() { return ResourceError("", 0, "", ""); }
+#endif
 
     virtual bool shouldFallBack(const ResourceError&) { return false; }
 

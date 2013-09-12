@@ -18,17 +18,24 @@
 #include <config.h>
 
 #if PLATFORM(HP)
-
-#include <HPWebkitMalloc.h>
 #include <windows.h>
-#include <Memory/JediMemoryManager.h> // from HP.Common.System.OS
-#include <hp/HPWebkitOS.h>
-#include <Diagnostics/HPTrace.h>
-#include <FastMalloc.h>
 
-#include <StringExtras.h>
-using namespace HP::Common::System::OS::Memory;
+// from HP.Common.System.OS:
+#include <Memory/JediMemoryManager.h>
+#include <Diagnostics/HPTrace.h>
+
+#include <wtf/hp/HPWebkitMalloc.h>
+#include <wtf/hp/HPWebkitOS.h>
+#include <wtf/FastMalloc.h>
+
+#if ENABLE(MEMORY_OUT_HANDLING)
+#include <wtf/MemoryOutManager.h>
+#endif
+
+#include <wtf/StringExtras.h>
 #include <new>
+
+using namespace HP::Common::System::OS::Memory;
 
 void* operator new(size_t size)
 {
@@ -110,28 +117,26 @@ private:
 static inline void * hp_try_malloc(size_t n, unsigned int alloc_id)
 {
     void * result;
-
     if (n == 0)
         n = 1;
-    HRESULT hr = MemoryManagerAlloc(&result,
-        n,
-        HP::Common::System::OS::Memory::JediMemoryManager::PoolExtensibility,
-        HP::Common::System::OS::Memory::LifespanIntermediate,
-        alloc_id);
-    if (!SUCCEEDED(hr))
-    {
-        return 0;
-    }
-    else
-    {
-        return result;
-    }
-
+#if ENABLE(MEMORY_OUT_HANDLING)
+    do {
+#endif
+        HRESULT hr = MemoryManagerAlloc(&result,
+            n,
+            HP::Common::System::OS::Memory::JediMemoryManager::PoolExtensibility,
+            HP::Common::System::OS::Memory::LifespanIntermediate,
+            alloc_id);
+        if (SUCCEEDED(hr))
+            return result;
+#if ENABLE(MEMORY_OUT_HANDLING)
+    } while ( WTF::MemoryOutManager::FreeMemory() );
+#endif
+    return 0;
 }
 
 static inline void * hp_malloc(size_t n, unsigned int alloc_id)
 {
-
     void * result = hp_try_malloc(n, alloc_id);
     if (!result)
         HandleOutOfMemory(n, __LINE__);
@@ -143,25 +148,28 @@ static inline void * hp_try_realloc(void * oldBuffer, size_t newSize, unsigned i
     void * result = oldBuffer;
     if (newSize == 0)
         newSize = 1;
-    HRESULT hr = S_OK;
-    if (oldBuffer)
-        hr = MemoryManagerRealloc(&result, newSize);
-    else
-        hr = MemoryManagerAlloc(&result,
-        newSize,
-        HP::Common::System::OS::Memory::JediMemoryManager::PoolExtensibility,
-        HP::Common::System::OS::Memory::LifespanIntermediate,
-        alloc_id);
-    if (!SUCCEEDED(hr))
-    {
-        return 0;
-    }
-    return result;
+#if ENABLE(MEMORY_OUT_HANDLING)
+    do {
+#endif
+        HRESULT hr = S_OK;
+        if (oldBuffer)
+            hr = MemoryManagerRealloc(&result, newSize);
+        else
+            hr = MemoryManagerAlloc(&result,
+            newSize,
+            HP::Common::System::OS::Memory::JediMemoryManager::PoolExtensibility,
+            HP::Common::System::OS::Memory::LifespanIntermediate,
+            alloc_id);
+        if (SUCCEEDED(hr))
+            return result;
+#if ENABLE(MEMORY_OUT_HANDLING)
+    } while ( WTF::MemoryOutManager::FreeMemory() );
+#endif
+    return 0;
 }
 
 static inline void * hp_realloc(void * oldBuffer, size_t newSize, unsigned int alloc_id)
 {
-
     void * result = hp_try_realloc(oldBuffer, newSize, alloc_id);
     if (!result)
         HandleOutOfMemory(newSize, __LINE__);
@@ -172,9 +180,7 @@ static inline void * hp_realloc(void * oldBuffer, size_t newSize, unsigned int a
 static inline void hp_free(void * p)
 {
     if (p)
-    {
-        HRESULT hr = MemoryManagerFree(p);
-    }
+        MemoryManagerFree(p);
 }
 
 static inline LONG hp_get_size(const void *p)
@@ -241,7 +247,6 @@ void HPRegisterMemoryDebug(HPMemoryDebugFunc method)
 
 void HPOutputMemoryDebug(const char * info)
 {
-
 #if OS(WINCE)
     wchar_t buffer[1024];
     size_t len = strlen(info);
@@ -254,8 +259,7 @@ void HPOutputMemoryDebug(const char * info)
 #else
     OutputDebugStringA(info);
 #endif
-    HPWriteToLogA(info, HP_WEBKIT_TRACE_DEBUG);
-
+    HPWriteToLogA(info, HP_WEBKIT_TRACE_WARN);
 }
 
 void HPGetMemoryStats(size_t * consumed, size_t * available, size_t * highWater, size_t *objectsAllocated, size_t * largestFree)
@@ -280,7 +284,6 @@ void HPOutputMemoryUsage(bool showPoolStats, bool showOther, HPMemoryOutputFunc 
 
     if (showPoolStats)
     {
-
         PoolAccountingInfo info;
         MemoryAccountingGetPoolInfo(HP::Common::System::OS::Memory::JediMemoryManager::PoolExtensibility, &info);
 

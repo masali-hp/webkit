@@ -77,8 +77,15 @@ String TextCodecUTF16::decode(const char* bytes, size_t length, bool, bool, bool
     size_t numBytes = length + m_haveBufferedByte;
     size_t numChars = numBytes / 2;
 
-    StringBuffer<UChar> buffer(numChars);
-    UChar* q = buffer.characters();
+#if ENABLE(MEMORY_OUT_HANDLING)
+    Vector<UChar> buffer(0);
+    if (!buffer.tryReserveCapacity(numChars))
+        return "";
+    buffer.resize(numChars);
+#else
+    Vector<UChar> buffer(numChars);
+#endif
+    UChar* q = buffer.data();
 
     if (m_haveBufferedByte) {
         UChar c;
@@ -112,7 +119,7 @@ String TextCodecUTF16::decode(const char* bytes, size_t length, bool, bool, bool
         m_bufferedByte = p[0];
     }
 
-    buffer.shrink(q - buffer.characters());
+    buffer.shrink(q - buffer.data());
 
     return String::adopt(buffer);
 }

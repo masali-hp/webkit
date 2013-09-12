@@ -72,6 +72,9 @@ MemoryCache::MemoryCache()
     , m_liveSize(0)
     , m_deadSize(0)
 {
+#if ENABLE(MEMORY_OUT_HANDLING)
+    WTF::MemoryOutManager::RegisterMemoryClient(this);
+#endif
 }
 
 KURL MemoryCache::removeFragmentIdentifierIfNeeded(const KURL& originalURL)
@@ -862,5 +865,35 @@ void MemoryCache::dumpLRULists(bool includeLive) const
     }
 }
 #endif
+
+#if ENABLE(MEMORY_OUT_HANDLING)
+// The client will return true if it was able to take action for the requested phase.
+bool MemoryCache::FreeMemory(WTF::MemoryOutPhase phase)
+{
+    if (phase == WTF::FreeInactiveCacheMemory)
+    {
+        // Cache capcities are changed to 0 temporarily to free cached resources.
+        unsigned minDeadCapacity = m_minDeadCapacity;
+        unsigned maxDeadCapacity = m_maxDeadCapacity;
+        unsigned capacity = m_capacity;
+
+        unsigned beforeSize = m_liveSize + m_deadSize;
+
+        // It may be dangerous to prune live resources, especially
+        // JS...  may need to call pruneDeadResources() instead of calling
+        // setCapacities().
+        setCapacities(0, 0, 0);
+
+        // Restore original cache size limits
+        setCapacities(minDeadCapacity, maxDeadCapacity, capacity);
+
+        unsigned afterSize = m_liveSize + m_deadSize;
+
+        return afterSize < beforeSize;
+    }
+    return false;
+}
+#endif
+
 
 } // namespace WebCore

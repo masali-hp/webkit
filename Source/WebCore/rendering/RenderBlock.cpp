@@ -72,6 +72,9 @@
 #endif
 #include <wtf/StackStats.h>
 #include <wtf/TemporaryChange.h>
+#if ENABLE(MEMORY_OUT_HANDLING)
+#include <wtf/MemoryOutManager.h>
+#endif
 
 using namespace std;
 using namespace WTF;
@@ -1421,6 +1424,11 @@ void RenderBlock::updateScrollInfoAfterLayout()
 
 void RenderBlock::layout()
 {
+#if ENABLE(MEMORY_OUT_HANDLING)
+    if (WTF::MemoryOutManager::AbortReached())
+        return;
+#endif
+
     StackStats::LayoutCheckPoint layoutCheckPoint;
     OverflowEventDispatcher dispatcher(this);
 

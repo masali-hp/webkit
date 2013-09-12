@@ -32,6 +32,10 @@
 #include <heap/Heap.h>
 #include <wtf/StdLibExtras.h>
 
+#if ENABLE(MEMORY_OUT_HANDLING) && PLATFORM(HP)
+#include <wtf/hp/HPWebkitMalloc.h>
+#endif
+
 using namespace JSC;
 
 namespace WebCore {
@@ -53,6 +57,9 @@ GCController::GCController()
     : m_GCTimer(this, &GCController::gcTimerFired)
 #endif
 {
+#if ENABLE(MEMORY_OUT_HANDLING)
+    WTF::MemoryOutManager::RegisterMemoryClient(this);
+#endif
 }
 
 void GCController::garbageCollectSoon()
@@ -107,5 +114,27 @@ void GCController::discardAllCompiledCode()
     JSLockHolder lock(JSDOMWindow::commonVM());
     JSDOMWindow::commonVM()->discardAllCode();
 }
+
+#if ENABLE(MEMORY_OUT_HANDLING)
+bool GCController::FreeMemory(WTF::MemoryOutPhase phase)
+{
+#if PLATFORM(HP)
+    size_t availableBefore, availableAfter;
+    HPGetMemoryStats(NULL, &availableBefore, NULL, NULL, NULL);
+    garbageCollectNow();
+    HPGetMemoryStats(NULL, &availableAfter, NULL, NULL, NULL);
+    return availableAfter > availableBefore;
+#else
+    size_t sizeBefore = JSDOMWindow::commonVM()->heap.size();
+    garbageCollectNow();
+    size_t sizeAfter = JSDOMWindow::commonVM()->heap.size();
+    // You would think sizeAfter would always be <= sizeBefore, but that's not
+    // the case.  nonetheless, back to back garbage collects will return the same
+    // size, so checking that the sizeAfter != sizeBefore is a good indication
+    // that memory was actually freed.
+    return sizeAfter != sizeBefore;
+#endif
+}
+#endif
 
 } // namespace WebCore

@@ -1692,6 +1692,13 @@ ResourceError WebFrame::pluginWillHandleLoadError(const ResourceResponse& respon
     return ResourceError(String(WebKitErrorDomain), WebKitErrorPlugInWillHandleLoad, response.url().string(), String());
 }
 
+#if ENABLE(MEMORY_OUT_HANDLING)
+ResourceError WebFrame::memoryOutError()
+{
+    return ResourceError(String(WebKitErrorDomain), WebKitErrorMemoryOut, url().string(), "Memory out");
+}
+#endif
+
 bool WebFrame::shouldFallBack(const ResourceError& error)
 {
     if (error.errorCode() == WebURLErrorCancelled && error.domain() == String(WebURLErrorDomain))

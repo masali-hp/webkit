@@ -53,6 +53,9 @@
 #include <runtime/JSLock.h>
 #include <wtf/text/TextPosition.h>
 #include <wtf/Threading.h>
+#if ENABLE(MEMORY_OUT_HANDLING)
+#include <wtf/MemoryOutManager.h>
+#endif
 
 using namespace JSC;
 using namespace std;
@@ -116,6 +119,12 @@ JSDOMWindowShell* ScriptController::createWindowShell(DOMWrapperWorld* world)
 
 ScriptValue ScriptController::evaluateInWorld(const ScriptSourceCode& sourceCode, DOMWrapperWorld* world)
 {
+#if ENABLE(MEMORY_OUT_HANDLING)
+    // We are so low on memory that executing a script right now is a bad idea.
+    if (WTF::MemoryOutManager::AbortReached())
+        return ScriptValue();
+#endif
+
     const SourceCode& jsSourceCode = sourceCode.jsSourceCode();
     String sourceURL = jsSourceCode.provider()->url();
 

@@ -99,6 +99,10 @@
 #include "TextAutosizer.h"
 #endif
 
+#if ENABLE(MEMORY_OUT_HANDLING)
+#include <wtf/MemoryOutManager.h>
+#endif
+
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -1142,6 +1146,11 @@ void FrameView::layout(bool allowSubtree)
 {
     if (m_inLayout)
         return;
+
+#if ENABLE(MEMORY_OUT_HANDLING)
+    if (WTF::MemoryOutManager::AbortReached())
+        return;
+#endif
 
     // Protect the view from being deleted during layout (in recalcStyle)
     RefPtr<FrameView> protector(this);

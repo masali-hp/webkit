@@ -182,7 +182,9 @@ bool ImageFrame::copyBitmapData(const ImageFrame& other)
 {
     if (this == &other)
         return true;
-
+    size_t backingStoreSize = other.width() * other.height();
+    if (!m_backingStore.tryReserveCapacity(backingStoreSize))
+        return false;
     m_backingStore = other.m_backingStore;
     m_bytes = m_backingStore.data();
     m_size = other.m_size;

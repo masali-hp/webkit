@@ -33,9 +33,17 @@
 #include "Timer.h"
 #endif
 
+#if ENABLE(MEMORY_OUT_HANDLING)
+#include <wtf/MemoryOutManager.h>
+#endif
+
 namespace WebCore {
 
-    class GCController {
+    class GCController
+#if ENABLE(MEMORY_OUT_HANDLING)
+        : private WTF::MemoryOutClient
+#endif
+    {
         WTF_MAKE_NONCOPYABLE(GCController); WTF_MAKE_FAST_ALLOCATED;
         friend GCController& gcController();
 
@@ -49,6 +57,10 @@ namespace WebCore {
 
     private:
         GCController(); // Use gcController() instead
+
+#if ENABLE(MEMORY_OUT_HANDLING)
+        virtual bool FreeMemory(WTF::MemoryOutPhase phase);
+#endif
 
 #if !USE(CF) && !PLATFORM(BLACKBERRY) && !PLATFORM(QT)
         void gcTimerFired(Timer<GCController>*);

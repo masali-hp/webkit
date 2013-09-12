@@ -47,6 +47,9 @@
 #include "NestingLevelIncrementer.h"
 #include "Settings.h"
 #include <wtf/Functional.h>
+#if ENABLE(MEMORY_OUT_HANDLING)
+#include <wtf/MemoryOutManager.h>
+#endif
 
 namespace WebCore {
 
@@ -277,6 +280,11 @@ bool HTMLDocumentParser::canTakeNextToken(SynchronousMode mode, PumpSession& ses
         return false;
 
     ASSERT(!m_haveBackgroundParser || mode == ForceSynchronous);
+
+#if ENABLE(MEMORY_OUT_HANDLING)
+    if (WTF::MemoryOutManager::AbortReached())
+        return false;
+#endif
 
     if (isWaitingForScripts()) {
         if (mode == AllowYield)

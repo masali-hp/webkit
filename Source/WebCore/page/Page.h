@@ -37,6 +37,10 @@
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
+#if ENABLE(MEMORY_OUT_HANDLING)
+#include "Timer.h"
+#include <wtf/MemoryOutManager.h>
+#endif
 
 #if OS(SOLARIS)
 #include <sys/time.h> // For time_t structure.
@@ -107,7 +111,11 @@ struct ArenaSize {
     size_t allocated;
 };
 
-class Page : public Supplementable<Page> {
+class Page : public Supplementable<Page>
+#if ENABLE(MEMORY_OUT_HANDLING)
+        , private WTF::MemoryOutClient
+#endif
+{
     WTF_MAKE_NONCOPYABLE(Page);
     friend class Settings;
 public:
@@ -421,6 +429,12 @@ private:
 
     void collectPluginViews(Vector<RefPtr<PluginViewBase>, 32>& pluginViewBases);
 
+#if ENABLE(MEMORY_OUT_HANDLING)
+    // MemoryOutManager callback -- we are out of memory, we need to abort all loading ASAP
+    void MemoryOutAbort();
+    void memOutTimerFired(Timer<Page>*);
+#endif
+
     const OwnPtr<Chrome> m_chrome;
     OwnPtr<DragCaretController> m_dragCaretController;
 
@@ -529,6 +543,10 @@ private:
 
     HashSet<String> m_seenPlugins;
     HashSet<String> m_seenMediaEngines;
+
+#if ENABLE(MEMORY_OUT_HANDLING)
+    Timer<Page> m_memOutAbortTimer;
+#endif
 };
 
 inline PageGroup& Page::group()

@@ -69,6 +69,9 @@
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
+#if ENABLE(MEMORY_OUT_HANDLING)
+#include "ResourceError.h"
+#endif
 #include "RuntimeEnabledFeatures.h"
 #include "SchemeRegistry.h"
 #include "ScriptController.h"
@@ -185,6 +188,9 @@ Page::Page(PageClients& pageClients)
     , m_alternativeTextClient(pageClients.alternativeTextClient)
     , m_scriptedAnimationsSuspended(false)
     , m_console(PageConsole::create(this))
+#if ENABLE(MEMORY_OUT_HANDLING)
+    , m_memOutAbortTimer(this, &Page::memOutTimerFired)
+#endif
 {
     ASSERT(m_editorClient);
 
@@ -193,6 +199,11 @@ Page::Page(PageClients& pageClients)
         
         networkStateNotifier().setNetworkStateChangedFunction(networkStateChanged);
     }
+
+#if ENABLE(MEMORY_OUT_HANDLING)
+    WTF::MemoryOutManager::Reset();
+    WTF::MemoryOutManager::RegisterMemoryClient(this);
+#endif
 
     ASSERT(!allPages->contains(this));
     allPages->add(this);
@@ -204,6 +215,10 @@ Page::Page(PageClients& pageClients)
 
 Page::~Page()
 {
+#if ENABLE(MEMORY_OUT_HANDLING)
+    WTF::MemoryOutManager::UnregisterMemoryClient(this);
+#endif
+
     m_mainFrame->setView(0);
     setGroupName(String());
     allPages->remove(this);
@@ -1536,6 +1551,19 @@ void Page::captionPreferencesChanged()
 {
     for (Frame* frame = mainFrame(); frame; frame = frame->tree()->traverseNext())
         frame->document()->captionPreferencesChanged();
+}
+#endif
+
+#if ENABLE(MEMORY_OUT_HANDLING)
+void Page::MemoryOutAbort()
+{
+    m_memOutAbortTimer.startOneShot(0);
+}
+
+void Page::memOutTimerFired(Timer<Page>*)
+{
+    FrameLoaderClient * client = m_mainFrame->loader()->client();
+    client->dispatchDidFailLoad(client->memoryOutError());
 }
 #endif
 

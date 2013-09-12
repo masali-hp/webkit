@@ -32,6 +32,9 @@
 #include <wtf/Vector.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
+#if ENABLE(MEMORY_OUT_HANDLING)
+#include <wtf/MemoryOutManager.h>
+#endif
 
 namespace WebCore  {
 
@@ -75,7 +78,11 @@ struct SecurityOriginHash;
 // its member variables) are allocated in non-purgeable TC-malloc'd memory so we would see slightly
 // more memory use due to this.
 
-class MemoryCache {
+class MemoryCache
+#if ENABLE(MEMORY_OUT_HANDLING)
+    : private WTF::MemoryOutClient
+#endif
+{
     WTF_MAKE_NONCOPYABLE(MemoryCache); WTF_MAKE_FAST_ALLOCATED;
 public:
     friend MemoryCache* memoryCache();
@@ -186,6 +193,10 @@ private:
 #ifndef NDEBUG
     void dumpStats();
     void dumpLRULists(bool includeLive) const;
+#endif
+
+#if ENABLE(MEMORY_OUT_HANDLING)
+    virtual bool FreeMemory(WTF::MemoryOutPhase phase);
 #endif
 
     unsigned liveCapacity() const;

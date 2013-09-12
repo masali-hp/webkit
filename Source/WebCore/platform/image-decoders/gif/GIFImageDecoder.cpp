@@ -196,7 +196,7 @@ bool GIFImageDecoder::haveDecodedRow(unsigned frameIndex, const Vector<unsigned 
     int yBegin = upperBoundScaledY(frameContext->yOffset + rowNumber);
     int xEnd = lowerBoundScaledX(std::min(static_cast<int>(frameContext->xOffset + width), size().width()) - 1, xBegin + 1) + 1;
     int yEnd = lowerBoundScaledY(std::min(static_cast<int>(frameContext->yOffset + rowNumber + repeatCount), size().height()) - 1, yBegin + 1) + 1;
-    if (rowBuffer.isEmpty() || (xBegin < 0) || (yBegin < 0) || (xEnd <= xBegin) || (yEnd <= yBegin))
+    if (failed() || rowBuffer.isEmpty() || (xBegin < 0) || (yBegin < 0) || (xEnd <= xBegin) || (yEnd <= yBegin))
         return true;
 
     // Get the colormap.
@@ -343,6 +343,9 @@ void GIFImageDecoder::decode(unsigned haltAtFrame, GIFQuery query)
 
 bool GIFImageDecoder::initFrameBuffer(unsigned frameIndex)
 {
+    if (failed())
+        return false;
+
     // Initialize the frame rect in our buffer.
     const GIFFrameContext* frameContext = m_reader->frameContext();
     IntRect frameRect(frameContext->xOffset, frameContext->yOffset, frameContext->width, frameContext->height);

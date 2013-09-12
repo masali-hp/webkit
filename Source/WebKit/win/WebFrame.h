@@ -335,6 +335,9 @@ public:
     virtual WebCore::ResourceError cannotShowMIMETypeError(const WebCore::ResourceResponse&);
     virtual WebCore::ResourceError fileDoesNotExistError(const WebCore::ResourceResponse&);
     virtual WebCore::ResourceError pluginWillHandleLoadError(const WebCore::ResourceResponse&);
+#if ENABLE(MEMORY_OUT_HANDLING)
+    virtual WebCore::ResourceError memoryOutError();
+#endif
     virtual bool shouldFallBack(const WebCore::ResourceError&);
     virtual void dispatchDecidePolicyForResponse(WebCore::FramePolicyFunction, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&);
     virtual void dispatchDecidePolicyForNewWindowAction(WebCore::FramePolicyFunction, const WebCore::NavigationAction&, const WebCore::ResourceRequest&, PassRefPtr<WebCore::FormState>, const WTF::String& frameName);

@@ -283,6 +283,13 @@ else ()
     )
 endif ()
 
+if (ENABLE_MEMORY_OUT_HANDLING)
+    list(APPEND WTF_SOURCES
+        MemoryOutManager.cpp
+        MemoryOutManager.h
+    )
+endif ()
+
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 WEBKIT_WRAP_SOURCELIST(${WTF_SOURCES})

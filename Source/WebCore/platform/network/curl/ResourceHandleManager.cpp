@@ -56,6 +56,10 @@
 #define MAX_PATH MAXPATHLEN
 #endif
 
+#if ENABLE(MEMORY_OUT_HANDLING)
+#include <wtf/MemoryOutManager.h>
+#endif
+
 namespace WebCore {
 
 const int selectTimeoutMS = 5;
@@ -216,6 +220,12 @@ static void handleLocalReceiveResponse (CURL* handle, ResourceHandle* job, Resou
 static size_t writeCallback(void* ptr, size_t size, size_t nmemb, void* data)
 {
     ResourceHandle* job = static_cast<ResourceHandle*>(data);
+
+#if ENABLE(MEMORY_OUT_HANDLING)
+    if (WTF::MemoryOutManager::AbortReached())
+        job->cancel();
+#endif
+
     ResourceHandleInternal* d = job->getInternal();
     if (d->m_cancelled)
         return 0;
@@ -416,9 +426,14 @@ void ResourceHandleManager::downloadTimerCallback(Timer<ResourceHandleManager>* 
         ASSERT(job);
         if (!job)
             continue;
+
         ResourceHandleInternal* d = job->getInternal();
         ASSERT(d->m_handle == handle);
 
+#if ENABLE(MEMORY_OUT_HANDLING)
+        if (WTF::MemoryOutManager::AbortReached())
+            job->cancel();
+#endif
         if (d->m_cancelled) {
             removeFromCurl(job);
             continue;

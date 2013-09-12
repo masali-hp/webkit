@@ -31,6 +31,9 @@
 #include <runtime/ExceptionHelpers.h>
 #include <runtime/JSLock.h>
 #include <wtf/RefCountedLeakCounter.h>
+#if ENABLE(MEMORY_OUT_HANDLING)
+#include <wtf/MemoryOutManager.h>
+#endif
 
 using namespace JSC;
 
@@ -78,6 +81,12 @@ void JSEventListener::handleEvent(ScriptExecutionContext* scriptExecutionContext
     ASSERT(scriptExecutionContext);
     if (!scriptExecutionContext || scriptExecutionContext->isJSExecutionForbidden())
         return;
+
+#if ENABLE(MEMORY_OUT_HANDLING)
+    // We are so low on memory that executing a script right now is a bad idea.
+    if (WTF::MemoryOutManager::AbortReached())
+        return;
+#endif
 
     JSLockHolder lock(scriptExecutionContext->vm());
 

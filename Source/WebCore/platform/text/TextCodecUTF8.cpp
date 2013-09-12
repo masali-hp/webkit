@@ -266,12 +266,19 @@ String TextCodecUTF8::decode(const char* bytes, size_t length, bool flush, bool 
     // Each input byte might turn into a character.
     // That includes all bytes in the partial-sequence buffer because
     // each byte in an invalid sequence will turn into a replacement character.
+#if ENABLE(MEMORY_OUT_HANDLING)
+    Vector<LChar> buffer(0);
+    if (!buffer.tryReserveCapacity(m_partialSequenceSize + length))
+        return "";
+    buffer.resize(m_partialSequenceSize + length);
+#else
     StringBuffer<LChar> buffer(m_partialSequenceSize + length);
+#endif
 
     const uint8_t* source = reinterpret_cast<const uint8_t*>(bytes);
     const uint8_t* end = source + length;
     const uint8_t* alignedEnd = alignToMachineWord(end);
-    LChar* destination = buffer.characters();
+    LChar* destination = buffer.data();
 
     do {
         if (m_partialSequenceSize) {
@@ -340,17 +347,24 @@ String TextCodecUTF8::decode(const char* bytes, size_t length, bool flush, bool 
         }
     } while (flush && m_partialSequenceSize);
 
-    buffer.shrink(destination - buffer.characters());
+    buffer.shrink(destination - buffer.data());
 
     return String::adopt(buffer);
 
 upConvertTo16Bit:
-    StringBuffer<UChar> buffer16(m_partialSequenceSize + length);
+#if ENABLE(MEMORY_OUT_HANDLING)
+    Vector<UChar> buffer16(0);
+    if (!buffer16.tryReserveCapacity(m_partialSequenceSize + length))
+        return "";
+    buffer16.resize(m_partialSequenceSize + length);
+#else
+    Vector<UChar> buffer16(m_partialSequenceSize + length);
+#endif
 
-    UChar* destination16 = buffer16.characters();
+    UChar* destination16 = buffer16.data();
 
     // Copy the already converted characters
-    for (LChar* converted8 = buffer.characters(); converted8 < destination;)
+    for (LChar* converted8 = buffer.data(); converted8 < destination;)
         *destination16++ = *converted8++;
 
     do {
@@ -416,7 +430,7 @@ upConvertTo16Bit:
         }
     } while (flush && m_partialSequenceSize);
     
-    buffer16.shrink(destination16 - buffer16.characters());
+    buffer16.shrink(destination16 - buffer16.data());
     
     return String::adopt(buffer16);
 }

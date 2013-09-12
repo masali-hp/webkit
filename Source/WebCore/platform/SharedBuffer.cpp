@@ -32,6 +32,10 @@
 #include <wtf/unicode/UTF8.h>
 #include <wtf/unicode/Unicode.h>
 
+#if ENABLE(MEMORY_OUT_HANDLING)
+#include <wtf/MemoryOutManager.h>
+#endif
+
 using namespace std;
 
 namespace WebCore {
@@ -49,10 +53,20 @@ static inline unsigned offsetInSegment(unsigned position)
     return position & segmentPositionMask;
 }
 
+#if ENABLE(MEMORY_OUT_HANDLING)
+static inline char* allocateSegment()
+{
+    char * result;
+    if (tryFastMalloc(segmentSize).getValue(result))
+        return result;
+    return NULL;
+}
+#else
 static inline char* allocateSegment()
 {
     return static_cast<char*>(fastMalloc(segmentSize));
 }
+#endif
 
 static inline void freeSegment(char* p)
 {
@@ -170,6 +184,11 @@ void SharedBuffer::append(const char* data, unsigned length)
     if (!length)
         return;
 
+#if ENABLE(MEMORY_OUT_HANDLING)
+    if (WTF::MemoryOutManager::AbortReached())
+        return;
+#endif
+
     maybeTransferPlatformData();
     
     unsigned positionInSegment = offsetInSegment(m_size - m_buffer.size());
@@ -186,6 +205,10 @@ void SharedBuffer::append(const char* data, unsigned length)
     char* segment;
     if (!positionInSegment) {
         segment = allocateSegment();
+#if ENABLE(MEMORY_OUT_HANDLING)
+        if (!segment)
+            return;
+#endif
         m_segments.append(segment);
     } else
         segment = m_segments.last() + positionInSegment;
@@ -201,6 +224,10 @@ void SharedBuffer::append(const char* data, unsigned length)
         length -= bytesToCopy;
         data += bytesToCopy;
         segment = allocateSegment();
+#if ENABLE(MEMORY_OUT_HANDLING)
+        if (!segment)
+            return;
+#endif
         m_segments.append(segment);
         bytesToCopy = min(length, segmentSize);
     }

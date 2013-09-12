@@ -74,10 +74,22 @@ const String& CachedScript::script()
     if (!m_script && m_data) {
         m_script = m_decoder->decode(m_data->data(), encodedSize());
         m_script.append(m_decoder->flush());
+#if ENABLE(MEMORY_OUT_HANDLING)
+        // If we fail to decode the script (because of lack of memory)
+        // and return an empty string the Lexer will barf.  It
+        // assumes that the data ptr is not going to be null.
+        if (encodedSize() > 0 && m_script.length() == 0)
+            m_script = " ";
+#endif
         setDecodedSize(m_script.sizeInBytes());
     }
+#if !ENABLE(MEMORY_OUT_HANDLING)
+    // If memory out handling is enabled, don't delete the decoded data.
+    // JS parser assumes that if a script has been decoded once we'll always
+    // be able to decode it.
     m_decodedDataDeletionTimer.startOneShot(0);
-    
+#endif
+
     return m_script;
 }
 

@@ -225,6 +225,9 @@ namespace WebCore {
         virtual ResourceError cannotShowMIMETypeError(const ResourceResponse&) = 0;
         virtual ResourceError fileDoesNotExistError(const ResourceResponse&) = 0;
         virtual ResourceError pluginWillHandleLoadError(const ResourceResponse&) = 0;
+#if ENABLE(MEMORY_OUT_HANDLING)
+        virtual ResourceError memoryOutError() = 0;
+#endif
 
         virtual bool shouldFallBack(const ResourceError&) = 0;
 

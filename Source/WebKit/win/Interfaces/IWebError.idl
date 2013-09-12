@@ -88,15 +88,17 @@ enum {
 
 /*!
     @enum
-    @abstract Plug-in and java errors
+    @abstract Plug-in, java, and memory errors
     @constant WebKitErrorCannotFindPlugIn
     @constant WebKitErrorCannotLoadPlugIn
     @constant WebKitErrorJavaUnavailable
+    @constant WebKitErrorMemoryOut
 */
 enum {
     WebKitErrorCannotFindPlugIn =                               200,
     WebKitErrorCannotLoadPlugIn =                               201,
     WebKitErrorJavaUnavailable =                                202,
+    WebKitErrorMemoryOut =                                      203,
 };
 
 /*!
