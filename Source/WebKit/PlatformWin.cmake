@@ -21,6 +21,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebKit_INCLUDES
+    win/AboutData.h
     win/CodeAnalysisConfig.h
     win/COMEnumVariant.h
     win/COMPropertyBag.h
@@ -164,6 +165,7 @@ list(APPEND WebKit_SOURCES_WebCoreSupport
 )
 
 list(APPEND WebKit_SOURCES
+    win/AboutData.cpp
     win/MarshallingHelpers.cpp
     win/WebKitClassFactory.cpp
     win/WebKitDLL.cpp

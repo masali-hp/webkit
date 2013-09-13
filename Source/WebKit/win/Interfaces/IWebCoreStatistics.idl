@@ -28,6 +28,19 @@ import "oaidl.idl";
 import "ocidl.idl";
 #endif
 
+typedef enum AboutDataType {
+    AboutDataMemory=0,
+    AboutDataCache,
+    AboutDataJSHeap,
+    AboutDataCounters,
+    AboutDataAll
+} AboutDataType;
+
+typedef enum AboutDataFormat{
+    HTML=0,
+    XML
+}AboutDataFormat;
+
 [
     object,
     oleautomation,
@@ -57,4 +70,5 @@ interface IWebCoreStatistics : IUnknown
 #else
     HRESULT javaScriptProtectedObjectTypeCounts([out, retval] IPropertyBag2** typeNamesAndCounts);
 #endif
+    HRESULT webKitData([in] AboutDataType typeAboutData, [in] AboutDataFormat typeFormat, [out, retval] BSTR *output);
 }

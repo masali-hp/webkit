@@ -901,7 +901,6 @@ bool MemoryCache::FreeMemory(WTF::MemoryOutPhase phase)
 }
 #endif
 
-#if PLATFORM(HP)
 // The problem with the getStatistics() method above is that it can cause memory to be allocated.
 // We want to get cache stats when we run out of memory so processing we do at this point needs
 // to avoid allocating more memory on the heap.
@@ -931,6 +930,7 @@ MemoryCache::TypeStatistic MemoryCache::aggregateCacheStats()
     return total;
 }
 
+#if PLATFORM(HP)
 void MemoryCache::outputCacheDetailHeader(char * description, MemoryCache::TypeStatistic &stat, void(*output)(char *))
 {
     static const int buff_size = 256;
@@ -1004,5 +1004,53 @@ void MemoryCache::OutputCacheInfo(HPMemoryOutputFunc output)
     cache->outputCacheDetailHeader("Total", total, (void (*)(char *))output);
 }
 #endif
+
+int MemoryCache::getCount(CachedResource::Type resourceType)
+{
+    int count = 0;
+    CachedResourceMap::iterator e = m_resources.end();
+    for (CachedResourceMap::iterator i = m_resources.begin(); i != e; ++i) {
+#if ENABLE(CACHE_PARTITIONING)
+        for (CachedResourceItem::iterator itemIterator = i->value->begin(); itemIterator != i->value->end(); ++itemIterator) {
+            CachedResource* resource = itemIterator->value;
+#else
+            CachedResource* resource = i->value;
+#endif
+            if (resource->type() == resourceType)
+                count++;
+#if ENABLE(CACHE_PARTITIONING)
+        }
+#endif
+    }
+    return count;
+}
+
+void MemoryCache::getDetails(CachedResource::Type resourceType, int n, TypeStatistic & details, String & url, CachedResource::Status & status)
+{
+    int count = 0;
+    memset(&details, 0, sizeof(TypeStatistic));
+
+    CachedResourceMap::iterator e = m_resources.end();
+    for (CachedResourceMap::iterator i = m_resources.begin(); i != e; ++i) {
+#if ENABLE(CACHE_PARTITIONING)
+        for (CachedResourceItem::iterator itemIterator = i->value->begin(); itemIterator != i->value->end(); ++itemIterator) {
+            CachedResource* resource = itemIterator->value;
+#else
+            CachedResource* resource = i->value;
+#endif
+            if (resource->type() == resourceType) {
+                if (n == count) {
+                    details.addResource(resource);
+                    url = i->key;
+                    status = resource->status();
+                    return;
+                }
+                count++;
+            }
+#if ENABLE(CACHE_PARTITIONING)
+        }
+#endif
+    }
+}
 
 } // namespace WebCore

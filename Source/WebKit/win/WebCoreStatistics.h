@@ -71,6 +71,10 @@ public:
     virtual HRESULT STDMETHODCALLTYPE purgeInactiveFontData(void);
     virtual HRESULT STDMETHODCALLTYPE glyphPageCount( 
         /* [retval][out] */ UINT *count);
+    virtual HRESULT STDMETHODCALLTYPE webKitData(
+        /* [in] */ AboutDataType typeAboutData,
+        /* [in] */ AboutDataFormat typeFormat,
+        /* [out, retval] */ BSTR *output);
 
 protected:
     ULONG m_refCount;

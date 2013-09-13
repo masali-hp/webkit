@@ -24,6 +24,7 @@
  */
 
 #include "config.h"
+#include "AboutData.h"
 #include "WebKitDLL.h"
 #include "WebCoreStatistics.h"
 
@@ -226,5 +227,14 @@ HRESULT STDMETHODCALLTYPE WebCoreStatistics::glyphPageCount(
     if (!count)
         return E_POINTER;
     *count = (UINT) GlyphPageTreeNode::treeGlyphPageCount();
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebCoreStatistics::webKitData(
+     /*[in]*/ AboutDataType typeAboutData,
+     /*[in]*/ AboutDataFormat typeFormat,
+     /*[out, retval]*/ BSTR *output)
+{
+    *output = BString(aboutData("/diagnostics/", typeAboutData, typeFormat)).release();
     return S_OK;
 }

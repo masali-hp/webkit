@@ -29,6 +29,7 @@
 #include "config.h"
 #include "WebFrameLoaderClient.h"
 
+#include "AboutData.h"
 #include "CFDictionaryPropertyBag.h"
 #include "COMPropertyBag.h"
 #include "DOMHTMLClasses.h"
@@ -655,7 +656,31 @@ void WebFrameLoaderClient::didDetectXSS(const KURL&, bool)
 
 PassRefPtr<DocumentLoader> WebFrameLoaderClient::createDocumentLoader(const WebCore::ResourceRequest& request, const SubstituteData& substituteData)
 {
-    RefPtr<WebDocumentLoader> loader = WebDocumentLoader::create(request, substituteData);
+    SubstituteData substituteDataLocal = substituteData;
+
+    String source;
+    if (request.url().protocolIs("about")) {
+        // The first 6 letters are "about:"
+        String aboutWhat = request.url().string().substring(6);
+        if (equalIgnoringCase(aboutWhat, "memory"))
+            source = aboutData("about:", AboutDataMemory, HTML);
+        else if (equalIgnoringCase(aboutWhat, "counters"))
+            source = aboutData("about:", AboutDataCounters, HTML);
+        else if (equalIgnoringCase(aboutWhat, "heap"))
+            source = aboutData("about:", AboutDataJSHeap, HTML);
+        else if (equalIgnoringCase(aboutWhat, "cache"))
+            source = aboutData("about:", AboutDataCache, HTML);
+        else if (equalIgnoringCase(aboutWhat, "all"))
+            source = aboutData("about:", AboutDataAll, HTML);
+    }
+
+    if (!source.isEmpty()) {
+        // Always ignore existing substitute data if any.
+        WTF::RefPtr<SharedBuffer> buffer = SharedBuffer::create(source.is8Bit() ? reinterpret_cast<const char*>(source.characters8()) : source.latin1().data(), source.length());
+        substituteDataLocal = SubstituteData(buffer, "text/html", "latin1", KURL());
+    }
+
+    RefPtr<WebDocumentLoader> loader = WebDocumentLoader::create(request, substituteDataLocal);
 
     COMPtr<WebDataSource> dataSource(AdoptCOM, WebDataSource::createInstance(loader.get()));
 

@@ -25,6 +25,7 @@
 #ifndef Cache_h
 #define Cache_h
 
+#include "CachedResource.h"
 #include "SecurityOriginHash.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -36,7 +37,6 @@
 #include <wtf/MemoryOutManager.h>
 #endif
 #if PLATFORM(HP)
-#include "CachedResource.h"
 #include <wtf/hp/HPWebkitMalloc.h>
 #endif
 
@@ -189,9 +189,11 @@ public:
     unsigned liveSize() const { return m_liveSize; }
     unsigned deadSize() const { return m_deadSize; }
 
-#if PLATFORM(HP)
+    //  Aggregates cache data for all resource types into a single TypeStatistic
+    void aggregateCacheStatsHelper(TypeStatistic &total, const TypeStatistic detail);
     TypeStatistic aggregateCacheStats();
-#endif
+    int getCount(CachedResource::Type resourceType);
+    void getDetails(CachedResource::Type resourceType, int n, TypeStatistic & details, String & url, CachedResource::Status & status);
 
 private:
     MemoryCache();
@@ -210,8 +212,6 @@ private:
 #if PLATFORM(HP)
     void outputCacheDetailHeader(char * description, MemoryCache::TypeStatistic &stat, void(*output)(char *));
     void outputCacheDetail(char * description, CachedResource::Type resourceType, MemoryCache::TypeStatistic &stat, void(*)(char *));
-    //  Aggregates cache data for all resource types into a single TypeStatistic
-    void aggregateCacheStatsHelper(TypeStatistic &total, const TypeStatistic detail);
     static void OutputCacheInfo(HPMemoryOutputFunc output);
 #endif
 
