@@ -394,10 +394,15 @@ HRESULT STDMETHODCALLTYPE DOMNode::textContent(
 }
 
 HRESULT STDMETHODCALLTYPE DOMNode::setTextContent( 
-    /* [in] */ BSTR /*text*/)
+    /* [in] */ BSTR text)
 {
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    if (text != NULL) {
+        String newText(text, SysStringLen(text));
+        ExceptionCode ec(0);
+        m_node->setTextContent(newText, ec);
+        return S_OK;
+    }
+    return E_FAIL;
 }
 
 // DOMNode - IDOMEventTarget --------------------------------------------------

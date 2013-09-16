@@ -290,6 +290,16 @@ interface IDOMHTMLElement : IDOMElement
         - (void)setInnerText:(NSString *)innerText;
     */
     HRESULT setInnerText([in] BSTR text);
+
+    /*
+        - (BOOL)visible;
+    */
+    HRESULT visible([out, retval] BOOL* result);
+
+    /*
+        - (void)dispatchEvent:(NSString *)eventName :(BOOL) canBubbleArg:(BOOL) cancelableArg;
+    */
+    HRESULT dispatchEvent([in] BSTR eventName, [in] BOOL canBubbleArg, [in] BOOL cancelableArg);
 }
 
 /*

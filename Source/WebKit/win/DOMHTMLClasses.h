@@ -690,6 +690,13 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setInnerText( 
         /* [in] */ BSTR text);        
 
+    virtual HRESULT STDMETHODCALLTYPE visible(
+        /* [retval][out] */ BOOL * result);
+
+    virtual HRESULT STDMETHODCALLTYPE dispatchEvent(
+            /* [in] */ BSTR eventName,
+            /* [in] */ BOOL canBubbleArg,
+            /* [in] */ BOOL cancelableArg);
 };
 
 class DOMHTMLFormElement : public DOMHTMLElement, public IDOMHTMLFormElement
@@ -948,6 +955,14 @@ public:
         
     virtual HRESULT STDMETHODCALLTYPE setInnerText( 
         /* [in] */ BSTR text) { return DOMHTMLElement::setInnerText(text); }
+
+    virtual HRESULT STDMETHODCALLTYPE visible(
+        /* [retval][out] */ BOOL * result) { return DOMHTMLElement::visible(result); }
+
+    virtual HRESULT STDMETHODCALLTYPE dispatchEvent(
+            /* [in] */ BSTR eventName,
+            /* [in] */ BOOL canBubbleArg,
+            /* [in] */ BOOL cancelableArg) { return DOMHTMLElement::dispatchEvent(eventName, canBubbleArg, cancelableArg); }
 
     // IDOMHTMLFormElement
     virtual HRESULT STDMETHODCALLTYPE elements( 
@@ -1253,6 +1268,14 @@ public:
         
     virtual HRESULT STDMETHODCALLTYPE setInnerText( 
         /* [in] */ BSTR text) { return DOMHTMLElement::setInnerText(text); }
+
+    virtual HRESULT STDMETHODCALLTYPE visible(
+        /* [retval][out] */ BOOL * result) { return DOMHTMLElement::visible(result); }
+
+    virtual HRESULT STDMETHODCALLTYPE dispatchEvent(
+            /* [in] */ BSTR eventName,
+            /* [in] */ BOOL canBubbleArg,
+            /* [in] */ BOOL cancelableArg) { return DOMHTMLElement::dispatchEvent(eventName, canBubbleArg, cancelableArg); }
 
     // IDOMHTMLSelectElement
     virtual HRESULT STDMETHODCALLTYPE type( 
@@ -1578,6 +1601,14 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setInnerText( 
         /* [in] */ BSTR text) { return DOMHTMLElement::setInnerText(text); }
 
+    virtual HRESULT STDMETHODCALLTYPE visible(
+        /* [retval][out] */ BOOL * result) { return DOMHTMLElement::visible(result); }
+
+    virtual HRESULT STDMETHODCALLTYPE dispatchEvent(
+            /* [in] */ BSTR eventName,
+            /* [in] */ BOOL canBubbleArg,
+            /* [in] */ BOOL cancelableArg) { return DOMHTMLElement::dispatchEvent(eventName, canBubbleArg, cancelableArg); }
+
     // IDOMHTMLOptionElement
     virtual HRESULT STDMETHODCALLTYPE form( 
         /* [retval][out] */ IDOMHTMLFormElement **result);
@@ -1875,6 +1906,14 @@ public:
         
     virtual HRESULT STDMETHODCALLTYPE setInnerText( 
         /* [in] */ BSTR text) { return DOMHTMLElement::setInnerText(text); }
+
+    virtual HRESULT STDMETHODCALLTYPE visible(
+        /* [retval][out] */ BOOL * result) { return DOMHTMLElement::visible(result); }
+
+    virtual HRESULT STDMETHODCALLTYPE dispatchEvent(
+            /* [in] */ BSTR eventName,
+            /* [in] */ BOOL canBubbleArg,
+            /* [in] */ BOOL cancelableArg) { return DOMHTMLElement::dispatchEvent(eventName, canBubbleArg, cancelableArg); }
 
     // IDOMHTMLInputElement
     virtual HRESULT STDMETHODCALLTYPE defaultValue( 
@@ -2286,6 +2325,14 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setInnerText( 
         /* [in] */ BSTR text) { return DOMHTMLElement::setInnerText(text); }
 
+    virtual HRESULT STDMETHODCALLTYPE visible(
+        /* [retval][out] */ BOOL * result) { return DOMHTMLElement::visible(result); }
+
+    virtual HRESULT STDMETHODCALLTYPE dispatchEvent(
+            /* [in] */ BSTR eventName,
+            /* [in] */ BOOL canBubbleArg,
+            /* [in] */ BOOL cancelableArg) { return DOMHTMLElement::dispatchEvent(eventName, canBubbleArg, cancelableArg); }
+
     // IDOMHTMLTextArea
     virtual HRESULT STDMETHODCALLTYPE defaultValue( 
         /* [retval][out] */ BSTR *result);
@@ -2610,6 +2657,14 @@ public:
         
     virtual HRESULT STDMETHODCALLTYPE setInnerText( 
         /* [in] */ BSTR text) { return DOMHTMLElement::setInnerText(text); }
+
+    virtual HRESULT STDMETHODCALLTYPE visible(
+        /* [retval][out] */ BOOL * result) { return DOMHTMLElement::visible(result); }
+
+    virtual HRESULT STDMETHODCALLTYPE dispatchEvent(
+            /* [in] */ BSTR eventName,
+            /* [in] */ BOOL canBubbleArg,
+            /* [in] */ BOOL cancelableArg) { return DOMHTMLElement::dispatchEvent(eventName, canBubbleArg, cancelableArg); }
 
     // IDOMHTMLIFrameElement
     virtual HRESULT STDMETHODCALLTYPE contentFrame( 

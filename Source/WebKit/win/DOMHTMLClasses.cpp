@@ -409,12 +409,16 @@ HRESULT STDMETHODCALLTYPE DOMHTMLElement::setIdName(
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLElement::title( 
-        /* [retval][out] */ BSTR* /*result*/)
+        /* [retval][out] */ BSTR* result)
 {
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    if (!result)
+        return E_POINTER;
+    ASSERT(m_element && m_element->isHTMLElement());
+    String idString = static_cast<HTMLElement*>(m_element)->getAttribute(titleAttr);
+    *result = BString(idString).release();
+    return S_OK;
 }
-    
+
 HRESULT STDMETHODCALLTYPE DOMHTMLElement::setTitle( 
         /* [in] */ BSTR /*title*/)
 {
@@ -498,6 +502,26 @@ HRESULT STDMETHODCALLTYPE DOMHTMLElement::setInnerText(
     return S_OK;
 }
 
+HRESULT STDMETHODCALLTYPE DOMHTMLElement::visible(
+        /* [retval][out] */ BOOL* result)
+{
+    RenderStyle * style = NULL;
+    if (!m_element || !m_element->renderer() || !(style = m_element->renderer()->style()))
+        *result = FALSE;
+    else
+        *result = (style->visibility() == VISIBLE ? TRUE : FALSE);
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE DOMHTMLElement::dispatchEvent(
+            /* [in] */ BSTR eventName,
+            /* [in] */ BOOL canBubbleArg,
+            /* [in] */ BOOL cancelableArg)
+{
+    static_cast<Node*>(m_element)->dispatchEvent(Event::create(eventName, canBubbleArg, cancelableArg));
+    return S_OK;
+}
+
 // DOMHTMLFormElement - IUnknown ----------------------------------------------
 
 HRESULT STDMETHODCALLTYPE DOMHTMLFormElement::QueryInterface(REFIID riid, void** ppvObject)
@@ -515,10 +539,14 @@ HRESULT STDMETHODCALLTYPE DOMHTMLFormElement::QueryInterface(REFIID riid, void**
 // DOMHTMLFormElement ---------------------------------------------------------
 
 HRESULT STDMETHODCALLTYPE DOMHTMLFormElement::elements( 
-        /* [retval][out] */ IDOMHTMLCollection** /*result*/)
+        /* [retval][out] */ IDOMHTMLCollection** result)
 {
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    ASSERT(m_element && m_element->hasTagName(formTag));
+    HTMLFormElement* form = static_cast<HTMLFormElement*>(m_element);
+    *result = DOMHTMLCollection::createInstance(form->elements().get());
+    if (*result != NULL)
+        return S_OK;
+    return E_FAIL;
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLFormElement::length( 
@@ -1061,10 +1089,12 @@ HRESULT STDMETHODCALLTYPE DOMHTMLInputElement::setAlt(
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLInputElement::checked( 
-        /* [retval][out] */ BOOL* /*result*/)
+        /* [retval][out] */ BOOL* result)
 {
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    ASSERT(m_element && m_element->hasTagName(inputTag));
+    HTMLInputElement* inputElement = static_cast<HTMLInputElement*>(m_element);
+    *result = inputElement->checked();
+    return S_OK;
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLInputElement::setChecked( 
@@ -1091,10 +1121,12 @@ HRESULT STDMETHODCALLTYPE DOMHTMLInputElement::setDisabled(
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLInputElement::maxLength( 
-        /* [retval][out] */ int* /*result*/)
+        /* [retval][out] */ int* result)
 {
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    ASSERT(m_element && m_element->hasTagName(inputTag));
+    HTMLInputElement* inputElement = static_cast<HTMLInputElement*>(m_element);
+    *result = inputElement->maxLength();
+    return S_OK;
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLInputElement::setMaxLength( 
@@ -1177,10 +1209,12 @@ HRESULT STDMETHODCALLTYPE DOMHTMLInputElement::setTabIndex(
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLInputElement::type( 
-        /* [retval][out] */ BSTR* /*result*/)
+        /* [retval][out] */ BSTR* result)
 {
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    ASSERT(m_element && m_element->hasTagName(inputTag));
+    String typeString = static_cast<HTMLElement*>(m_element)->getAttribute(typeAttr);
+    *result = BString(typeString).release();
+    return S_OK;
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLInputElement::setType( 
@@ -1468,10 +1502,12 @@ HRESULT STDMETHODCALLTYPE DOMHTMLTextAreaElement::setCols(
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLTextAreaElement::disabled( 
-        /* [retval][out] */ BOOL* /*result*/)
+        /* [retval][out] */ BOOL* result)
 {
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    ASSERT(m_element && m_element->hasTagName(textareaTag));
+    HTMLTextAreaElement* textAreaElement = static_cast<HTMLTextAreaElement*>(m_element);
+    *result = textAreaElement->isDisabledFormControl() ? TRUE : FALSE;
+    return S_OK;
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLTextAreaElement::setDisabled( 
