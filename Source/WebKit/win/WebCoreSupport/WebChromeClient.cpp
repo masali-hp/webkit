@@ -163,8 +163,25 @@ void WebChromeClient::takeFocus(FocusDirection direction)
     }
 }
 
-void WebChromeClient::focusedNodeChanged(Node*)
+void WebChromeClient::focusedNodeChanged(Node* element)
 {
+    if (!element || element->isElementNode()) {
+        COMPtr<IWebUIDelegate> delegate = uiDelegate();
+        if (delegate) {
+            COMPtr<IWebUIDelegatePrivate> delegatePrivate(Query, delegate);
+            if (delegatePrivate) {
+                if (element) {
+                    WebCore::Element * activeElement = static_cast<WebCore::Element*>(element);
+                    IDOMElement* domElement = DOMElement::createInstance(activeElement);
+                    delegatePrivate->focusedNodeChanged(m_webView, activeElement->isValidFormControlElement(), domElement);
+                    domElement->Release();
+                }
+                else {
+                    delegatePrivate->focusedNodeChanged(m_webView, false, NULL);
+                }
+            }
+        }
+    }
 }
 
 void WebChromeClient::focusedFrameChanged(Frame*)

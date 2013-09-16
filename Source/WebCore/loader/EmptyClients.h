@@ -506,6 +506,9 @@ public:
 
     virtual void willSetInputMethodState() { }
     virtual void setInputMethodState(bool) { }
+#if PLATFORM(HP)
+    virtual void onMouseClick(Node *) { }
+#endif
 
 private:
     EmptyTextCheckerClient m_textCheckerClient;

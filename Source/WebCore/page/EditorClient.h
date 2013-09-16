@@ -162,6 +162,9 @@ public:
     virtual bool spellingUIIsShowing() = 0;
     virtual void willSetInputMethodState() = 0;
     virtual void setInputMethodState(bool enabled) = 0;
+#if PLATFORM(HP)
+    virtual void onMouseClick(Node *) = 0;
+#endif
 
     // Support for global selections, used on platforms like the X Window System that treat
     // selection as a type of clipboard.

@@ -34,6 +34,11 @@
 class WebView;
 class WebNotification;
 class WebEditorUndoTarget;
+#if PLATFORM(HP)
+namespace WebCore {
+    class Node;
+}
+#endif
 
 class WebEditorClient : public WebCore::EditorClient, public WebCore::TextCheckerClient {
 public:
@@ -116,6 +121,9 @@ public:
     virtual void requestCheckingOfString(WTF::PassRefPtr<WebCore::TextCheckingRequest>) { }
 
     virtual WebCore::TextCheckerClient* textChecker() { return this; }
+#if PLATFORM(HP)
+    virtual void onMouseClick(WebCore::Node *);
+#endif
 
 private:
     WebView* m_webView;

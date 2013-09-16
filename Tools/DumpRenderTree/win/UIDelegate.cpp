@@ -631,6 +631,14 @@ HRESULT STDMETHODCALLTYPE UIDelegate::webViewDidInvalidate(
     return E_NOTIMPL;
 }
 
+HRESULT STDMETHODCALLTYPE UIDelegate::focusedNodeChanged(
+    /* [in] */ IWebView *sender,
+    /* [in] */ BOOL formElement,
+    /* [in] */ IDOMElement *focusedNode)
+{
+    return E_NOTIMPL;
+}
+
 HRESULT STDMETHODCALLTYPE UIDelegate::setStatusText(IWebView*, BSTR text)
 { 
     if (gTestRunner->dumpStatusCallbacks())

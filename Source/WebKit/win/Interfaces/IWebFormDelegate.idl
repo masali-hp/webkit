@@ -94,4 +94,7 @@ interface IWebFormDelegate : IUnknown
     // listener must be sent continue when the delegate is done.
     //- (void)frame:(WebFrame *)frame sourceFrame:(WebFrame *)sourceFrame willSubmitForm:(DOMElement *)form withValues:(NSDictionary *)values submissionListener:(id <WebFormSubmissionListener>)listener;
     HRESULT willSubmitForm([in] IWebFrame* frame, [in] IWebFrame* sourceFrame, [in] IDOMElement* form, [in] IPropertyBag* values, [in] IWebFormSubmissionListener* listener);
+
+    //- (void)textFieldDidGetEditingFocus:(IDOMHTMLElement *)element inFrame:(WebFrame *)frame;
+    HRESULT textFieldWasClicked([in] IDOMHTMLElement* element, [in] IWebFrame* frame);
 }

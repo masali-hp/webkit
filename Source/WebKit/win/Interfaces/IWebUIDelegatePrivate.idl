@@ -66,6 +66,7 @@ interface IWebUIDelegatePrivate : IUnknown
     HRESULT webViewClosing([in] IWebView* sender);
     HRESULT webViewSetCursor([in] IWebView* sender, [in] OLE_HANDLE cursor);
     HRESULT webViewDidInvalidate([in] IWebView* sender);
+    HRESULT focusedNodeChanged([in] IWebView* sender, [in] BOOL formElement, [in] IDOMElement* focusedNode);
 }
 
 cpp_quote("#define WebWindowFeaturesXKey L\"x\"")

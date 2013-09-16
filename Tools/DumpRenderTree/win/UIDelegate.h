@@ -400,6 +400,11 @@ protected:
     virtual HRESULT STDMETHODCALLTYPE webViewDidInvalidate( 
         /* [in] */ IWebView *sender);
 
+    virtual HRESULT STDMETHODCALLTYPE focusedNodeChanged(
+        /* [in] */ IWebView *sender,
+        /* [in] */ BOOL formElement,
+        /* [in] */ IDOMElement *focusedNode);
+
     virtual HRESULT STDMETHODCALLTYPE desktopNotificationsDelegate(
         /* [out] */ IWebDesktopNotificationsDelegate** result);
 
