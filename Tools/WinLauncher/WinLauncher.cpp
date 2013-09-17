@@ -26,6 +26,8 @@
  */
 
 #include "stdafx.h"
+
+#include <wtf/Platform.h>
 #include "WinLauncher.h"
 
 #include "DOMDefaultImpl.h"
@@ -40,6 +42,14 @@
 #include <string>
 #include <wininet.h>
 
+#if PLATFORM(HP)
+#include "HPWebKitMemoryDebug.h"
+static void DumpMemoryAllocations(bool logAllocations);
+#endif
+
+namespace WTF {
+__declspec(dllimport) double currentTime();
+}
 
 #ifdef _WIN32_WCE
 #define SetWindowLongPtr(x, y, z) SetWindowLong(x, y, z)
@@ -74,6 +84,9 @@ POINT s_windowPosition = { 100, 100 };
 SIZE s_windowSize = { 800, 400 };
 bool s_usesLayeredWebView = false;
 bool s_fullDesktop = false;
+BSTR storagePath = NULL;
+BSTR inspectorURL = NULL;
+BSTR inspectorServer = NULL;
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -82,6 +95,10 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK    MyEditProc(HWND, UINT, WPARAM, LPARAM);
 
 static void loadURL(BSTR urlBStr);
+
+#if PLATFORM(HP)
+void LoadIniSettings(const char * inipath);
+#endif
 
 static bool usesLayeredWebView()
 {
@@ -226,6 +243,65 @@ exit:
     return hr;
 }
 
+HRESULT STDMETHODCALLTYPE WinLauncherWebHost::jobStarted(
+    /* [in] */ int jobId,
+    BSTR url,
+    BOOL synchronous)
+{
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WinLauncherWebHost::jobDataComplete(
+    /* [in] */ int jobId,
+    /* [in] */ int httpCode)
+{
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WinLauncherWebHost::jobFinished(
+    /* [in] */ int jobId,
+    /* [in] */ BOOL success,
+    /* [in] */ int errorCode)
+{
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WinLauncherWebHost::jobDebug(
+    /* [in] */ int jobId,
+    /* [in] */ DebugInformation debugType,
+    /* [in] */ unsigned char *data,
+    /* [in] */ int totalSize)
+{
+    static double timeStart = 0;
+    if (!timeStart)
+        timeStart = WTF::currentTime();
+
+    wchar_t dataBuf[1024];
+    bool needCRLF = false;
+    if (debugType == Text || debugType == HeaderIn || debugType == HeaderOut) {
+        size_t numConverted;
+        mbstowcs_s(&numConverted, dataBuf, 1024, (const char*) data, totalSize > 1023 ? 1023 : totalSize);
+        needCRLF = (dataBuf[numConverted - 2] != L'\n');
+    }
+
+    wchar_t dstBuf[1024];
+    if (debugType == DataIn || debugType == DataOut)
+        _snwprintf(dstBuf, 1024, L"%08.3f [%s] %d bytes\r\n",
+        WTF::currentTime() - timeStart, debugType == DataIn ? L"Data In" : L"Data Out", totalSize);
+    else if (debugType == Text)
+        _snwprintf(dstBuf, 1024, L"%08.3f %s%s",
+        WTF::currentTime() - timeStart, dataBuf, needCRLF ? L"\r\n" : L"");
+    else
+        _snwprintf(dstBuf, 1024, L"%08.3f [%s] %s%s",
+        WTF::currentTime() - timeStart,
+            debugType == HeaderIn ? L"Header In" :
+            debugType == HeaderOut ? L"Header Out" : L"???",
+            dataBuf, needCRLF ? L"\r\n" : L"");
+
+    OutputDebugStringW(dstBuf);
+    return S_OK;
+}
+
 static void resizeSubViews()
 {
     if (usesLayeredWebView() || !gViewWindow)
@@ -295,14 +371,34 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
      // TODO: Place code here.
     MSG msg = {0};
     HACCEL hAccelTable;
-    BSTR inspectorURL = NULL;
-    BSTR inspectorServer = NULL;
     BSTR frameUrl = NULL;
     INITCOMMONCONTROLSEX InitCtrlEx;
 
     InitCtrlEx.dwSize = sizeof(INITCOMMONCONTROLSEX);
     InitCtrlEx.dwICC  = 0x00004000; //ICC_STANDARD_CLASSES;
     InitCommonControlsEx(&InitCtrlEx);
+
+    storagePath = SysAllocString(L".\\");
+
+    gWebHost = new WinLauncherWebHost();
+    gWebHost->AddRef();
+
+#if PLATFORM(HP)
+    // The debugger hangs loading symbols for this lib, but Jim's blog post
+    // mentions a workaround that seems to work.
+    // http://qualapps.blogspot.de/2006/12/visual-studio-hangs-during-debugging.html
+    HMODULE lib = LoadLibrary(L"RASAPI32.DLL");
+    FreeLibrary(lib);
+    lib = LoadLibrary(L"RTUTILS.DLL");
+    FreeLibrary(lib);
+    lib = LoadLibrary(L"SENSAPI.DLL");
+    FreeLibrary(lib);
+#if defined(_WIN32_WCE)
+    LoadIniSettings("\\Program Files\\WinLauncher\\browser.ini");
+#else
+    LoadIniSettings("browser.ini");
+#endif
+#endif
 
 #ifndef _WIN32_WCE
     int argc = 0;
@@ -397,7 +493,7 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
 
     IWebPreferencesPrivate * prefsPrivate = NULL;
     if (SUCCEEDED(standardPreferences->QueryInterface(IID_IWebPreferencesPrivate, (void**)&prefsPrivate))) {
-        prefsPrivate->setLocalStorageDatabasePath(SysAllocString(L"\\."));
+        prefsPrivate->setLocalStorageDatabasePath(storagePath);
 
         if(inspectorURL != NULL){
             prefsPrivate->setInspectorURL(inspectorURL);
@@ -417,8 +513,6 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
     if (FAILED(hr))
         goto exit;
 
-    gWebHost = new WinLauncherWebHost();
-    gWebHost->AddRef();
     hr = gWebView->setFrameLoadDelegate(gWebHost);
     if (FAILED(hr))
         goto exit;
@@ -478,6 +572,14 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
     while (GetMessage(&msg, NULL, 0, 0)) {
         if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
             TranslateMessage(&msg);
+#if PLATFORM(HP)
+            if (msg.message == WM_KEYDOWN && msg.wParam == VK_PAUSE) {
+                // Let's do a memory dump.
+                // Enable stack collection if we haven't already.
+                EnableStackCollection(true);
+                DumpMemoryAllocations(true);
+            }
+#endif
             DispatchMessage(&msg);
         }
     }
@@ -769,3 +871,41 @@ exit:
     if (request)
         request->Release();
 }
+
+#if PLATFORM(HP)
+static void RecordMemoryDump(const char * text, int len, void * data)
+{
+    DWORD written = 0;
+    WriteFile((HANDLE) data, text, len, &written, NULL);
+}
+
+static void DumpMemoryAllocations(bool logAllocations)
+{
+    static int dumpCount = 0;
+    static unsigned int lastAllocCount = 0;
+
+    unsigned int currentAllocCount = MemoryDebugGetCurrentAllocationID();
+
+#if defined(_WIN32_WCE)
+    wchar_t directory_path[] = L"\\Program Files\\WinLauncher";
+#else
+    wchar_t directory_path[256];
+    GetCurrentDirectoryW(256, directory_path);
+#endif
+    wchar_t filename[256];
+    _snwprintf(filename, 256, L"%s\\memorydump-%d (%u-%u).txt", directory_path, dumpCount++, lastAllocCount, currentAllocCount);
+
+    wchar_t wbuff[512];
+    _snwprintf(wbuff, 256, L"Writing memory %s log to %s\n", logAllocations ? L"allocation" : L"free", filename);
+    OutputDebugStringW(wbuff);
+
+    HANDLE hFile = CreateFile(filename, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (logAllocations)
+        MemoryDebugDumpAllObjects(RecordMemoryDump, lastAllocCount, hFile);
+    else
+        MemoryDebugDumpAllFreedObjects(true, RecordMemoryDump, lastAllocCount, hFile);
+    CloseHandle(hFile);
+
+    lastAllocCount = MemoryDebugGetCurrentAllocationID();
+}
+#endif

@@ -28,7 +28,9 @@
 #include "resource.h"
 #include <WebKit/WebKit.h>
 
-class WinLauncherWebHost : public IWebFrameLoadDelegate
+class WinLauncherWebHost
+    : public IWebFrameLoadDelegate
+    , public IWebNetworkDebugDelegate
 {
 public:
     WinLauncherWebHost() : m_refCount(1) {}
@@ -108,6 +110,27 @@ public:
         /* [in] */ JSContextRef context,
         /* [in] */ JSObjectRef windowScriptObject,
         /* [in] */ IWebFrame *frame) { return S_OK; }
+
+    // IWebNetworkDebugDelegate
+    virtual HRESULT STDMETHODCALLTYPE jobStarted(
+        /* [in] */ int jobId,
+        BSTR url,
+        BOOL synchronous);
+
+    virtual HRESULT STDMETHODCALLTYPE jobDataComplete(
+        /* [in] */ int jobId,
+        /* [in] */ int httpCode);
+
+    virtual HRESULT STDMETHODCALLTYPE jobFinished(
+        /* [in] */ int jobId,
+        /* [in] */ BOOL success,
+        /* [in] */ int errorCode);
+
+    virtual HRESULT STDMETHODCALLTYPE jobDebug(
+        /* [in] */ int jobId,
+        /* [in] */ DebugInformation debugType,
+        /* [in] */ unsigned char *data,
+        /* [in] */ int totalSize);
 
     // WinLauncherWebHost
 

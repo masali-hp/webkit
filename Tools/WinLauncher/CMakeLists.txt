@@ -39,6 +39,17 @@ SET(WinLauncher_LIBRARIES
     WebKit
 )
 
+if (PLATFORM MATCHES HP)
+    list(APPEND WinLauncher_LIBRARIES
+        HP.Common.System.OS
+    )
+    list(APPEND WinLauncher_SOURCES
+        Configuration.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/browser.ini
+    )
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/browser.ini COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/browser.ini ${CMAKE_CURRENT_BINARY_DIR}/browser.ini)
+endif ()
+
 IF (WINOS MATCHES XP)
     LIST(APPEND WinLauncher_LIBRARIES
         comctl32
