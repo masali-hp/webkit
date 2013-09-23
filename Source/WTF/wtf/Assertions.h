@@ -223,19 +223,17 @@ inline void assertUnused(T& x) { (void)x; }
 
 #if PLATFORM(HP)
 
-#define ASSERT(assertion) do \
-    if (!(assertion)) { \
-        HPWebkitAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion); \
-        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_DEBUG_ASSERT); \
-    } \
-while (0)
+#define ASSERT(assertion) \
+    (!(assertion) ? \
+        (HPWebkitAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion), \
+         CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_DEBUG_ASSERT)) : \
+    (void)0)
 
-#define ASSERT_AT(assertion, file, line, function) do  \
-    if (!(assertion)) { \
-        HPWebkitAssertionFailed(file, line, function, #assertion); \
-        CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_DEBUG_ASSERT); \
-    } \
-while (0)
+#define ASSERT_AT(assertion, file, line, function) \
+    (!(assertion) ? \
+        (HPWebkitAssertionFailed(file, line, function, #assertion), \
+         CRASH_WITH_ERROR_CODE(HP_WEBKIT_FATAL_DEBUG_ASSERT)) : \
+    (void)0)
 
 #define ASSERT_NOT_REACHED() do { \
     HPWebkitAssertionFailed(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, 0); \

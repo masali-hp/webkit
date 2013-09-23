@@ -99,6 +99,11 @@ using namespace JSC::LLInt;
 
 #define OFFLINE_ASM_LOCAL_LABEL(label)   label:
 
+#if COMPILER(MSVC)
+#define cloop_isnan(n)  std::isnan(n)
+#else
+#define cloop_isnan(n)  std::isnan(n) || isnan(n)
+#endif
 
 //============================================================================
 // Some utilities:

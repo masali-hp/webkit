@@ -55,6 +55,8 @@ set PORT_FLAVOR=WinCairo
 
 rem With -disablejit we turn JIT off for javascript.
 set ENABLE_JIT=ON
+set ENABLE_LLINT_C_LOOP=OFF
+set ENABLE_LLINT=OFF
 
 rem With -disablehp we turn off HP specific webkit extensions.  (Like memory manager)
 set USE_HP=1
@@ -75,6 +77,11 @@ set ENABLE_DRAG=ON
 set CPU_SPECIFIC=
 
 for %%x in (%*) do call :parseargument %%x
+
+if %ENABLE_JIT% == OFF (
+    set ENABLE_LLINT_C_LOOP=ON
+    set ENABLE_LLINT=ON
+)
 
 if /I "%1%" == "all" (
     call :dobuild Debug XP %2 %3 %4 %5 %6 %7 %8 %9
@@ -164,6 +171,8 @@ cmake -G %GENERATOR% ^
  -DENABLE_HIGH_DPI_CANVAS=OFF ^
  -DENABLE_IMAGE_DECODER_DOWN_SAMPLING=ON ^
  -DENABLE_JIT=%ENABLE_JIT% ^
+ -DENABLE_LLINT=%ENABLE_LLINT% ^
+ -DENABLE_LLINT_C_LOOP=%ENABLE_LLINT_C_LOOP% ^
  -DENABLE_LEGACY_WEB_AUDIO=OFF ^
  -DENABLE_MATHML=%ENABLE_SVG% ^
  -DENABLE_NETSCAPE_PLUGIN_API=OFF ^
