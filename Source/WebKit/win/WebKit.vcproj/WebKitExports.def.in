@@ -365,12 +365,9 @@ EXPORTS
         ?setTracksRepaints@FrameView@WebCore@@QAEX_N@Z
         ??1BitmapImage@WebCore@@UAE@XZ
         ??0BitmapImage@WebCore@@IAE@PAVImageObserver@1@@Z
-        ?isBitmapImage@BitmapImage@WebCore@@UBE_NXZ
-        ?currentFrameKnownToBeOpaque@BitmapImage@WebCore@@UAE_NXZ
+        ?isBitmapImage@BitmapImage@WebCore@@UBE_NXZ        
         ?hasSingleSecurityOrigin@BitmapImage@WebCore@@UBE_NXZ
-#if !ASSERT_DISABLED
-        ?notSolidColor@BitmapImage@WebCore@@UAE_NXZ 
-#endif
+
         ?computeIntrinsicDimensions@Image@WebCore@@UAEXAAULength@2@0AAVFloatSize@2@@Z
         ?size@BitmapImage@WebCore@@UBE?AVIntSize@2@XZ
         ?getHotSpot@BitmapImage@WebCore@@UBE_NAAVIntPoint@2@@Z

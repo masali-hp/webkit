@@ -116,6 +116,15 @@ IntSize ImageSource::frameSizeAtIndex(size_t index, RespectImageOrientationEnum 
     return size;
 }
 
+IntSize ImageSource::decodedFrameSizeAtIndex(size_t index, RespectImageOrientationEnum shouldRespectOrientation) const
+{
+    // The JPEG and TIFF decoders need to be taught how to read EXIF, XMP, or IPTC data.
+    if (shouldRespectOrientation == RespectImageOrientation)
+        notImplemented();
+
+    return m_decoder ? m_decoder->decodedFrameSizeAtIndex(index) : IntSize();
+}
+
 bool ImageSource::getHotSpot(IntPoint& hotSpot) const
 {
     return m_decoder ? m_decoder->hotSpot(hotSpot) : false;
@@ -136,12 +145,12 @@ size_t ImageSource::frameCount() const
     return m_decoder ? m_decoder->frameCount() : 0;
 }
 
-PassNativeImagePtr ImageSource::createFrameAtIndex(size_t index)
+PassNativeImagePtr ImageSource::createFrameAtIndex(size_t index, const FloatSize& reqFrameSize)
 {
     if (!m_decoder)
         return 0;
 
-    ImageFrame* buffer = m_decoder->frameBufferAtIndex(index);
+    ImageFrame* buffer = m_decoder->frameBufferAtIndex(index, reqFrameSize);
     if (!buffer || buffer->status() == ImageFrame::FrameEmpty)
         return 0;
 
@@ -160,7 +169,7 @@ float ImageSource::frameDurationAtIndex(size_t index)
     if (!m_decoder)
         return 0;
 
-    ImageFrame* buffer = m_decoder->frameBufferAtIndex(index);
+    ImageFrame* buffer = m_decoder->frameBufferAtIndex(index, FloatSize(0,0));
     if (!buffer || buffer->status() == ImageFrame::FrameEmpty)
         return 0;
 
@@ -191,7 +200,7 @@ bool ImageSource::frameIsCompleteAtIndex(size_t index)
     if (!m_decoder)
         return false;
 
-    ImageFrame* buffer = m_decoder->frameBufferAtIndex(index);
+    ImageFrame* buffer = m_decoder->frameBufferAtIndex(index, FloatSize(0,0));
     return buffer && buffer->status() == ImageFrame::FrameComplete;
 }
 

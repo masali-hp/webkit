@@ -32,6 +32,7 @@
 #define ICOImageDecoder_h
 
 #include "BMPImageReader.h"
+#include "FloatSize.h"
 
 namespace WebCore {
 
@@ -51,7 +52,7 @@ namespace WebCore {
         virtual IntSize frameSizeAtIndex(size_t) const;
         virtual bool setSize(unsigned width, unsigned height);
         virtual size_t frameCount();
-        virtual ImageFrame* frameBufferAtIndex(size_t);
+        virtual ImageFrame* frameBufferAtIndex(size_t, const FloatSize& reqFrameSize);
         // CAUTION: setFailed() deletes all readers and decoders.  Be careful to
         // avoid accessing deleted memory, especially when calling this from
         // inside BMPImageReader!

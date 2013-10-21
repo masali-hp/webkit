@@ -29,7 +29,7 @@
 
 #include "ImageOrientation.h"
 #include "NativeImagePtr.h"
-
+#include "FloatSize.h"
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
@@ -134,7 +134,7 @@ public:
     bool isSizeAvailable();
     IntSize size(RespectImageOrientationEnum = DoNotRespectImageOrientation) const;
     IntSize frameSizeAtIndex(size_t, RespectImageOrientationEnum = DoNotRespectImageOrientation) const;
-
+    IntSize decodedFrameSizeAtIndex(size_t, RespectImageOrientationEnum = DoNotRespectImageOrientation) const;
     bool getHotSpot(IntPoint&) const;
 
     size_t bytesDecodedToDetermineProperties() const;
@@ -145,7 +145,7 @@ public:
 
     // Callers should not call this after calling clear() with a higher index;
     // see comments on clear() above.
-    PassNativeImagePtr createFrameAtIndex(size_t);
+    PassNativeImagePtr createFrameAtIndex(size_t, const FloatSize& reqFrameSize);
 
     float frameDurationAtIndex(size_t);
     bool frameHasAlphaAtIndex(size_t); // Whether or not the frame actually used any alpha.

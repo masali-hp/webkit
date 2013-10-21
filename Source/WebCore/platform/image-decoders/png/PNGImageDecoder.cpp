@@ -268,8 +268,12 @@ bool PNGImageDecoder::setSize(unsigned width, unsigned height)
     return true;
 }
 
-ImageFrame* PNGImageDecoder::frameBufferAtIndex(size_t index)
+ImageFrame* PNGImageDecoder::frameBufferAtIndex(size_t index, const FloatSize& reqFrameSize)
 {
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
+    prepareScaleDataIfNecessary(reqFrameSize);
+#endif
+
     if (index)
         return 0;
 
@@ -346,6 +350,9 @@ void PNGImageDecoder::headerAvailable()
     // in this case as soon as we longjmp().
     m_doNothingOnFailure = true;
     bool result = setSize(width, height);
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
+    prepareScaleDataIfNecessary(FloatSize(requestedFrameSize().width(), requestedFrameSize().height()));
+#endif
     m_doNothingOnFailure = false;
     if (!result) {
         longjmp(JMPBUF(png), 1);

@@ -96,7 +96,7 @@ void BitmapImage::drawFrameMatchingSourceSize(GraphicsContext* ctxt, const Float
 {
     size_t frames = frameCount();
     for (size_t i = 0; i < frames; ++i) {
-        RefPtr<cairo_surface_t> surface = frameAtIndex(i);
+        RefPtr<cairo_surface_t> surface = frameAtIndex(i, dstRect.size());
         if (!surface)
             continue;
 

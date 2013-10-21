@@ -126,7 +126,7 @@ void BitmapImage::destroyMetadataAndNotify(unsigned frameBytesCleared)
         imageObserver()->decodedSizeChanged(this, -safeCast<int>(frameBytesCleared));
 }
 
-void BitmapImage::cacheFrame(size_t index)
+void BitmapImage::cacheFrame(size_t index, const FloatSize& reqFrameSize)
 {
     size_t numFrames = frameCount();
     ASSERT(m_decodedSize == 0 || numFrames > 1);
@@ -134,7 +134,7 @@ void BitmapImage::cacheFrame(size_t index)
     if (m_frames.size() < numFrames)
         m_frames.grow(numFrames);
 
-    m_frames[index].m_frame = m_source.createFrameAtIndex(index);
+    m_frames[index].m_frame = m_source.createFrameAtIndex(index, reqFrameSize);
     if (numFrames == 1 && m_frames[index].m_frame)
         checkForSolidColor();
 
@@ -147,6 +147,8 @@ void BitmapImage::cacheFrame(size_t index)
     m_frames[index].m_frameBytes = m_source.frameBytesAtIndex(index);
 
     const IntSize frameSize(index ? m_source.frameSizeAtIndex(index) : m_size);
+    m_frames[index].m_decodedFrameSize = m_source.decodedFrameSizeAtIndex(index);
+
     if (frameSize != m_size)
         m_hasUniformFrameSize = false;
     if (m_frames[index].m_frame) {
@@ -286,40 +288,57 @@ bool BitmapImage::isSizeAvailable()
     return m_sizeAvailable;
 }
 
-bool BitmapImage::ensureFrameIsCached(size_t index)
+bool BitmapImage::ensureFrameIsCached(size_t index, const FloatSize& reqFrameSize)
 {
     if (index >= frameCount())
         return false;
 
+    // only want to redecode at a larger size going from low to high
+    // never redecode from high to low
+    if (index < m_frames.size()
+        && m_frames[index].m_frame
+        && !m_frames[index].m_decodedFrameSize.isZero()
+        && !m_frames[index].m_decodedFrameSize.isEmpty()
+        && !reqFrameSize.isZero())
+    {
+        // this was decoded before but at what size
+        if ((m_frames[index].m_decodedFrameSize.width() != 0 && m_frames[index].m_decodedFrameSize.height() != 0)
+            && ( m_frames[index].m_decodedFrameSize.width() != (int)reqFrameSize.width() || m_frames[index].m_decodedFrameSize.height() != (int)reqFrameSize.height()))
+        {
+                if ((m_frames[index].m_decodedFrameSize.width() < (int)reqFrameSize.width() )&& (m_frames[index].m_decodedFrameSize.height() < (int)reqFrameSize.height()))
+                    destroyDecodedData(true);
+        }
+    }
+
     if (index >= m_frames.size() || !m_frames[index].m_frame)
-        cacheFrame(index);
+        cacheFrame(index, reqFrameSize);
     return true;
 }
 
-PassNativeImagePtr BitmapImage::frameAtIndex(size_t index)
+PassNativeImagePtr BitmapImage::frameAtIndex(size_t index, const FloatSize& reqFrameSize)
 {
-    if (!ensureFrameIsCached(index))
+    if (!ensureFrameIsCached(index, reqFrameSize))
         return 0;
     return m_frames[index].m_frame;
 }
 
 bool BitmapImage::frameIsCompleteAtIndex(size_t index)
 {
-    if (!ensureFrameIsCached(index))
+    if (!ensureFrameIsCached(index, FloatSize(0,0)))
         return false;
     return m_frames[index].m_isComplete;
 }
 
 float BitmapImage::frameDurationAtIndex(size_t index)
 {
-    if (!ensureFrameIsCached(index))
+    if (!ensureFrameIsCached(index, FloatSize(0,0)))
         return 0;
     return m_frames[index].m_duration;
 }
 
 PassNativeImagePtr BitmapImage::nativeImageForCurrentFrame()
 {
-    return frameAtIndex(currentFrame());
+    return frameAtIndex(currentFrame(), FloatSize(0,0));
 }
 
 bool BitmapImage::frameHasAlphaAtIndex(size_t index)

@@ -113,7 +113,7 @@ int GIFImageDecoder::repetitionCount() const
     return m_repetitionCount;
 }
 
-ImageFrame* GIFImageDecoder::frameBufferAtIndex(size_t index)
+ImageFrame* GIFImageDecoder::frameBufferAtIndex(size_t index, const FloatSize& reqFrameSize)
 {
     if (index >= frameCount())
         return 0;

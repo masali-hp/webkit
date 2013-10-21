@@ -31,6 +31,7 @@
 
 #include "IntRect.h"
 #include "ImageSource.h"
+#include "FloatSize.h"
 #include "PlatformScreen.h"
 #include "SharedBuffer.h"
 #include <wtf/Assertions.h>
@@ -238,6 +239,21 @@ namespace WebCore {
             return m_scaled ? IntSize(m_scaledColumns.size(), m_scaledRows.size()) : size();
         }
 
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
+        virtual IntSize decodedSize() const { return m_requestedFrameSize; }
+
+        IntSize requestedFrameSize() const
+        {
+            return m_requestedFrameSize;
+        }
+
+        virtual IntSize decodedFrameSizeAtIndex(size_t) const
+        {
+            return decodedSize();
+        }
+
+#endif
+
         // This will only differ from size() for ICO (where each frame is a
         // different icon) or other formats where different frames are different
         // sizes.  This does NOT differ from size() for GIF, since decoding GIFs
@@ -269,7 +285,7 @@ namespace WebCore {
 
         // Decodes as much of the requested frame as possible, and returns an
         // ImageDecoder-owned pointer.
-        virtual ImageFrame* frameBufferAtIndex(size_t) = 0;
+        virtual ImageFrame* frameBufferAtIndex(size_t, const FloatSize & reqFrameSize) = 0;
 
         // Make the best effort guess to check if the requested frame has alpha channel.
         virtual bool frameHasAlphaAtIndex(size_t) const;
@@ -361,6 +377,10 @@ namespace WebCore {
         virtual bool hotSpot(IntPoint&) const { return false; }
 
     protected:
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
+        void prepareScaleDataIfNecessary(const FloatSize & frameSize);
+#endif
+
         void prepareScaleDataIfNecessary();
         int upperBoundScaledX(int origX, int searchStart = 0);
         int lowerBoundScaledX(int origX, int searchStart = 0);
@@ -394,6 +414,9 @@ namespace WebCore {
         int m_maxNumPixels;
         bool m_isAllDataReceived;
         bool m_failed;
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
+        IntSize m_requestedFrameSize;
+#endif
     };
 
 } // namespace WebCore

@@ -195,6 +195,7 @@ bool ImageFrame::copyBitmapData(const ImageFrame& other)
 bool ImageFrame::setSize(int newWidth, int newHeight)
 {
     ASSERT(!width() && !height());
+
     size_t backingStoreSize = newWidth * newHeight;
     if (!m_backingStore.tryReserveCapacity(backingStoreSize))
         return false;
@@ -301,6 +302,40 @@ void ImageDecoder::prepareScaleDataIfNecessary()
     fillScaledValues(m_scaledColumns, scale, width);
     fillScaledValues(m_scaledRows, scale, height);
 }
+
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
+void ImageDecoder::prepareScaleDataIfNecessary(const FloatSize & frameSize)
+{
+    if (frameSize.isZero())
+        return;
+
+    int width = size().width();
+    int height = size().height();
+    int numPixels = height * width;
+
+    int frame_NumPixels = (int)frameSize.width() * (int)frameSize.height();
+
+    if (m_scaled && frame_NumPixels > m_maxNumPixels)
+        return;
+
+    m_requestedFrameSize = IntSize(frameSize.width(), frameSize.height());
+    int maxNumberOfPixels = numPixels < m_maxNumPixels ? numPixels : m_maxNumPixels;
+    if (frame_NumPixels <= 0 || maxNumberOfPixels <= frame_NumPixels)
+        return;
+
+    if (m_scaled &&(m_scaledColumns.size() == frameSize.width() && m_scaledRows.size() == frameSize.height()))
+        return;
+
+    m_scaledColumns.clear();
+    m_scaledRows.clear();
+    m_scaled = true;
+
+    double scale = sqrt(frame_NumPixels / (double)numPixels);
+    fillScaledValues(m_scaledColumns, scale, width);
+    fillScaledValues(m_scaledRows, scale, height);
+    m_requestedFrameSize = IntSize(m_scaledColumns.size(), m_scaledRows.size());
+}
+#endif
 
 int ImageDecoder::upperBoundScaledX(int origX, int searchStart)
 {

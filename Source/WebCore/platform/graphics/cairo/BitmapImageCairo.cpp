@@ -77,7 +77,7 @@ void BitmapImage::draw(GraphicsContext* context, const FloatRect& dst, const Flo
 
     startAnimation();
 
-    RefPtr<cairo_surface_t> surface = frameAtIndex(m_currentFrame);
+    RefPtr<cairo_surface_t> surface = frameAtIndex(m_currentFrame, dst.size());
     if (!surface) // If it's too early we won't have an image yet.
         return;
 
@@ -135,7 +135,7 @@ void BitmapImage::checkForSolidColor()
     if (frameCount() > 1)
         return;
 
-    RefPtr<cairo_surface_t> surface = frameAtIndex(m_currentFrame);
+    RefPtr<cairo_surface_t> surface = frameAtIndex(m_currentFrame, FloatSize(0,0));
     if (!surface) // If it's too early we won't have an image yet.
         return;
 

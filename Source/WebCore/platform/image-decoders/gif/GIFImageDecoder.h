@@ -48,7 +48,7 @@ namespace WebCore {
         virtual bool setSize(unsigned width, unsigned height);
         virtual size_t frameCount();
         virtual int repetitionCount() const;
-        virtual ImageFrame* frameBufferAtIndex(size_t index);
+        virtual ImageFrame* frameBufferAtIndex(size_t index, const FloatSize& reqFrameSize);
         // CAUTION: setFailed() deletes |m_reader|.  Be careful to avoid
         // accessing deleted memory, especially when calling this from inside
         // GIFImageReader!

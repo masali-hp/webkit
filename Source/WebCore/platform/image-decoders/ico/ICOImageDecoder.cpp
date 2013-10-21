@@ -111,7 +111,7 @@ size_t ICOImageDecoder::frameCount()
     return m_frameBufferCache.size();
 }
 
-ImageFrame* ICOImageDecoder::frameBufferAtIndex(size_t index)
+ImageFrame* ICOImageDecoder::frameBufferAtIndex(size_t index, const FloatSize& reqFrameSize)
 {
     // Ensure |index| is valid.
     if (index >= frameCount())
@@ -234,7 +234,7 @@ bool ICOImageDecoder::decodeAtIndex(size_t index)
     // in the directory.
     if (m_pngDecoders[index]->isSizeAvailable() && (m_pngDecoders[index]->size() != dirEntry.m_size))
         return setFailed();
-    m_frameBufferCache[index] = *m_pngDecoders[index]->frameBufferAtIndex(0);
+    m_frameBufferCache[index] = *m_pngDecoders[index]->frameBufferAtIndex(0, FloatSize(0,0));
     return !m_pngDecoders[index]->failed() || setFailed();
 }
 

@@ -67,7 +67,7 @@ bool BMPImageDecoder::isSizeAvailable()
     return ImageDecoder::isSizeAvailable();
 }
 
-ImageFrame* BMPImageDecoder::frameBufferAtIndex(size_t index)
+ImageFrame* BMPImageDecoder::frameBufferAtIndex(size_t index, const FloatSize& reqFrameSize)
 {
     if (index)
         return 0;

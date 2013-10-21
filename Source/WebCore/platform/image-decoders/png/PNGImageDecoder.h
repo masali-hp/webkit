@@ -43,7 +43,7 @@ namespace WebCore {
         virtual String filenameExtension() const { return "png"; }
         virtual bool isSizeAvailable();
         virtual bool setSize(unsigned width, unsigned height);
-        virtual ImageFrame* frameBufferAtIndex(size_t index);
+        virtual ImageFrame* frameBufferAtIndex(size_t index, const FloatSize& reqFrameSize);
         // CAUTION: setFailed() deletes |m_reader|.  Be careful to avoid
         // accessing deleted memory, especially when calling this from inside
         // PNGImageReader!

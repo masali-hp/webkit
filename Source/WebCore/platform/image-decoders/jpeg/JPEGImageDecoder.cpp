@@ -610,11 +610,17 @@ bool JPEGImageDecoder::setSize(unsigned width, unsigned height)
         return false;
 
     prepareScaleDataIfNecessary();
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
+    prepareScaleDataIfNecessary(FloatSize(requestedFrameSize().width(), requestedFrameSize().height()));
+#endif
     return true;
 }
 
-ImageFrame* JPEGImageDecoder::frameBufferAtIndex(size_t index)
+ImageFrame* JPEGImageDecoder::frameBufferAtIndex(size_t index, const FloatSize& reqFrameSize)
 {
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
+    prepareScaleDataIfNecessary(reqFrameSize);
+#endif
     if (index)
         return 0;
 

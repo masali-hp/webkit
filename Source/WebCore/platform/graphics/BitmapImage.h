@@ -33,6 +33,7 @@
 #include "ImageOrientation.h"
 #include "ImageSource.h"
 #include "IntSize.h"
+#include "FloatSize.h"
 
 #if PLATFORM(MAC)
 #include <wtf/RetainPtr.h>
@@ -91,6 +92,7 @@ public:
     bool m_isComplete : 1;
     bool m_hasAlpha : 1;
     unsigned m_frameBytes;
+    IntSize m_decodedFrameSize;
 };
 
 // =================================================
@@ -201,16 +203,16 @@ protected:
 
     size_t currentFrame() const { return m_currentFrame; }
     virtual size_t frameCount();
-    PassNativeImagePtr frameAtIndex(size_t);
+    PassNativeImagePtr frameAtIndex(size_t, const FloatSize& reqFrameSize);
     bool frameIsCompleteAtIndex(size_t);
     float frameDurationAtIndex(size_t);
     bool frameHasAlphaAtIndex(size_t);
     ImageOrientation frameOrientationAtIndex(size_t);
 
     // Decodes and caches a frame. Never accessed except internally.
-    void cacheFrame(size_t index);
+    void cacheFrame(size_t index, const FloatSize& reqFrameSize);
     // Called before accessing m_frames[index]. Returns false on index out of bounds.
-    bool ensureFrameIsCached(size_t index);
+    bool ensureFrameIsCached(size_t index, const FloatSize& reqFrameSize);
 
     // Called to invalidate cached data.  When |destroyAll| is true, we wipe out
     // the entire frame buffer cache and tell the image source to destroy
