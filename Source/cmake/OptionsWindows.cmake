@@ -25,6 +25,14 @@ if (MSVC)
         set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}")
     endif ()
 
+    # Build without framepointers, if requested.
+    # http://msdn.microsoft.com/en-us/library/2kxx5t2c(v=vs.90).aspx
+    # Frame pointer omission makes stack walking too slow for memory leak tools.
+    if (NOT USE_FPO)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Oy-")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Oy-")
+    endif ()
+
     foreach (flag_var CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS)
         # Disable the import/export warning, generate .map files
         set(${flag_var} "${${flag_var}} /ignore:4049 /MAP")

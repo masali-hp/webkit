@@ -24,6 +24,7 @@ rem    echo    -jssharedcore   Build JavaScriptCore as a DLL
     echo    -disabledrag         Disable drag and drop support
     echo    -disableperf         Disable performance tracing framework
     echo    -nosmartimagedecode  Disable memory efficient image downsampling
+    echo    -useframepointers    Do not use frame pointer omission
     exit /b 1
 )
 
@@ -78,6 +79,8 @@ set ENABLE_DRAG=ON
 set ENABLE_PERFORMANCE_TRACING=ON
 
 set ENABLE_IMAGE_DECODER_DOWN_SAMPLING=ON
+
+set USE_FPO=1
 
 set CPU_SPECIFIC=
 
@@ -140,6 +143,7 @@ if %USE_WININET% EQU 1 (set BUILD_DIR=%BUILD_DIR%-wininet)
 if %ENABLE_DRAG% == OFF (set BUILD_DIR=%BUILD_DIR%-nodrag)
 if %ENABLE_PERFORMANCE_TRACING% == OFF (set BUILD_DIR=%BUILD_DIR%-noperf)
 if %ENABLE_IMAGE_DECODER_DOWN_SAMPLING% == OFF (set BUILD_DIR=%BUILD_DIR%-nodownsample)
+if %USE_FPO% EQU 0 (set BUILD_DIR=%BUILD_DIR%-nofpo)
 
 if %USE_HP% EQU 1 (
     set PLATFORM=-DPLATFORM=HP
@@ -195,6 +199,7 @@ cmake -G %GENERATOR% ^
  -DWTF_USE_WCHAR_UNICODE=%USE_WCHAR_UNICODE% ^
  -DWTF_USE_WININET=%USE_WININET% ^
  -DENABLE_IMAGE_DECODER_DOWN_SAMPLING=%ENABLE_IMAGE_DECODER_DOWN_SAMPLING% ^
+ -USE_FPO=%USE_FPO% ^
  %WEBKIT_DIR%
 
 @echo off
@@ -268,6 +273,9 @@ rem )
 )
 @if /I "%1" == "-nosmartimagedecode" (
     set ENABLE_IMAGE_DECODER_DOWN_SAMPLING=OFF
+)
+@if /I "%1" == "-useframepointers" (
+    set USE_FPO=0
 )
 
 goto :eof
