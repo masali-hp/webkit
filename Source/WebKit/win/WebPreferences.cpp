@@ -145,8 +145,8 @@ WebPreferences::WebPreferences()
 {
     gClassCount++;
     gClassNameCount.add("WebPreferences");
-    webPreferencesInstances = new HashMap<WTF::String, COMPtr<WebPreferences>>();
-
+    if (webPreferencesInstances == NULL)
+        webPreferencesInstances = new HashMap<WTF::String, COMPtr<WebPreferences>>();
 }
 
 WebPreferences::~WebPreferences()

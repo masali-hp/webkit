@@ -110,7 +110,7 @@ public:
 
 private:
     WebInspectorHttpRequest(PassRefPtr<HTTPRequest> request)
-       : m_refCount(1)
+       : m_refCount(0)
        , m_request(request) {}
     long m_refCount;
     RefPtr<HTTPRequest> m_request;

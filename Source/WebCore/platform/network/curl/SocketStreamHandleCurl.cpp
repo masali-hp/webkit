@@ -329,6 +329,9 @@ void SocketStreamHandle::platformClose()
 
     // after platformClose() returns it is very possible the client is deleted, without informing us.
     setClient(0);
+
+    if (m_receive_buffer)
+        fastFree(m_receive_buffer);
 }
 
 // private methods
