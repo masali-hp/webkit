@@ -118,3 +118,6 @@ tags
 .project
 .cproject
 .settings
+
+# Ignore sunspider hosted files:
+/PerformanceTests/SunSpider/hosted
