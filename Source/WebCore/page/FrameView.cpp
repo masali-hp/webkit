@@ -103,6 +103,8 @@
 #include <wtf/MemoryOutManager.h>
 #endif
 
+#include <wtf/PerformanceTrace.h>
+
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -1152,6 +1154,8 @@ void FrameView::layout(bool allowSubtree)
         return;
 #endif
 
+    PERFORMANCE_START(WTF::PerformanceTrace::Layout);
+
     // Protect the view from being deleted during layout (in recalcStyle)
     RefPtr<FrameView> protector(this);
 
@@ -1161,8 +1165,10 @@ void FrameView::layout(bool allowSubtree)
     bool inChildFrameLayoutWithFrameFlattening = isInChildFrameWithFrameFlattening();
 
     if (inChildFrameLayoutWithFrameFlattening) {
-        if (doLayoutWithFrameFlattening(allowSubtree))
+        if (doLayoutWithFrameFlattening(allowSubtree)) {
+            PERFORMANCE_END(WTF::PerformanceTrace::Layout);
             return;
+        }
     }
 
     m_layoutTimer.stop();
@@ -1173,13 +1179,16 @@ void FrameView::layout(bool allowSubtree)
         // FIXME: Do we need to set m_size.width here?
         // FIXME: Should we set m_size.height here too?
         m_size.setWidth(layoutWidth());
+        PERFORMANCE_END(WTF::PerformanceTrace::Layout);
         return;
     }
     
     // we shouldn't enter layout() while painting
     ASSERT(!isPainting());
-    if (isPainting())
+    if (isPainting()) {
+        PERFORMANCE_END(WTF::PerformanceTrace::Layout);
         return;
+    }
 
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willLayout(m_frame.get());
 
@@ -1227,6 +1236,7 @@ void FrameView::layout(bool allowSubtree)
         root = subtree ? m_layoutRoot : document->renderer();
         if (!root) {
             // FIXME: Do we need to set m_size here?
+            PERFORMANCE_END(WTF::PerformanceTrace::Layout);
             return;
         }
     } // Reset m_layoutSchedulingEnabled to its previous value.
@@ -1412,6 +1422,8 @@ void FrameView::layout(bool allowSubtree)
     }
 
     InspectorInstrumentation::didLayout(cookie, root);
+
+    PERFORMANCE_END(WTF::PerformanceTrace::Layout);
 
     m_nestedLayoutCount--;
     if (m_nestedLayoutCount)
@@ -3530,6 +3542,12 @@ void FrameView::paintContents(GraphicsContext* p, const IntRect& rect)
     if (isTopLevelPainter)
         sCurrentPaintTimeStamp = currentTime();
 
+#if ENABLE(PERFORMANCE_TRACING)
+    char buff[128];
+    _snprintf(buff, 128, "FrameView::paintContents %d x %d at (%d, %d)", rect.width(), rect.height(), rect.x(), rect.y());
+    PERFORMANCE_START(WTF::PerformanceTrace::Paint, buff);
+#endif
+
     FontCachePurgePreventer fontCachePurgePreventer;
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -3589,6 +3607,9 @@ void FrameView::paintContents(GraphicsContext* p, const IntRect& rect)
         sCurrentPaintTimeStamp = 0;
 
     InspectorInstrumentation::didPaint(renderView, p, rect);
+
+    PERFORMANCE_END(WTF::PerformanceTrace::Paint);
+
     firePaintRelatedMilestones();
 }
 

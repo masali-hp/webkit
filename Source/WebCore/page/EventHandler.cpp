@@ -115,6 +115,8 @@
 #include "StyleCachedImageSet.h"
 #endif
 
+#include <wtf/PerformanceTrace.h>
+
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -1511,7 +1513,9 @@ bool EventHandler::handleMousePressEvent(const PlatformMouseEvent& mouseEvent)
     }
 
 #if ENABLE(TOUCH_EVENTS)
+    PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "dispatching touchstart event");
     bool defaultPrevented = dispatchSyntheticTouchEventIfEnabled(mouseEvent);
+    PERFORMANCE_END(WTF::PerformanceTrace::InputEvent);
     if (defaultPrevented)
         return true;
 #endif
@@ -1752,7 +1756,9 @@ bool EventHandler::handleMouseMoveEvent(const PlatformMouseEvent& mouseEvent, Hi
         return false;
 
 #if ENABLE(TOUCH_EVENTS)
+    PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "dispatching touchmove event");
     bool defaultPrevented = dispatchSyntheticTouchEventIfEnabled(mouseEvent);
+    PERFORMANCE_END(WTF::PerformanceTrace::InputEvent);
     if (defaultPrevented)
         return true;
 #endif
@@ -1848,11 +1854,13 @@ bool EventHandler::handleMouseMoveEvent(const PlatformMouseEvent& mouseEvent, Hi
     if (swallowEvent)
         return true;
     
+    PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "dispatching mousemove event");
     swallowEvent = !dispatchMouseEvent(eventNames().mousemoveEvent, mev.targetNode(), false, 0, mouseEvent, true
 #if PLATFORM(HP)
         , mev.scrollbar() != NULL || mev.isOverLink()
 #endif
         );
+    PERFORMANCE_END(WTF::PerformanceTrace::InputEvent);
 #if ENABLE(DRAG_SUPPORT)
     if (!swallowEvent)
         swallowEvent = handleMouseDraggedEvent(mev);
@@ -1898,7 +1906,9 @@ bool EventHandler::handleMouseReleaseEvent(const PlatformMouseEvent& mouseEvent)
     m_frame->selection()->setCaretBlinkingSuspended(false);
 
 #if ENABLE(TOUCH_EVENTS)
+    PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "dispatching touchend event");
     bool defaultPrevented = dispatchSyntheticTouchEventIfEnabled(mouseEvent);
+    PERFORMANCE_END(WTF::PerformanceTrace::InputEvent);
     if (defaultPrevented)
         return true;
 #endif
@@ -2346,6 +2356,22 @@ bool EventHandler::dispatchMouseEvent(const AtomicString& eventType, Node* targe
 #endif
                                       )
 {
+#if ENABLE(PERFORMANCE_TRACING)
+    if (eventType == eventNames().mousedownEvent)
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "dispatching mousedown event");
+    else if (eventType == eventNames().mouseupEvent)
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "dispatching mouseup event");
+    else if (eventType == eventNames().mousemoveEvent)
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "dispatching mousemove event");
+    else if (eventType == eventNames().clickEvent)
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "dispatching click event");
+    else if (eventType == eventNames().mouseoutEvent)
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "dispatching mouseout event");
+    else if (eventType == eventNames().mouseoverEvent)
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "dispatching mouseover event");
+    else
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "dispatching other mouse event");
+#endif
     if (FrameView* view = m_frame->view())
         view->resetDeferredRepaintDelay();
 
@@ -2361,7 +2387,7 @@ bool EventHandler::dispatchMouseEvent(const AtomicString& eventType, Node* targe
         // If clicking on a frame scrollbar, do not mess up with content focus.
         if (FrameView* view = m_frame->view()) {
             if (view->scrollbarAtPoint(mouseEvent.position()))
-                return true;
+                goto doneDispatchingMouseEvent;
         }
 
         // The layout needs to be up to date to determine if an element is focusable.
@@ -2383,7 +2409,7 @@ bool EventHandler::dispatchMouseEvent(const AtomicString& eventType, Node* targe
                 if (m_frame->selection()->isRange()
                     && m_frame->selection()->toNormalizedRange()->compareNode(n, IGNORE_EXCEPTION) == Range::NODE_INSIDE
                     && n->isDescendantOf(m_frame->document()->focusedNode()))
-                    return true;
+                    goto doneDispatchingMouseEvent;
                     
                 break;
             }
@@ -2416,6 +2442,12 @@ bool EventHandler::dispatchMouseEvent(const AtomicString& eventType, Node* targe
             page->editorClient()->onMouseClick(node);
         }
     }
+#endif
+
+doneDispatchingMouseEvent:
+
+#if ENABLE(PERFORMANCE_TRACING)
+    PERFORMANCE_END(WTF::PerformanceTrace::InputEvent);
 #endif
     return !swallowEvent;
 }

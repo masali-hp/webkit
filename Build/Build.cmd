@@ -21,7 +21,8 @@ rem    echo    -jssharedcore   Build JavaScriptCore as a DLL
     echo    -usewinceport   Use the webkit.org wince standard webkit port
     echo    -usewininet     Use wininet ^(instead of CURL^)
     echo    -enablesvg      Enable Scalable Vector Graphics ^(SVG^) support
-    echo    -disabledrag     Disable drag and drop support
+    echo    -disabledrag    Disable drag and drop support
+    echo    -disableperf    Disable performance tracing framework
     exit /b 1
 )
 
@@ -73,6 +74,7 @@ rem set DJSSHARED_CORE=0
 rem set DWTF_USE_EXPORT_MACROS=0
 
 set ENABLE_DRAG=ON
+set ENABLE_PERFORMANCE_TRACING=ON
 
 set CPU_SPECIFIC=
 
@@ -133,6 +135,7 @@ if %ENABLE_JIT% == OFF (set BUILD_DIR=%BUILD_DIR%-nojit)
 if %ENABLE_SVG% == ON (set BUILD_DIR=%BUILD_DIR%-svg)
 if %USE_WININET% EQU 1 (set BUILD_DIR=%BUILD_DIR%-wininet)
 if %ENABLE_DRAG% == OFF (set BUILD_DIR=%BUILD_DIR%-nodrag)
+if %ENABLE_PERFORMANCE_TRACING% == OFF (set BUILD_DIR=%BUILD_DIR%-noperf)
 
 if %USE_HP% EQU 1 (
     set PLATFORM=-DPLATFORM=HP
@@ -176,6 +179,7 @@ cmake -G %GENERATOR% ^
  -DENABLE_LEGACY_WEB_AUDIO=OFF ^
  -DENABLE_MATHML=%ENABLE_SVG% ^
  -DENABLE_NETSCAPE_PLUGIN_API=OFF ^
+ -DENABLE_PERFORMANCE_TRACING=%ENABLE_PERFORMANCE_TRACING% ^
  -DENABLE_SVG=%ENABLE_SVG% ^
  -DENABLE_SVG_FONTS=%ENABLE_SVG% ^
  -DENABLE_TOUCH_EVENTS=ON ^
@@ -253,6 +257,9 @@ rem )
 )
 @if /I "%1" == "-disabledrag" (
     set ENABLE_DRAG=OFF
+)
+@if /I "%1" == "-disableperf" (
+    set ENABLE_PERFORMANCE_TRACING=OFF
 )
 
 goto :eof

@@ -34,6 +34,7 @@
 #if ENABLE(MEMORY_OUT_HANDLING)
 #include <wtf/MemoryOutManager.h>
 #endif
+#include <wtf/PerformanceTrace.h>
 
 using namespace JSC;
 
@@ -133,10 +134,14 @@ void JSEventListener::handleEvent(ScriptExecutionContext* scriptExecutionContext
 
         InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionCall(scriptExecutionContext, callType, callData);
 
+        PERFORMANCE_START(WTF::PerformanceTrace::ExecuteJavaScript, "Event Handler");
+
         JSValue thisValue = handleEventFunction == jsFunction ? toJS(exec, globalObject, event->currentTarget()) : jsFunction;
         JSValue retval = scriptExecutionContext->isDocument()
             ? JSMainThreadExecState::call(exec, handleEventFunction, callType, callData, thisValue, args)
             : JSC::call(exec, handleEventFunction, callType, callData, thisValue, args);
+
+        PERFORMANCE_END(WTF::PerformanceTrace::ExecuteJavaScript);
 
         InspectorInstrumentation::didCallFunction(cookie);
 

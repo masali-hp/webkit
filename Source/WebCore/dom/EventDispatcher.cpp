@@ -41,6 +41,7 @@
 #include "ShadowRoot.h"
 #include "WindowEventContext.h"
 #include <wtf/RefPtr.h>
+#include <wtf/PerformanceTrace.h>
 
 namespace WebCore {
 
@@ -106,6 +107,16 @@ void EventDispatcher::dispatchSimulatedClick(Node* node, Event* underlyingEvent,
 
 bool EventDispatcher::dispatch()
 {
+#if ENABLE(PERFORMANCE_TRACING)
+    const UChar * chars = m_event->type().characters();
+    unsigned length = m_event->type().length();
+    char text[64];
+    for (unsigned i = 0; i < length; i++)
+        text[i] = chars[i];
+    text[length] = '\0';
+    PERFORMANCE_START(WTF::PerformanceTrace::EventDispatch, text);
+#endif
+
 #ifndef NDEBUG
     ASSERT(!m_eventDispatched);
     m_eventDispatched = true;
@@ -130,6 +141,8 @@ bool EventDispatcher::dispatch()
     m_event->setTarget(windowEventContext.target());
     m_event->setCurrentTarget(0);
     InspectorInstrumentation::didDispatchEvent(cookie);
+
+    PERFORMANCE_END(WTF::PerformanceTrace::EventDispatch);
 
     return !m_event->defaultPrevented();
 }

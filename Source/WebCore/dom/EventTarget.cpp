@@ -40,6 +40,7 @@
 #include <wtf/MainThread.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
+#include <wtf/PerformanceTrace.h>
 
 using namespace WTF;
 
@@ -216,6 +217,16 @@ bool EventTarget::fireEventListeners(Event* event)
         
 void EventTarget::fireEventListeners(Event* event, EventTargetData* d, EventListenerVector& entry)
 {
+#if ENABLE(PERFORMANCE_TRACING)
+    const UChar * chars = event->type().characters();
+    unsigned length = event->type().length();
+    char text[64];
+    for (unsigned i = 0; i < length; i++)
+        text[i] = chars[i];
+    text[length] = '\0';
+    PERFORMANCE_START(PerformanceTrace::FireEventListeners, text);
+#endif
+
     RefPtr<EventTarget> protect = this;
 
     // Fire all listeners registered for this event. Don't fire listeners removed
@@ -258,6 +269,7 @@ void EventTarget::fireEventListeners(Event* event, EventTargetData* d, EventList
             document->resetLastHandledUserGestureTimestamp();
         }
     }
+    PERFORMANCE_END(PerformanceTrace::FireEventListeners);
 }
 
 const EventListenerVector& EventTarget::getEventListeners(const AtomicString& eventType)

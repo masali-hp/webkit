@@ -73,6 +73,7 @@ set(WTF_HEADERS
     ParallelJobsGeneric.h
     ParallelJobsLibdispatch.h
     ParallelJobsOpenMP.h
+    PerformanceTrace.h
     Platform.h
     PossiblyNull.h
     PrintStream.h
@@ -169,6 +170,7 @@ set(WTF_SOURCES
     PageAllocationAligned.cpp
     PageBlock.cpp
     ParallelJobsGeneric.cpp
+    PerformanceTrace.cpp
     PrintStream.cpp
     RandomNumber.cpp
     RefCountedLeakCounter.cpp

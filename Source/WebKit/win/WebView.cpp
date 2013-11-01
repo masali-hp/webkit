@@ -144,6 +144,7 @@
 #include <WebCore/WindowMessageBroadcaster.h>
 #include <WebCore/WindowsTouch.h>
 #include <wtf/MainThread.h>
+#include <wtf/PerformanceTrace.h>
 
 #if OS(WINCE)
 #define SetWindowLongPtrW(x, y, z) SetWindowLong(x, y, z)
@@ -1579,6 +1580,7 @@ bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)
     bool handled = false;
 
     if (message == WM_LBUTTONDOWN || message == WM_MBUTTONDOWN || message == WM_RBUTTONDOWN) {
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "WebView: Mouse Down");
         // FIXME: I'm not sure if this is the "right" way to do this
         // but without this call, we never become focused since we don't allow
         // the default handling of mouse events.
@@ -1605,10 +1607,12 @@ bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)
         mouseEvent.setClickCount(globalClickCount);
         handled = m_page->mainFrame()->eventHandler()->handleMousePressEvent(mouseEvent);
     } else if (message == WM_LBUTTONDBLCLK || message == WM_MBUTTONDBLCLK || message == WM_RBUTTONDBLCLK) {
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "WebView: Double Click");
         globalClickCount++;
         mouseEvent.setClickCount(globalClickCount);
         handled = m_page->mainFrame()->eventHandler()->handleMousePressEvent(mouseEvent);
     } else if (message == WM_LBUTTONUP || message == WM_MBUTTONUP || message == WM_RBUTTONUP) {
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "WebView: Mouse Up");
         // Record the global position and the button of the up.
         globalPrevButton = mouseEvent.button();
         globalPrevPoint = mouseEvent.position();
@@ -1624,6 +1628,7 @@ bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)
         handled = true;
 #endif
     } else if (message == WM_MOUSEMOVE) {
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "WebView: Mouse Move");
         if (!insideThreshold)
             globalClickCount = 0;
         mouseEvent.setClickCount(globalClickCount);
@@ -1638,6 +1643,7 @@ bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)
         }
 #endif
     }
+    PERFORMANCE_END(WTF::PerformanceTrace::InputEvent);
     return handled;
 }
 

@@ -186,6 +186,7 @@
 #include <wtf/PassRefPtr.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuffer.h>
+#include <wtf/PerformanceTrace.h>
 
 #if USE(ACCELERATED_COMPOSITING)
 #include "RenderLayerCompositor.h"
@@ -1789,6 +1790,7 @@ void Document::recalcStyle(StyleChange change)
         m_styleSheetCollection->updateActiveStyleSheets(DocumentStyleSheetCollection::FullUpdate);
 
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willRecalculateStyle(this);
+    PERFORMANCE_START(PerformanceTrace::RecalcStyle);
 
     if (m_elemSheet && m_elemSheet->contents()->usesRemUnits())
         m_styleSheetCollection->setUsesRemUnit(true);
@@ -1859,6 +1861,7 @@ void Document::recalcStyle(StyleChange change)
     }
 
     InspectorInstrumentation::didRecalculateStyle(cookie);
+    PERFORMANCE_END(PerformanceTrace::RecalcStyle);
 }
 
 void Document::updateStyleIfNeeded()

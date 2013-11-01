@@ -56,6 +56,7 @@
 #if ENABLE(MEMORY_OUT_HANDLING)
 #include <wtf/MemoryOutManager.h>
 #endif
+#include <wtf/PerformanceTrace.h>
 
 using namespace JSC;
 using namespace std;
@@ -148,9 +149,13 @@ ScriptValue ScriptController::evaluateInWorld(const ScriptSourceCode& sourceCode
 
     JSValue evaluationException;
 
+    PERFORMANCE_START(WTF::PerformanceTrace::ExecuteJavaScript, "Script");
+
     JSValue returnValue = JSMainThreadExecState::evaluate(exec, jsSourceCode, shell, &evaluationException);
 
     InspectorInstrumentation::didEvaluateScript(cookie);
+
+    PERFORMANCE_END(WTF::PerformanceTrace::ExecuteJavaScript);
 
     if (evaluationException) {
         reportException(exec, evaluationException, sourceCode.cachedScript());

@@ -556,3 +556,10 @@ EXPORTS
         ?HPWebkitAssertionFailed@@YAXPBDH00@Z
         ?HPWebkitArgumentAssertionFailed@@YAXPBDH000@Z
 #endif
+#if ENABLE(PERFORMANCE_TRACING)
+        ?dumpEvents@PerformanceTrace@WTF@@SAXXZ
+        ?end@PerformanceTrace@WTF@@SAXW4Event@12@@Z
+        ?start@PerformanceTrace@WTF@@SAXW4Event@12@PBD@Z
+        ?setOutputHandler@PerformanceTrace@WTF@@SAXP6AXHNNW4Event@12@PBD@Z@Z
+        ?enable@PerformanceTrace@WTF@@SAX_N@Z
+#endif
