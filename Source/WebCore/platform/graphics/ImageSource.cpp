@@ -116,6 +116,7 @@ IntSize ImageSource::frameSizeAtIndex(size_t index, RespectImageOrientationEnum 
     return size;
 }
 
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
 IntSize ImageSource::decodedFrameSizeAtIndex(size_t index, RespectImageOrientationEnum shouldRespectOrientation) const
 {
     // The JPEG and TIFF decoders need to be taught how to read EXIF, XMP, or IPTC data.
@@ -124,6 +125,7 @@ IntSize ImageSource::decodedFrameSizeAtIndex(size_t index, RespectImageOrientati
 
     return m_decoder ? m_decoder->decodedFrameSizeAtIndex(index) : IntSize();
 }
+#endif
 
 bool ImageSource::getHotSpot(IntPoint& hotSpot) const
 {

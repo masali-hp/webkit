@@ -13,16 +13,17 @@ if "%1"=="" if "%2"=="" (
     echo    -skipbuild      command line build is not executed.  .sln and .vcproj files are generated.
 
     echo Options Affecting WebKit Configuration:
-    echo    -disablehp      HP specific extensions ^(like memory manager^) are disabled
-    echo    -disablejit     Disable JIT
+    echo    -disablehp           HP specific extensions ^(like memory manager^) are disabled
+    echo    -disablejit          Disable JIT
 rem    echo    -jssharedcore   Build JavaScriptCore as a DLL
-    echo    -usecf          Use Apple Core Foundation, Core Graphics
-    echo    -usegdi         Use GDI for graphics, not cairo ^(only available for CE^)
-    echo    -usewinceport   Use the webkit.org wince standard webkit port
-    echo    -usewininet     Use wininet ^(instead of CURL^)
-    echo    -enablesvg      Enable Scalable Vector Graphics ^(SVG^) support
-    echo    -disabledrag    Disable drag and drop support
-    echo    -disableperf    Disable performance tracing framework
+    echo    -usecf               Use Apple Core Foundation, Core Graphics
+    echo    -usegdi              Use GDI for graphics, not cairo ^(only available for CE^)
+    echo    -usewinceport        Use the webkit.org wince standard webkit port
+    echo    -usewininet          Use wininet ^(instead of CURL^)
+    echo    -enablesvg           Enable Scalable Vector Graphics ^(SVG^) support
+    echo    -disabledrag         Disable drag and drop support
+    echo    -disableperf         Disable performance tracing framework
+    echo    -nosmartimagedecode  Disable memory efficient image downsampling
     exit /b 1
 )
 
@@ -75,6 +76,8 @@ rem set DWTF_USE_EXPORT_MACROS=0
 
 set ENABLE_DRAG=ON
 set ENABLE_PERFORMANCE_TRACING=ON
+
+set ENABLE_IMAGE_DECODER_DOWN_SAMPLING=ON
 
 set CPU_SPECIFIC=
 
@@ -136,6 +139,7 @@ if %ENABLE_SVG% == ON (set BUILD_DIR=%BUILD_DIR%-svg)
 if %USE_WININET% EQU 1 (set BUILD_DIR=%BUILD_DIR%-wininet)
 if %ENABLE_DRAG% == OFF (set BUILD_DIR=%BUILD_DIR%-nodrag)
 if %ENABLE_PERFORMANCE_TRACING% == OFF (set BUILD_DIR=%BUILD_DIR%-noperf)
+if %ENABLE_IMAGE_DECODER_DOWN_SAMPLING% == OFF (set BUILD_DIR=%BUILD_DIR%-nodownsample)
 
 if %USE_HP% EQU 1 (
     set PLATFORM=-DPLATFORM=HP
@@ -190,6 +194,7 @@ cmake -G %GENERATOR% ^
  -DWTF_USE_ICU_UNICODE=%USE_ICU_UNICODE% ^
  -DWTF_USE_WCHAR_UNICODE=%USE_WCHAR_UNICODE% ^
  -DWTF_USE_WININET=%USE_WININET% ^
+ -DENABLE_IMAGE_DECODER_DOWN_SAMPLING=%ENABLE_IMAGE_DECODER_DOWN_SAMPLING% ^
  %WEBKIT_DIR%
 
 @echo off
@@ -260,6 +265,9 @@ rem )
 )
 @if /I "%1" == "-disableperf" (
     set ENABLE_PERFORMANCE_TRACING=OFF
+)
+@if /I "%1" == "-nosmartimagedecode" (
+    set ENABLE_IMAGE_DECODER_DOWN_SAMPLING=OFF
 )
 
 goto :eof

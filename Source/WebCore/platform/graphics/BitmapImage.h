@@ -92,7 +92,9 @@ public:
     bool m_isComplete : 1;
     bool m_hasAlpha : 1;
     unsigned m_frameBytes;
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
     IntSize m_decodedFrameSize;
+#endif
 };
 
 // =================================================

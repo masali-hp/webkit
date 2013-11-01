@@ -147,7 +147,9 @@ void BitmapImage::cacheFrame(size_t index, const FloatSize& reqFrameSize)
     m_frames[index].m_frameBytes = m_source.frameBytesAtIndex(index);
 
     const IntSize frameSize(index ? m_source.frameSizeAtIndex(index) : m_size);
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
     m_frames[index].m_decodedFrameSize = m_source.decodedFrameSizeAtIndex(index);
+#endif
 
     if (frameSize != m_size)
         m_hasUniformFrameSize = false;
@@ -293,6 +295,7 @@ bool BitmapImage::ensureFrameIsCached(size_t index, const FloatSize& reqFrameSiz
     if (index >= frameCount())
         return false;
 
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
     // only want to redecode at a larger size going from low to high
     // never redecode from high to low
     if (index < m_frames.size()
@@ -309,6 +312,7 @@ bool BitmapImage::ensureFrameIsCached(size_t index, const FloatSize& reqFrameSiz
                     destroyDecodedData(true);
         }
     }
+#endif
 
     if (index >= m_frames.size() || !m_frames[index].m_frame)
         cacheFrame(index, reqFrameSize);

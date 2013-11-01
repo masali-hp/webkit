@@ -134,7 +134,9 @@ public:
     bool isSizeAvailable();
     IntSize size(RespectImageOrientationEnum = DoNotRespectImageOrientation) const;
     IntSize frameSizeAtIndex(size_t, RespectImageOrientationEnum = DoNotRespectImageOrientation) const;
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
     IntSize decodedFrameSizeAtIndex(size_t, RespectImageOrientationEnum = DoNotRespectImageOrientation) const;
+#endif
     bool getHotSpot(IntPoint&) const;
 
     size_t bytesDecodedToDetermineProperties() const;
