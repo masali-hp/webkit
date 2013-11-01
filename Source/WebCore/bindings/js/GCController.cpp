@@ -31,6 +31,7 @@
 #include <runtime/JSLock.h>
 #include <heap/Heap.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/MainThread.h>
 
 #if ENABLE(MEMORY_OUT_HANDLING) && PLATFORM(HP)
 #include <wtf/hp/HPWebkitMalloc.h>
@@ -118,22 +119,25 @@ void GCController::discardAllCompiledCode()
 #if ENABLE(MEMORY_OUT_HANDLING)
 bool GCController::FreeMemory(WTF::MemoryOutPhase phase)
 {
+    if (isMainThread()) {
 #if PLATFORM(HP)
-    size_t availableBefore, availableAfter;
-    HPGetMemoryStats(NULL, &availableBefore, NULL, NULL, NULL);
-    garbageCollectNow();
-    HPGetMemoryStats(NULL, &availableAfter, NULL, NULL, NULL);
-    return availableAfter > availableBefore;
+        size_t availableBefore, availableAfter;
+        HPGetMemoryStats(NULL, &availableBefore, NULL, NULL, NULL);
+        garbageCollectNow();
+        HPGetMemoryStats(NULL, &availableAfter, NULL, NULL, NULL);
+        return availableAfter > availableBefore;
 #else
-    size_t sizeBefore = JSDOMWindow::commonVM()->heap.size();
-    garbageCollectNow();
-    size_t sizeAfter = JSDOMWindow::commonVM()->heap.size();
-    // You would think sizeAfter would always be <= sizeBefore, but that's not
-    // the case.  nonetheless, back to back garbage collects will return the same
-    // size, so checking that the sizeAfter != sizeBefore is a good indication
-    // that memory was actually freed.
-    return sizeAfter != sizeBefore;
+        size_t sizeBefore = JSDOMWindow::commonVM()->heap.size();
+        garbageCollectNow();
+        size_t sizeAfter = JSDOMWindow::commonVM()->heap.size();
+        // You would think sizeAfter would always be <= sizeBefore, but that's not
+        // the case.  nonetheless, back to back garbage collects will return the same
+        // size, so checking that the sizeAfter != sizeBefore is a good indication
+        // that memory was actually freed.
+        return sizeAfter != sizeBefore;
 #endif
+    }
+    return false;
 }
 #endif
 
