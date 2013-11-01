@@ -209,8 +209,30 @@ HRESULT STDMETHODCALLTYPE WebCache::empty( void)
 {
     if (WebCore::memoryCache()->disabled())
         return S_OK;
-    WebCore::memoryCache()->setDisabled(true);
-    WebCore::memoryCache()->setDisabled(false);
+    // Removes ALL resources from the cache.  This does not delete
+    // resources from memory unless they are dead.  This will waste
+    // memory if resources that could have been served from the cache
+    // are needed in the future.
+    WebCore::memoryCache()->evictResources();
+
+    // Empty the application cache.
+    WebCore::cacheStorage().empty();
+
+    // Empty the Cross-Origin Preflight cache
+    WebCore::CrossOriginPreflightResultCache::shared().empty();
+
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebCache::freeDeadResources( void)
+{
+    if (WebCore::memoryCache()->disabled())
+        return S_OK;
+    // Instead of calling evictResources, which removes resources
+    // from the cache, we will prunt to 0 percent, meaning delete everything
+    // possible from the cache: all dead resources and decoded data for live
+    // resources.
+    WebCore::memoryCache()->pruneToPercentage(0);
 
     // Empty the application cache.
     WebCore::cacheStorage().empty();

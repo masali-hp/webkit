@@ -48,6 +48,8 @@ public:
         /* [retval][out] */ IPropertyBag **s);
     
     virtual HRESULT STDMETHODCALLTYPE empty( void);
+
+    virtual HRESULT STDMETHODCALLTYPE freeDeadResources( void);
     
     virtual HRESULT STDMETHODCALLTYPE setDisabled( 
         /* [in] */ BOOL disabled);

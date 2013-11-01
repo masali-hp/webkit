@@ -38,7 +38,23 @@ import "ocidl.idl";
 interface IWebCache : IUnknown
 {
     HRESULT statistics([in, out] int* count, [in] IPropertyBag** s);
+
+    /*!
+        @method empty:
+        @abstract All resources are removed from the cache.  Dead resources are deleted.
+        This method can inadvertently create extra resources if another resource request
+        which could have been served from the cache must load a duplicate copy of a resource
+        already in memory.
+    */
     HRESULT empty();
+
+    /*!
+        @method freeDeadResources:
+        @abstract This deletes dead resources and decoded data for live resources.
+    */
+    HRESULT freeDeadResources();
+
     HRESULT setDisabled([in] BOOL disabled);
+
     HRESULT disabled([out, retval] BOOL*);
 }
