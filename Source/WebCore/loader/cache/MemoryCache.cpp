@@ -56,6 +56,8 @@ static const double cMinDelayBeforeLiveDecodedPrune = 1; // Seconds.
 static const float cTargetPrunePercentage = .95f; // Percentage of capacity toward which we prune, to avoid immediately pruning again.
 static const double cDefaultDecodedDataDeletionInterval = 0;
 
+extern CachedResource * s_cachedResourceListHead;
+
 MemoryCache* memoryCache()
 {
     static MemoryCache* staticCache = new MemoryCache;
@@ -757,38 +759,30 @@ void MemoryCache::TypeStatistic::addResource(CachedResource* o)
 MemoryCache::Statistics MemoryCache::getStatistics()
 {
     Statistics stats;
-    CachedResourceMap::iterator e = m_resources.end();
-    for (CachedResourceMap::iterator i = m_resources.begin(); i != e; ++i) {
-#if ENABLE(CACHE_PARTITIONING)
-        for (CachedResourceItem::iterator itemIterator = i->value->begin(); itemIterator != i->value->end(); ++itemIterator) {
-            CachedResource* resource = itemIterator->value;
-#else
-            CachedResource* resource = i->value;
-#endif
-            switch (resource->type()) {
-            case CachedResource::ImageResource:
-                stats.images.addResource(resource);
-                break;
-            case CachedResource::CSSStyleSheet:
-                stats.cssStyleSheets.addResource(resource);
-                break;
-            case CachedResource::Script:
-                stats.scripts.addResource(resource);
-                break;
+    CachedResource * resource = s_cachedResourceListHead;
+    while (resource) {
+        switch (resource->type()) {
+        case CachedResource::ImageResource:
+            stats.images.addResource(resource);
+            break;
+        case CachedResource::CSSStyleSheet:
+            stats.cssStyleSheets.addResource(resource);
+            break;
+        case CachedResource::Script:
+            stats.scripts.addResource(resource);
+            break;
 #if ENABLE(XSLT)
-            case CachedResource::XSLStyleSheet:
-                stats.xslStyleSheets.addResource(resource);
-                break;
+        case CachedResource::XSLStyleSheet:
+            stats.xslStyleSheets.addResource(resource);
+            break;
 #endif
-            case CachedResource::FontResource:
-                stats.fonts.addResource(resource);
-                break;
-            default:
-                break;
-            }
-#if ENABLE(CACHE_PARTITIONING)
+        case CachedResource::FontResource:
+            stats.fonts.addResource(resource);
+            break;
+        default:
+            break;
         }
-#endif
+        resource = resource->m_next;
     }
     return stats;
 }
@@ -950,25 +944,24 @@ void MemoryCache::outputCacheDetail(char * description, CachedResource::Type res
 
     outputCacheDetailHeader(description, stat, output);
 
-    CachedResourceMap::iterator e = m_resources.end();
-    for(CachedResourceMap::iterator i = m_resources.begin(); i != e; ++i){
-        CachedResource* resource = i->value;
+    CachedResource * resource = s_cachedResourceListHead;
+    while (resource) {
         if (resource->type() == resourceType) {
-            String url = i->key;
-
-            char url_buff[128];
-            int len = url.length() <= 127 ? url.length() : 127;
+            const String & url = resource->url().string();
+            char url_buff[256];
+            int len = url.length() <= 255 ? url.length() : 255;
             size_t l = 0;
             for (; l < len; l++)
                 url_buff[l] = url.characters()[l];
             url_buff[len] = 0;
 
-            if (url.length() > 127)
-                strcpy(&url_buff[116], "(truncated)");
+            if (url.length() > 255)
+                strcpy(&url_buff[244], "(truncated)");
 
             snprintf(buff, buff_size, "  URL: %s\n", url_buff);
             output(buff);
-            snprintf(buff, buff_size, "    Status: %s, Size: %u\n",
+            snprintf(buff, buff_size, "    In Cache: %s, Load: %s, Size: %u\n",
+                resource->inCache() ? "true" : "false",
                 resource->status() == CachedResource::Unknown ? "Unknown" :       // let cache decide what to do with it
                 resource->status() == CachedResource::Pending ? "Pending" :       // only partially loaded
                 resource->status() == CachedResource::Cached ? "Cached" :         // regular case
@@ -977,6 +970,7 @@ void MemoryCache::outputCacheDetail(char * description, CachedResource::Type res
                 resource->size());
             output(buff);
         }
+        resource = resource->m_next;
     }
 }
 
@@ -1008,48 +1002,31 @@ void MemoryCache::OutputCacheInfo(HPMemoryOutputFunc output)
 int MemoryCache::getCount(CachedResource::Type resourceType)
 {
     int count = 0;
-    CachedResourceMap::iterator e = m_resources.end();
-    for (CachedResourceMap::iterator i = m_resources.begin(); i != e; ++i) {
-#if ENABLE(CACHE_PARTITIONING)
-        for (CachedResourceItem::iterator itemIterator = i->value->begin(); itemIterator != i->value->end(); ++itemIterator) {
-            CachedResource* resource = itemIterator->value;
-#else
-            CachedResource* resource = i->value;
-#endif
-            if (resource->type() == resourceType)
-                count++;
-#if ENABLE(CACHE_PARTITIONING)
-        }
-#endif
+    for (CachedResource * resource = s_cachedResourceListHead; resource; resource = resource->m_next) {
+        if (resource->type() == resourceType)
+            count++;
     }
     return count;
 }
 
-void MemoryCache::getDetails(CachedResource::Type resourceType, int n, TypeStatistic & details, String & url, CachedResource::Status & status)
+void MemoryCache::getDetails(CachedResource::Type resourceType, int n, TypeStatistic & details, String & url, CachedResource::Status & status, bool & inCache)
 {
     int count = 0;
     memset(&details, 0, sizeof(TypeStatistic));
 
-    CachedResourceMap::iterator e = m_resources.end();
-    for (CachedResourceMap::iterator i = m_resources.begin(); i != e; ++i) {
-#if ENABLE(CACHE_PARTITIONING)
-        for (CachedResourceItem::iterator itemIterator = i->value->begin(); itemIterator != i->value->end(); ++itemIterator) {
-            CachedResource* resource = itemIterator->value;
-#else
-            CachedResource* resource = i->value;
-#endif
-            if (resource->type() == resourceType) {
-                if (n == count) {
-                    details.addResource(resource);
-                    url = i->key;
-                    status = resource->status();
-                    return;
-                }
-                count++;
+    CachedResource * resource = s_cachedResourceListHead;
+    while (resource) {
+        if (resource->type() == resourceType) {
+            if (n == count) {
+                details.addResource(resource);
+                url = resource->url().string();
+                status = resource->status();
+                inCache = resource->inCache();
+                return;
             }
-#if ENABLE(CACHE_PARTITIONING)
+            count++;
         }
-#endif
+        resource = resource->m_next;
     }
 }
 

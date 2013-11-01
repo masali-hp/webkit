@@ -102,7 +102,8 @@ static void outputCacheDetails(const char * description, CachedResource::Type re
         MemoryCache::TypeStatistic details;
         String url;
         CachedResource::Status status;
-        memoryCache()->getDetails(resourceType, n, details, url, status);
+        bool inCache;
+        memoryCache()->getDetails(resourceType, n, details, url, status, inCache);
         String statusString;
         switch (status) {
         case CachedResource::Unknown:
@@ -124,9 +125,18 @@ static void outputCacheDetails(const char * description, CachedResource::Type re
         if (format == HTML) {
             page.append("<tr><td colspan=2>");
             page.append(url);
-            if (status != CachedResource::Cached) {
+            if (!inCache || status != CachedResource::Cached) {
                 page.append(" (");
-                page.append(statusString);
+                if (!inCache && status != CachedResource::Cached) {
+                    page.append("NOT in cache; Load Status: ");
+                    page.append(statusString);
+                }
+                else if (!inCache) {
+                    page.append("NOT in cache");
+                }
+                else {
+                    page.append(statusString);
+                }
                 page.append(")");
             }
             page.append("</td><td>");
@@ -140,7 +150,9 @@ static void outputCacheDetails(const char * description, CachedResource::Type re
         else {
             page.append("<Resource URL=\"");
             page.append(url);
-            page.append("\" Status=\"");
+            page.append("\" InCache=\"");
+            page.append(inCache ? "true" : "false");
+            page.append("\" LoadStatus=\"");
             page.append(statusString);
             page.append("\" Size=\"");
             page.appendNumber(details.size);

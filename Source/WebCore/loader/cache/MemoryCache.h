@@ -193,7 +193,7 @@ public:
     void aggregateCacheStatsHelper(TypeStatistic &total, const TypeStatistic detail);
     TypeStatistic aggregateCacheStats();
     int getCount(CachedResource::Type resourceType);
-    void getDetails(CachedResource::Type resourceType, int n, TypeStatistic & details, String & url, CachedResource::Status & status);
+    void getDetails(CachedResource::Type resourceType, int n, TypeStatistic & details, String & url, CachedResource::Status & status, bool & inCache);
 
 private:
     MemoryCache();

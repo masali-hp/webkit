@@ -341,6 +341,8 @@ private:
     CachedResource* m_nextInLiveResourcesList;
     CachedResource* m_prevInLiveResourcesList;
 
+    CachedResource * m_next; // pointer to linked list of ALL CachedResources.
+
     CachedResourceLoader* m_owningCachedResourceLoader; // only non-0 for resources that are not in the cache
     
     // If this field is non-null we are using the resource as a proxy for checking whether an existing resource is still up to date

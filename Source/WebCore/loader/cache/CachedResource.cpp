@@ -58,6 +58,9 @@ using namespace WTF;
 
 namespace WebCore {
 
+CachedResource * s_cachedResourceListHead = NULL;
+CachedResource * s_cachedResourceListTail = NULL;
+
 // These response headers are not copied from a revalidated response to the
 // cached response headers. For compatibility, this list is based on Chromium's
 // net/http/http_response_headers.cc.
@@ -212,6 +215,7 @@ CachedResource::CachedResource(const ResourceRequest& request, Type type)
     , m_prevInAllResourcesList(0)
     , m_nextInLiveResourcesList(0)
     , m_prevInLiveResourcesList(0)
+    , m_next(0)
     , m_owningCachedResourceLoader(0)
     , m_resourceToRevalidate(0)
     , m_proxyResource(0)
@@ -220,6 +224,11 @@ CachedResource::CachedResource(const ResourceRequest& request, Type type)
 #ifndef NDEBUG
     cachedResourceLeakCounter.increment();
 #endif
+    if (s_cachedResourceListHead == NULL)
+        s_cachedResourceListHead = this;
+    else
+        s_cachedResourceListTail->m_next = this;
+    s_cachedResourceListTail = this;
 
     if (!m_resourceRequest.url().hasFragmentIdentifier())
         return;
@@ -242,6 +251,27 @@ CachedResource::~CachedResource()
     m_deleted = true;
     cachedResourceLeakCounter.decrement();
 #endif
+
+    if (s_cachedResourceListHead == this) {
+        s_cachedResourceListHead = m_next;
+        if (s_cachedResourceListTail == this)
+            s_cachedResourceListTail = m_next;
+    }
+    else {
+        // if we're not the head, then there are at least 2 resources in the list.
+        CachedResource * prev = s_cachedResourceListHead;
+        CachedResource * curr = prev->m_next;
+        while (curr) {
+            if (curr == this) {
+                prev->m_next = curr->m_next;
+                if (s_cachedResourceListTail == this)
+                    s_cachedResourceListTail = prev;
+                break;
+            }
+            prev = curr;
+            curr = curr->m_next;
+        }
+    }
 
     if (m_owningCachedResourceLoader)
         m_owningCachedResourceLoader->removeCachedResource(this);
