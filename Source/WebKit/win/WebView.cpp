@@ -145,6 +145,7 @@
 #include <WebCore/WindowsTouch.h>
 #include <wtf/MainThread.h>
 #include <wtf/PerformanceTrace.h>
+#include <JavaScriptCore/JSLock.h>
 
 #if OS(WINCE)
 #define SetWindowLongPtrW(x, y, z) SetWindowLong(x, y, z)
@@ -736,8 +737,16 @@ HRESULT STDMETHODCALLTYPE WebView::close()
     removeFromAllWebViewsSet();
 
     if (m_page) {
-        if (Frame* frame = m_page->mainFrame())
+        if (Frame* frame = m_page->mainFrame()) {
             frame->loader()->detachFromParent();
+            // If we are closing the last webview, let's release executable memory now.  This
+            // will reduce the appearance of memory leaks.  (JSC bytecode, cached regular expressions...)
+            if (allWebViewsSet().size() == 0) {
+                JSC::ExecState * exec = frame->script()->globalObject(mainThreadNormalWorld())->globalExec();
+                JSC::JSLockHolder lock(exec);
+                exec->vm().releaseExecutableMemory();
+            }
+        }
     }
 
 #if !OS(WINCE)
