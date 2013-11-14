@@ -71,4 +71,16 @@ interface IWebCoreStatistics : IUnknown
     HRESULT javaScriptProtectedObjectTypeCounts([out, retval] IPropertyBag2** typeNamesAndCounts);
 #endif
     HRESULT webKitData([in] AboutDataType typeAboutData, [in] AboutDataFormat typeFormat, [out, retval] BSTR *output);
+
+    HRESULT resourceCacheImageCount([out, retval] UINT* count);
+    HRESULT resourceCacheCSSCount([out, retval] UINT* count);
+    HRESULT resourceCacheScriptCount([out, retval] UINT* count);
+    HRESULT resourceCacheFontCount([out, retval] UINT* count);
+
+    HRESULT jsHeapUsageKB([out, retval] UINT* kb);
+
+    HRESULT docCount([out, retval] UINT* count);
+    HRESULT frameCount([out, retval] UINT* count);
+    HRESULT nodeCount([out, retval] UINT* count);
+    HRESULT jsListenerCount([out, retval] UINT* count);
 }

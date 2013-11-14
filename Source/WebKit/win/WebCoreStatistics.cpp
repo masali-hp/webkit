@@ -35,9 +35,12 @@
 #include <WebCore/IconDatabase.h>
 #include <WebCore/JSDOMWindow.h>
 #include <WebCore/SharedBuffer.h>
+#include <WebCore/MemoryCache.h>
 
 using namespace JSC;
 using namespace WebCore;
+
+extern int WebFrameCount;
 
 // WebCoreStatistics ---------------------------------------------------------------------------
 
@@ -236,5 +239,97 @@ HRESULT STDMETHODCALLTYPE WebCoreStatistics::webKitData(
      /*[out, retval]*/ BSTR *output)
 {
     *output = BString(aboutData("/diagnostics/", typeAboutData, typeFormat)).release();
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebCoreStatistics::resourceCacheImageCount(
+        /* [retval][out] */ UINT *count)
+{
+    if (!count)
+        return E_POINTER;
+    *count = memoryCache()->getCount(CachedResource::ImageResource);
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebCoreStatistics::resourceCacheCSSCount(
+        /* [retval][out] */ UINT *count)
+{
+    if (!count)
+        return E_POINTER;
+    *count = memoryCache()->getCount(CachedResource::CSSStyleSheet);
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebCoreStatistics::resourceCacheScriptCount(
+        /* [retval][out] */ UINT *count)
+{
+    if (!count)
+        return E_POINTER;
+    *count = memoryCache()->getCount(CachedResource::Script);
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebCoreStatistics::resourceCacheFontCount(
+        /* [retval][out] */ UINT *count)
+{
+    if (!count)
+        return E_POINTER;
+    *count = memoryCache()->getCount(CachedResource::FontResource);
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebCoreStatistics::jsHeapUsageKB(
+        /* [retval][out] */ UINT *kb)
+{
+    if (!kb)
+        return E_POINTER;
+    JSLockHolder lock(JSDOMWindow::commonVM());
+    *kb = (UINT)JSDOMWindow::commonVM()->heap.size() / 1024;
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebCoreStatistics::docCount(
+        /* [retval][out] */ UINT *count)
+{
+    if (!count)
+        return E_POINTER;
+    *count = InspectorCounters::counterValue(InspectorCounters::DocumentCounter);
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebCoreStatistics::frameCount(
+        /* [retval][out] */ UINT *count)
+{
+    if (!count)
+        return E_POINTER;
+    *count = WebFrameCount;
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebCoreStatistics::nodeCount(
+        /* [retval][out] */ UINT *count)
+{
+    if (!count)
+        return E_POINTER;
+    *count = InspectorCounters::counterValue(InspectorCounters::NodeCounter);
+    return S_OK;
+}
+
+static void getListenerCount(void * ctx)
+{
+    *reinterpret_cast<UINT*>(ctx) = ThreadLocalInspectorCounters::current().counterValue(ThreadLocalInspectorCounters::JSEventListenerCounter);
+}
+
+HRESULT STDMETHODCALLTYPE WebCoreStatistics::jsListenerCount(
+        /* [retval][out] */ UINT *count)
+{
+    if (!count)
+        return E_POINTER;
+    if (!WTF::isMainThread()) {
+        WTF::callOnMainThreadAndWait(getListenerCount, count);
+    }
+    else {
+        *count = ThreadLocalInspectorCounters::current().counterValue(ThreadLocalInspectorCounters::JSEventListenerCounter);
+    }
     return S_OK;
 }

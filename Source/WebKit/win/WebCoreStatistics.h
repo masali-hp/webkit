@@ -76,6 +76,25 @@ public:
         /* [in] */ AboutDataFormat typeFormat,
         /* [out, retval] */ BSTR *output);
 
+    virtual HRESULT STDMETHODCALLTYPE resourceCacheImageCount(
+        /* [retval][out] */ UINT *count);
+    virtual HRESULT STDMETHODCALLTYPE resourceCacheCSSCount(
+        /* [retval][out] */ UINT *count);
+    virtual HRESULT STDMETHODCALLTYPE resourceCacheScriptCount(
+        /* [retval][out] */ UINT *count);
+    virtual HRESULT STDMETHODCALLTYPE resourceCacheFontCount(
+        /* [retval][out] */ UINT *count);
+    virtual HRESULT STDMETHODCALLTYPE jsHeapUsageKB(
+        /* [retval][out] */ UINT *count);
+    virtual HRESULT STDMETHODCALLTYPE docCount(
+        /* [retval][out] */ UINT *count);
+    virtual HRESULT STDMETHODCALLTYPE frameCount(
+        /* [retval][out] */ UINT *count);
+    virtual HRESULT STDMETHODCALLTYPE nodeCount(
+        /* [retval][out] */ UINT *count);
+    virtual HRESULT STDMETHODCALLTYPE jsListenerCount(
+        /* [retval][out] */ UINT *count);
+
 protected:
     ULONG m_refCount;
 };
