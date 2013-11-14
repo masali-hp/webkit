@@ -29,6 +29,7 @@
 #include "Attribute.h"
 #include "ChromeClient.h"
 #include "Document.h"
+#include "EditorClient.h"
 #include "Event.h"
 #include "EventNames.h"
 #include "FeatureObserver.h"
@@ -38,8 +39,10 @@
 #include "HTMLFormElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
+#include "MouseEvent.h"
 #include "NodeRenderingContext.h"
 #include "NodeTraversal.h"
+#include "Page.h"
 #include "RenderBox.h"
 #include "RenderTextControl.h"
 #include "RenderTheme.h"
@@ -108,6 +111,16 @@ void HTMLTextFormControlElement::defaultEventHandler(Event* event)
         subtreeHasChanged();
         return;
     }
+
+#if PLATFORM(HP)
+    if (event->isMouseEvent() && event->type() == eventNames().clickEvent) {
+        Frame* frame = document()->frame();
+        if (frame->page()->editorClient()->onTextFieldClick(this)) {
+            event->setDefaultHandled();
+            return;
+        }
+    }
+#endif
 
     HTMLFormControlElementWithState::defaultEventHandler(event);
 }

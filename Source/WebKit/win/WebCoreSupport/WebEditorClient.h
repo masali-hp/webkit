@@ -122,7 +122,7 @@ public:
 
     virtual WebCore::TextCheckerClient* textChecker() { return this; }
 #if PLATFORM(HP)
-    virtual void onMouseClick(WebCore::Node *);
+    virtual bool onTextFieldClick(WebCore::HTMLTextFormControlElement *);
 #endif
 
 private:

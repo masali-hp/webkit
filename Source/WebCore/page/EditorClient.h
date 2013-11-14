@@ -49,6 +49,7 @@ class Editor;
 class Element;
 class Frame;
 class HTMLElement;
+class HTMLTextFormControlElement;
 class KeyboardEvent;
 class Node;
 class Range;
@@ -163,7 +164,7 @@ public:
     virtual void willSetInputMethodState() = 0;
     virtual void setInputMethodState(bool enabled) = 0;
 #if PLATFORM(HP)
-    virtual void onMouseClick(Node *) = 0;
+    virtual bool onTextFieldClick(HTMLTextFormControlElement *) = 0;
 #endif
 
     // Support for global selections, used on platforms like the X Window System that treat

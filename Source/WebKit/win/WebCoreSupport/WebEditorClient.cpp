@@ -806,30 +806,23 @@ void WebEditorClient::setInputMethodState(bool enabled)
 }
 
 #if PLATFORM(HP)
-void WebEditorClient::onMouseClick(WebCore::Node * element)
+bool WebEditorClient::onTextFieldClick(WebCore::HTMLTextFormControlElement * element)
 {
-    if (element->isElementNode())
-    {
-        WebCore::Element * activeElement = static_cast<WebCore::Element*>(element);
-        if (activeElement->isValidFormControlElement())
-        {
-            IWebFormDelegate* formDelegate;
-            if (SUCCEEDED(m_webView->formDelegate(&formDelegate)) && formDelegate)
-            {
-                IDOMElement* domElement = DOMElement::createInstance(activeElement);
-                if (domElement)
-                {
-                    IDOMHTMLElement* htmlElement=NULL;
-                    if (SUCCEEDED(domElement->QueryInterface(IID_IDOMHTMLElement, (void**)&htmlElement)))
-                    {
-                        formDelegate->textFieldWasClicked(htmlElement, kit(activeElement->document()->frame()));
-                        htmlElement->Release();
-                    }
-                    domElement->Release();
-                }
-                formDelegate->Release();
+    bool result = false;
+    IWebFormDelegate* formDelegate;
+    if (SUCCEEDED(m_webView->formDelegate(&formDelegate)) && formDelegate) {
+        IDOMElement* domElement = DOMElement::createInstance(element);
+        if (domElement) {
+            IDOMHTMLElement* htmlElement=NULL;
+            if (SUCCEEDED(domElement->QueryInterface(IID_IDOMHTMLElement, (void**)&htmlElement))) {
+                HRESULT hr = formDelegate->textFieldWasClicked(htmlElement, kit(element->document()->frame()));
+                result = SUCCEEDED(hr);
+                htmlElement->Release();
             }
+            domElement->Release();
         }
+        formDelegate->Release();
     }
+    return result;
 }
 #endif

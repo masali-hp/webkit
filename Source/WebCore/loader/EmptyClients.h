@@ -507,7 +507,7 @@ public:
     virtual void willSetInputMethodState() { }
     virtual void setInputMethodState(bool) { }
 #if PLATFORM(HP)
-    virtual void onMouseClick(Node *) { }
+    virtual bool onTextFieldClick(HTMLTextFormControlElement *) { return false; }
 #endif
 
 private:
