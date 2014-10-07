@@ -63,6 +63,7 @@ rem With -disablejit we turn JIT off for javascript.
 set ENABLE_JIT=ON
 set ENABLE_LLINT_C_LOOP=OFF
 set ENABLE_LLINT=OFF
+set ENABLE_LLINT_ONLY=OFF
 
 rem With -disablehp we turn off HP specific webkit extensions.  (Like memory manager)
 set USE_HP=1
@@ -102,7 +103,9 @@ if %ENABLE_JIT% == OFF (
         rem See wtf/platform.h, line 751.
         rem If JIT is not enabled, the cloop LLInt backend is used.
         rem We don't want that ... JIT has to be enabled to use non-cloop LLInt backend
-        set ENABLE_JIT=ON
+        rem set ENABLE_JIT=ON <-- comment this for now... I want to try llint without enabling JIT
+		rem http://mac-os-forge.2317878.n4.nabble.com/LLInt-without-JIT-td211451.html
+		set ENABLE_LLINT_ONLY=ON
     )
 )
 
@@ -211,6 +214,7 @@ cmake -G %GENERATOR% ^
  -DENABLE_JIT=%ENABLE_JIT% ^
  -DENABLE_LLINT=%ENABLE_LLINT% ^
  -DENABLE_LLINT_C_LOOP=%ENABLE_LLINT_C_LOOP% ^
+ -DENABLE_LLINT_ONLY=%ENABLE_LLINT_ONLY% ^
  -DENABLE_LEGACY_WEB_AUDIO=OFF ^
  -DENABLE_MATHML=%ENABLE_SVG% ^
  -DENABLE_NETSCAPE_PLUGIN_API=OFF ^

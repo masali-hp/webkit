@@ -748,7 +748,7 @@
 #endif
 
 /* If the jit is not available, enable the LLInt C Loop: */
-#if !ENABLE(JIT)
+#if !ENABLE(JIT) && !ENABLE(LLINT_ONLY)
 #undef ENABLE_LLINT        /* Undef so that we can redefine it. */
 #undef ENABLE_LLINT_C_LOOP /* Undef so that we can redefine it. */
 #undef ENABLE_DFG_JIT      /* Undef so that we can redefine it. */
