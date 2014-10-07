@@ -355,6 +355,8 @@ class Instruction
         when "xori", "xorp"
             emitArmCompact("eors", "eor", operands)
         when "lshifti", "lshiftp"
+            # If we want to implement a legacy ARM mode:
+            # $asm.puts "movs #{operands[1].armOperand}, #{operands[1].armOperand}, LSL #{operands[0].armOperand}"
             emitArmCompact("lsls", "lsls", operands)
         when "rshifti", "rshiftp"
             emitArmCompact("asrs", "asrs", operands)
@@ -520,7 +522,11 @@ class Instruction
                 $asm.puts "mov pc, #{operands[0].armOperand}"
             end
             if not isARMv7 and not isARMv7Traditional
-                $asm.puts ".ltorg"
+                if $armasm
+                    $asm.puts "LTORG"
+                else
+                    $asm.puts ".ltorg"
+                end
             end
         when "call"
             if operands[0].label?

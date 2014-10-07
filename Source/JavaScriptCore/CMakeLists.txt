@@ -405,37 +405,75 @@ if (ENABLE_LLINT)
         ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h
     )
     target_link_libraries(LLIntOffsetsExtractor WTF)
+    set_target_properties(LLIntOffsetsExtractor PROPERTIES FOLDER "JavaScriptCore")
 
-    # The build system will execute asm.rb every time LLIntOffsetsExtractor's mtime is newer than
-    # LLIntAssembly.h's mtime. The problem we have here is: asm.rb has some built-in optimization
-    # that generates a checksum of the LLIntOffsetsExtractor binary, if the checksum of the new
-    # LLIntOffsetsExtractor matches, no output is generated. To make this target consistent and avoid
-    # running this command for every build, we artificially update LLIntAssembly.h's mtime (using touch)
-    # after every asm.rb run.
-    add_custom_command(
-        OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
-        MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb
-        DEPENDS LLIntOffsetsExtractor ${LLINT_ASM} ${OFFLINE_ASM}
-        COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm $<TARGET_FILE:LLIntOffsetsExtractor> ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
-        COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
-        VERBATIM)
+    if (PORT MATCHES Win)
+        # The WinCE ARM compiler (VS 2008, VS 2012) does not support inline ASM, and neither
+        # the WinCE compiler nor the general MSVC compiler supports inline asm exceeding 65536 bytes in length.
+        # Instead of producing a header file, LLIntAssembly.h, we build LLInt directly to LLIntAssembly.asm.
+        if (WTF_CPU_ARM)
+            set (OFFLINE_ASM_FLAGS --armasm --nomacros)
+            set (ASM_TOOL "armasm")
+        else ()
+            set (OFFLINE_ASM_FLAGS --masm --nomacros)
+            set (ASM_TOOL "ml")
+        endif ()
+        add_custom_command(
+            OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.asm
+            MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb
+            DEPENDS LLIntOffsetsExtractor ${LLINT_ASM} ${OFFLINE_ASM}
+            COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm $<TARGET_FILE:LLIntOffsetsExtractor> ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.asm ${OFFLINE_ASM_FLAGS}
+            COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.asm
+            VERBATIM)
 
-    # The explanation for not making LLIntAssembly.h part of the OBJECT_DEPENDS property of some of
-    # the .cpp files below is similar to the one in the previous comment. However, since these .cpp
-    # files are used to build JavaScriptCore itself, we can just add LLIntAssembly.h to JSC_HEADERS
-    # since it is used in the add_library() call at the end of this file.
-    list(APPEND JavaScriptCore_HEADERS
-        ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
-    )
-    list(APPEND JavaScriptCore_SOURCES
-        llint/LLIntCLoop.cpp
-        llint/LLIntData.cpp
-        llint/LLIntEntrypoints.cpp
-        llint/LLIntExceptions.cpp
-        llint/LLIntSlowPaths.cpp
-        llint/LLIntThunks.cpp
-        llint/LowLevelInterpreter.cpp
-    )
+        add_custom_command(
+            OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.obj
+            MAIN_DEPENDENCY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.asm
+            COMMAND ${ASM_TOOL} -nologo ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.asm ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.obj
+            VERBATIM)
+        set_source_files_properties(${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.obj PROPERTIES GENERATED TRUE)
+
+        list(APPEND JavaScriptCore_SOURCES
+            llint/LLIntCLoop.cpp
+            llint/LLIntData.cpp
+            llint/LLIntEntrypoints.cpp
+            llint/LLIntExceptions.cpp
+            llint/LLIntSlowPaths.cpp
+            llint/LLIntThunks.cpp
+            ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.obj
+        )
+    else ()
+        # The build system will execute asm.rb every time LLIntOffsetsExtractor's mtime is newer than
+        # LLIntAssembly.h's mtime. The problem we have here is: asm.rb has some built-in optimization
+        # that generates a checksum of the LLIntOffsetsExtractor binary, if the checksum of the new
+        # LLIntOffsetsExtractor matches, no output is generated. To make this target consistent and avoid
+        # running this command for every build, we artificially update LLIntAssembly.h's mtime (using touch)
+        # after every asm.rb run.
+        add_custom_command(
+            OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
+            MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb
+            DEPENDS LLIntOffsetsExtractor ${LLINT_ASM} ${OFFLINE_ASM}
+            COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm $<TARGET_FILE:LLIntOffsetsExtractor> ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
+            COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
+            VERBATIM)
+
+        # The explanation for not making LLIntAssembly.h part of the OBJECT_DEPENDS property of some of
+        # the .cpp files below is similar to the one in the previous comment. However, since these .cpp
+        # files are used to build JavaScriptCore itself, we can just add LLIntAssembly.h to JSC_HEADERS
+        # since it is used in the add_library() call at the end of this file.
+        list(APPEND JavaScriptCore_HEADERS
+            ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
+        )
+        list(APPEND JavaScriptCore_SOURCES
+            llint/LLIntCLoop.cpp
+            llint/LLIntData.cpp
+            llint/LLIntEntrypoints.cpp
+            llint/LLIntExceptions.cpp
+            llint/LLIntSlowPaths.cpp
+            llint/LLIntThunks.cpp
+            llint/LowLevelInterpreter.cpp
+        )
+    endif ()
 endif ()
 
 set(HASH_LUT_GENERATOR ${CMAKE_CURRENT_SOURCE_DIR}/create_hash_table)

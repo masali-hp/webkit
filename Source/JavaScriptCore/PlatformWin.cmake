@@ -39,3 +39,8 @@ if (ENABLE_JIT AND WTF_CPU_ARM)
 
     list(APPEND JavaScriptCore_SOURCES ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/GeneratedJITStubs.obj)
 endif ()
+
+# If LLInt is enabled (but not cloop), computed goto opcodes seem to be required too.
+if (ENABLE_LLINT)
+  add_definitions(-DENABLE_COMPUTED_GOTO_OPCODES=1)
+endif ()

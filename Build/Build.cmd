@@ -15,6 +15,7 @@ if "%1"=="" if "%2"=="" (
     echo Options Affecting WebKit Configuration:
     echo    -disablehp           HP specific extensions ^(like memory manager^) are disabled
     echo    -disablejit          Disable JIT
+    echo    -enablellint    Enable ASM LLInt backend ^(enables JIT too^)
 rem    echo    -jssharedcore   Build JavaScriptCore as a DLL
     echo    -usecf               Use Apple Core Foundation, Core Graphics
     echo    -usegdi              Use GDI for graphics, not cairo ^(only available for CE^)
@@ -24,6 +25,8 @@ rem    echo    -jssharedcore   Build JavaScriptCore as a DLL
     echo    -disabledrag         Disable drag and drop support
     echo    -disableperf         Disable performance tracing framework
     echo    -nosmartimagedecode  Disable memory efficient image downsampling
+    echo    -vs2012              Use Visual Studio 2012 ^(And ARM v7, Thumb 2, etc.^)
+    echo    -armv7               Use ARMv7 architecture
     echo    -useframepointers    Do not use frame pointer omission
     exit /b 1
 )
@@ -84,11 +87,23 @@ set USE_FPO=1
 
 set CPU_SPECIFIC=
 
+set USE_VS2012=0
+set USE_ARMV7=0
+
 for %%x in (%*) do call :parseargument %%x
 
 if %ENABLE_JIT% == OFF (
-    set ENABLE_LLINT_C_LOOP=ON
-    set ENABLE_LLINT=ON
+    if %ENABLE_LLINT% == OFF (
+        rem There is no more classic C++ interpreter so if we do not have
+        rem LLInt enabled or JIT we must enable the LLInt cloop.
+        set ENABLE_LLINT_C_LOOP=ON
+        set ENABLE_LLINT=ON
+    ) else (
+        rem See wtf/platform.h, line 751.
+        rem If JIT is not enabled, the cloop LLInt backend is used.
+        rem We don't want that ... JIT has to be enabled to use non-cloop LLInt backend
+        set ENABLE_JIT=ON
+    )
 )
 
 if /I "%1%" == "all" (
@@ -123,9 +138,19 @@ if /I "%2%" == "XP" (
 if /I "%2%" == "CE" (
 if /I "%3%" == "ARM" (
     set OS_ARCH=CE-ARM
-    set SDK=Khan Yeti SDK ^(ARMV4I^)
-    set CPU_SPECIFIC=-DWTF_CPU_ARM=1
-    set GENERATOR="Visual Studio 9 2008 Khan Yeti SDK (ARMV4I)"
+    if %USE_VS2012% EQU 1 (
+        set SDK=Generic ARM
+        set CPU_SPECIFIC=-DARM_ARCH_VERSION=7A -DARM_THUMB2=1
+        set GENERATOR="Visual Studio 9 2008 Generic ARM"
+    ) else (
+        set SDK=Khan Yeti SDK ^(ARMV4I^)
+        if %USE_ARMV7% EQU 1 (
+            set CPU_SPECIFIC=-DARM_ARCH_VERSION=7A -DARM_THUMB2=1
+        ) else (
+            set CPU_SPECIFIC=-DWTF_CPU_ARM=1
+        )
+        set GENERATOR="Visual Studio 9 2008 Khan Yeti SDK (ARMV4I)"
+    )
 ) else (
     set OS_ARCH=CE-x86
     set SDK=Jedi Thin Client ^(x86^)
@@ -138,10 +163,12 @@ if %USE_CAIRO% EQU 1 (set BUILD_DIR=%BUILD_DIR%-cairo)
 if %USE_CF% EQU 1 (set BUILD_DIR=%BUILD_DIR%-cf)
 if %USE_ICU_UNICODE% EQU 1 (set BUILD_DIR=%BUILD_DIR%-icu)
 if %ENABLE_JIT% == OFF (set BUILD_DIR=%BUILD_DIR%-nojit)
+if %ENABLE_LLINT% == ON (set BUILD_DIR=%BUILD_DIR%-llint)
 if %ENABLE_SVG% == ON (set BUILD_DIR=%BUILD_DIR%-svg)
 if %USE_WININET% EQU 1 (set BUILD_DIR=%BUILD_DIR%-wininet)
 if %ENABLE_DRAG% == OFF (set BUILD_DIR=%BUILD_DIR%-nodrag)
 if %ENABLE_PERFORMANCE_TRACING% == OFF (set BUILD_DIR=%BUILD_DIR%-noperf)
+if %USE_VS2012% EQU 1 (set BUILD_DIR=%BUILD_DIR%-2012)
 if %ENABLE_IMAGE_DECODER_DOWN_SAMPLING% == OFF (set BUILD_DIR=%BUILD_DIR%-nodownsample)
 if %USE_FPO% EQU 0 (set BUILD_DIR=%BUILD_DIR%-nofpo)
 
@@ -241,6 +268,10 @@ goto :eof
 @if /I "%1" == "-disablejit" (
     set ENABLE_JIT=OFF
 )
+@if /I "%1" == "-enablellint" (
+	set ENABLE_LLINT=ON
+    set ENABLE_LLINT_C_LOOP=OFF
+)
 @if /I "%1" == "-skipbuild" (
     set SKIP_BUILD="YES"
 )
@@ -277,6 +308,13 @@ rem )
 @if /I "%1" == "-useframepointers" (
     set USE_FPO=0
 )
+@if /I "%1" == "-vs2012" (
+    set USE_VS2012=1
+)
+@if /I "%1" == "-armv7" (
+    set USE_ARMV7=1
+)
+
 
 goto :eof
 

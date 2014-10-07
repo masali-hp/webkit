@@ -172,17 +172,21 @@ end
 #
 
 def emitCodeInConfiguration(concreteSettings, ast, backend)
-    $output.puts cppSettingsTest(concreteSettings)
-    
-    if isASTErroneous(ast)
-        $output.puts "#error \"Invalid configuration.\""
-    elsif not WORKING_BACKENDS.include? backend
-        $output.puts "#error \"This backend is not supported yet.\""
+    if $useMacros
+        $output.puts cppSettingsTest(concreteSettings)
+
+        if isASTErroneous(ast)
+            $output.puts "#error \"Invalid configuration.\""
+        elsif not WORKING_BACKENDS.include? backend
+            $output.puts "#error \"This backend is not supported yet.\""
+        else
+            yield concreteSettings, ast, backend
+        end
+
+        $output.puts "#endif"
     else
         yield concreteSettings, ast, backend
     end
-    
-    $output.puts "#endif"
 end
 
 #

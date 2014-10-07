@@ -33,6 +33,7 @@ require "parser"
 require "self_hash"
 require "settings"
 require "transform"
+require "macros"
 
 class Assembler
     def initialize(outp)
@@ -50,13 +51,13 @@ class Assembler
     end
     
     def enterAsm
-        @outp.puts "OFFLINE_ASM_BEGIN"
+        @outp.puts offline_asm_begin
         @state = :asm
     end
     
     def leaveAsm
         putsLastComment
-        @outp.puts "OFFLINE_ASM_END"
+        @outp.puts offline_asm_end
         @state = :cpp
     end
     
@@ -84,7 +85,11 @@ class Assembler
             result += "#{@codeOrigin}"
         end
         if result != ""
-            result = "// " + result
+            if ($useMacros)
+                result = "// " + result
+            else
+                result = "; " + result
+            end
         end
 
         # Reset all the components that we've just sent to be dumped.
@@ -120,12 +125,20 @@ class Assembler
     end
 
     def putLocalAnnotation()
-        putAnnotation "    // #{@annotation}" if @annotation
+        if ($useMacros)
+            putAnnotation "    // #{@annotation}" if @annotation
+        else
+            putAnnotation "    ; #{@annotation}" if @annotation
+        end
     end
 
     def putGlobalAnnotation()
         putsNewlineSpacerIfAppropriate(:annotation)
-        putAnnotation "// #{@annotation}" if @annotation
+        if ($useMacros)
+            putAnnotation "// #{@annotation}" if @annotation
+        else
+            putAnnotation "; #{@annotation}" if @annotation
+        end
     end
 
     def putsLastComment
@@ -137,7 +150,11 @@ class Assembler
     
     def puts(*line)
         raise unless @state == :asm
-        @outp.puts(formatDump("    \"\\t" + line.join('') + "\\n\"", lastComment))
+        if ($useMacros)
+            @outp.puts(formatDump("    \"\\t" + line.join('') + "\\n\"", lastComment))
+        else
+            @outp.puts(formatDump("    " + line.join(''), lastComment))
+        end
     end
     
     def print(line)
@@ -158,9 +175,9 @@ class Assembler
         putsNewlineSpacerIfAppropriate(:global)
         @internalComment = $enableLabelCountComments ? "Global Label #{@numGlobalLabels}" : nil
         if /\Allint_op_/.match(labelName)
-            @outp.puts(formatDump("OFFLINE_ASM_OPCODE_LABEL(op_#{$~.post_match})", lastComment))
+            @outp.puts(formatDump(offline_asm_opcode_label("op_"+$~.post_match), lastComment))
         else
-            @outp.puts(formatDump("OFFLINE_ASM_GLUE_LABEL(#{labelName})", lastComment))
+            @outp.puts(formatDump(offline_asm_glue_label(labelName), lastComment))
         end
         @newlineSpacerState = :none # After a global label, we can use another spacer.
     end
@@ -170,15 +187,15 @@ class Assembler
         @numLocalLabels += 1
         @outp.puts("\n")
         @internalComment = $enableLabelCountComments ? "Local Label #{@numLocalLabels}" : nil
-        @outp.puts(formatDump("  OFFLINE_ASM_LOCAL_LABEL(#{labelName})", lastComment))
+        @outp.puts(formatDump(offline_asm_local_label(labelName), lastComment))
     end
     
     def self.labelReference(labelName)
-        "\" LOCAL_REFERENCE(#{labelName}) \""
+        local_reference(labelName)
     end
     
     def self.localLabelReference(labelName)
-        "\" LOCAL_LABEL_STRING(#{labelName}) \""
+        local_label_string(labelName)
     end
     
     def self.cLabelReference(labelName)
@@ -200,13 +217,22 @@ class Assembler
             @commentState = :one
         when :one
             if $enableCodeOriginComments
-                @outp.puts "    // #{@codeOrigin}"
-                @outp.puts "    // #{text}"
+                if $useMacros
+                    @outp.puts "    // #{@codeOrigin}"
+                    @outp.puts "    // #{text}"
+                else
+                    @outp.puts "    ; #{@codeOrigin}"
+                    @outp.puts "    ; #{text}"
+                end
             end
             @codeOrigin = nil
             @commentState = :many
         when :many
-            @outp.puts "// #{text}" if $enableCodeOriginComments
+            if $useMacros
+                @outp.puts "// #{text}" if $enableCodeOriginComments
+            else
+                @outp.puts "; #{text}" if $enableCodeOriginComments
+            end
         else
             raise
         end
@@ -226,6 +252,24 @@ outputFlnm = ARGV.shift
 
 $stderr.puts "offlineasm: Parsing #{asmFile} and #{offsetsFile} and creating assembly file #{outputFlnm}."
 
+$useMacros = true
+$asmtool = nil
+
+loop { case ARGV[0]
+    # Instead of outputting a header file which relies on macros,
+    # write the .asm file directly:
+    when '--nomacros' then  ARGV.shift; $useMacros = false
+    # Instead of outputing assembly for the GNU ARM assembler, output
+    # assembly for the MSVC/RVCT compiler:
+    when '--armasm' then  ARGV.shift; $asmtool = "armasm"
+    when '--masm' then  ARGV.shift; $asmtool = "masm"
+    when /^-/ then
+        $stderr.puts("Unknown option: #{ARGV[0].inspect}")
+        exit(2)
+    else break
+end; }
+
+
 begin
     configurationList = offsetsAndConfigurationIndex(offsetsFile)
 rescue MissingMagicValuesException
@@ -234,7 +278,7 @@ rescue MissingMagicValuesException
 end
 
 inputHash =
-    "// offlineasm input hash: " + parseHash(asmFile) +
+    $useMacros ? "//" : ";" + "offlineasm input hash: " + parseHash(asmFile) +
     " " + Digest::SHA1.hexdigest(configurationList.map{|v| (v[0] + [v[1]]).join(' ')}.join(' ')) +
     " " + selfHash
 
@@ -274,6 +318,31 @@ File.open(outputFlnm, "w") {
         }
     }
 }
+
+if $asmtool == "armasm"
+    # We need ENDP statements at the end of our functions.
+    # The best way to do this without modifying the source (LowLevelInterpreter.asm)
+    # seems to be post processing the file and inserting the statements.
+    $asm_src = IO.readlines(outputFlnm)
+    $output = File.open(outputFlnm, "w")
+    $function = nil
+    $re = /^(\w+) PROC$/
+    
+    for i in 0...$asm_src.length
+        if $function
+            if $asm_src[i] == "\n"
+                $output.puts $function + " ENDP"
+                $function = nil
+            end
+        else
+            $func_match = $re.match($asm_src[i])
+            if $func_match
+                $function = $func_match[1]
+            end
+        end
+        $output.puts $asm_src[i]
+    end
+end
 
 $stderr.puts "offlineasm: Assembly file #{outputFlnm} successfully generated."
 
