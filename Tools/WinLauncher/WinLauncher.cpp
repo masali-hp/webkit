@@ -378,6 +378,23 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
     InitCtrlEx.dwICC  = 0x00004000; //ICC_STANDARD_CLASSES;
     InitCommonControlsEx(&InitCtrlEx);
 
+    // Init COM
+#ifdef _WIN32_WCE
+    // Take the address of the first variable in this function, aligned
+    // to a 4k boundary as the start of the stack, then substract the stack
+    // size (because the stack is growing downward).
+    SYSTEM_INFO systemInfo;
+    GetSystemInfo(&systemInfo);
+    DWORD pageSize = systemInfo.dwPageSize;
+    void * stackStart = (void*)((reinterpret_cast<unsigned>(&msg) & ~(pageSize - 1)) + pageSize);
+    void * stackBound = static_cast<char*>(stackStart) - (508 * 1024); // assume up to 4K stack above us
+    WTF::setMainThreadStackBounds(stackStart, stackBound);
+
+    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+#else
+    OleInitialize(NULL);
+#endif
+
     storagePath = SysAllocString(L".\\");
 
     gWebHost = new WinLauncherWebHost();
@@ -424,23 +441,6 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
 
     if (shouldUseFullDesktop())
         computeFullDesktopFrame();
-
-    // Init COM
-#ifdef _WIN32_WCE
-    // Take the address of the first variable in this function, aligned
-    // to a 4k boundary as the start of the stack, then substract the stack
-    // size (because the stack is growing downward).
-    SYSTEM_INFO systemInfo;
-    GetSystemInfo(&systemInfo);
-    DWORD pageSize = systemInfo.dwPageSize;
-    void * stackStart = (void*)((reinterpret_cast<unsigned>(&msg) & ~(pageSize - 1)) + pageSize);
-    void * stackBound = static_cast<char*>(stackStart) - (508 * 1024); // assume up to 4K stack above us
-    WTF::setMainThreadStackBounds(stackStart, stackBound);
-
-    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-#else
-    OleInitialize(NULL);
-#endif
 
     if (usesLayeredWebView()) {
         hURLBarWnd = CreateWindow(L"EDIT", L"Type URL Here",
