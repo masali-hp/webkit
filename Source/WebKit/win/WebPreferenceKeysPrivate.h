@@ -167,8 +167,8 @@
 
 #define WebKitRequestAnimationFrameEnabledPreferenceKey "WebKitRequestAnimationFrameEnabled"
 
+// HP added preferences:
 #define WebKitEmulateTouchEventsKey "WebKitEmulateTouchEvents"
-
 #define WebKitInspectorServerAddressKey "WebKitInspectorServerAddress"
-
 #define WebKitInspectorURLPreferenceKey "WebKitInspectorURL"
+#define WebKitDefaultLanguageKey "WebKitDefaultLanguageKey"

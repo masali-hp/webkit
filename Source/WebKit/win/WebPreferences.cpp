@@ -1955,6 +1955,18 @@ HRESULT WebPreferences::setEmulateTouchEvents(BOOL emulateTouchEvents)
     return S_OK;
 }
 
+HRESULT WebPreferences::defaultLanguage(BSTR* language)
+{
+    *language = stringValueForKey(STRING(WebKitDefaultLanguageKey));
+    return (*language) ? S_OK : E_FAIL;
+}
+
+HRESULT WebPreferences::setDefaultLanguage(BSTR language)
+{
+    setStringValue(STRING(WebKitDefaultLanguageKey), language);
+    return S_OK;
+}
+
 HRESULT WebPreferences::inspectorURL(BSTR *url)
 {
     *url = stringValueForKey(STRING(WebKitInspectorURLPreferenceKey));

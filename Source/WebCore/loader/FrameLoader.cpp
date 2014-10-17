@@ -78,6 +78,7 @@
 #include "IconController.h"
 #include "InspectorController.h"
 #include "InspectorInstrumentation.h"
+#include "Language.h"
 #include "LoaderStrategy.h"
 #include "Logging.h"
 #include "MIMETypeRegistry.h"
@@ -2486,8 +2487,12 @@ void FrameLoader::addExtraFieldsToRequest(ResourceRequest& request, FrameLoadTyp
         }
     }
     
-    if (mainResource)
+    if (mainResource) {
         request.setHTTPAccept(defaultAcceptHeader);
+#if PLATFORM(HP)
+        request.setHTTPHeaderField("Accept-Language", defaultLanguage());
+#endif
+    }
 
     // Make sure we send the Origin header.
     addHTTPOriginIfNeeded(request, String());

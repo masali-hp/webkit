@@ -108,6 +108,7 @@
 #include <WebCore/IntRect.h>
 #include <WebCore/JSElement.h>
 #include <WebCore/KeyboardEvent.h>
+#include <WebCore/Language.h>
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/Page.h>
@@ -5159,6 +5160,15 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     hr = prefsPrivate->requestAnimationFrameEnabled(&enabled);
     ASSERT_HR_SUCCESS(hr);
     settings->setRequestAnimationFrameEnabled(enabled);
+
+    Vector<String> languageList;
+    preferences->defaultLanguage(&str);
+    if (str) {
+        String language(str, SysStringLen(str));
+        languageList.append(language);
+        SysFreeString(str);
+    }
+    overrideUserPreferredLanguages(languageList);
 
     return S_OK;
 }

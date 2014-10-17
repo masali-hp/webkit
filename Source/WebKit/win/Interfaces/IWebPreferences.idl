@@ -216,4 +216,7 @@ interface IWebPreferences : IUnknown
 
     HRESULT setEmulateTouchEvents([in] BOOL emulateTouchEvents);
     HRESULT emulateTouchEvents([out, retval] BOOL* emulateTouchEvents);
+
+    HRESULT defaultLanguage([out, retval] BSTR* language);
+    HRESULT setDefaultLanguage([in] BSTR language);
 }

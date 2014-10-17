@@ -324,6 +324,12 @@ public:
     virtual HRESULT STDMETHODCALLTYPE shouldDisplayTextDescriptions(
     /* [retval][out] */ BOOL*);
 
+    virtual HRESULT STDMETHODCALLTYPE emulateTouchEvents(BOOL* emulateTouchEvents);
+    virtual HRESULT STDMETHODCALLTYPE setEmulateTouchEvents(BOOL emulateTouchEvents);
+
+    virtual HRESULT STDMETHODCALLTYPE defaultLanguage(BSTR* language);
+    virtual HRESULT STDMETHODCALLTYPE setDefaultLanguage(BSTR language);
+
     // IWebPreferencesPrivate
     virtual HRESULT STDMETHODCALLTYPE setDeveloperExtrasEnabled(
         /* [in] */ BOOL);
@@ -492,9 +498,6 @@ public:
     virtual HRESULT STDMETHODCALLTYPE inspectorServerAddress(BSTR *address);
     virtual HRESULT STDMETHODCALLTYPE setInspectorServerAddress(BSTR address);
 #endif
-
-    virtual HRESULT STDMETHODCALLTYPE emulateTouchEvents(BOOL* emulateTouchEvents);
-    virtual HRESULT STDMETHODCALLTYPE setEmulateTouchEvents(BOOL emulateTouchEvents);
 
     // WebPreferences
 
