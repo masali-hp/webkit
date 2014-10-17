@@ -1376,11 +1376,15 @@ HRESULT STDMETHODCALLTYPE DOMElement::offsetHeight(
 }
 
 HRESULT STDMETHODCALLTYPE DOMElement::offsetParent( 
-    /* [retval][out] */ IDOMElement** /*result*/)
+    /* [retval][out] */ IDOMElement** result)
 {
-    // FIXME
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    if (!m_element)
+        return E_FAIL;
+    if (!result)
+        return E_POINTER;
+
+    *result = DOMElement::createInstance(m_element->offsetParent());
+    return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE DOMElement::clientWidth( 

@@ -455,10 +455,25 @@ HRESULT STDMETHODCALLTYPE DOMHTMLElement::setDir(
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLElement::className( 
-        /* [retval][out] */ BSTR* /*result*/)
+        /* [retval][out] */ BSTR* result)
 {
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    ASSERT(m_element && m_element->isHTMLElement());
+    StringBuilder builder;
+    if (m_element->hasClass() && m_element->isStyledElement()) {
+        HashSet<AtomicString> usedClassNames;
+        const SpaceSplitString& classNamesString = static_cast<StyledElement*>(m_element)->classNames();
+        size_t classNameCount = classNamesString.size();
+        for (size_t i = 0; i < classNameCount; ++i) {
+            const AtomicString& className = classNamesString[i];
+            if (usedClassNames.contains(className))
+                continue;
+            usedClassNames.add(className);
+            builder.append(".");
+            builder.append(className);
+        }
+    }
+    *result = BString(builder.toString()).release();
+    return S_OK;
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLElement::setClassName( 
@@ -1532,10 +1547,12 @@ HRESULT STDMETHODCALLTYPE DOMHTMLTextAreaElement::setName(
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLTextAreaElement::readOnly( 
-        /* [retval][out] */ BOOL* /*result*/)
+        /* [retval][out] */ BOOL* result)
 {
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    ASSERT(m_element && m_element->hasTagName(textareaTag));
+    HTMLTextAreaElement* textareaElement = static_cast<HTMLTextAreaElement*>(m_element);
+    *result = textareaElement->isReadOnly() ? TRUE : FALSE;
+    return S_OK;
 }
     
 HRESULT STDMETHODCALLTYPE DOMHTMLTextAreaElement::setReadOnly( 
