@@ -4109,8 +4109,13 @@ bool EventHandler::dispatchSyntheticTouchEventIfEnabled(const PlatformMouseEvent
         return false;
 
     // The order is important. This check should follow the subframe test: http://webkit.org/b/111292.
-    if (eventType == PlatformEvent::MouseMoved && !m_touchPressed)
+    if (eventType == PlatformEvent::MouseMoved && !m_touchPressed) {
+#if ENABLE(DRAG_SUPPORT)
+        if (m_mousePressed)
+            return false;
+#endif
         return true;
+    }
 
     SyntheticSingleTouchEvent touchEvent(event);
     return handleTouchEvent(touchEvent);
