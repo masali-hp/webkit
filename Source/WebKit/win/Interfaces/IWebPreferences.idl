@@ -59,6 +59,11 @@ typedef enum WebCacheModel {
     WebCacheModelPrimaryWebBrowser = 2
 } WebCacheModel;
 
+typedef enum WebKitMouseMoveProcessingMode {
+    WebKitMouseMove_Normal = 0,
+    WebKitMouseMove_SkipWhenPaintPending
+} WebKitMouseMoveProcessingMode;
+
 [
     object,
     oleautomation,
@@ -219,4 +224,7 @@ interface IWebPreferences : IUnknown
 
     HRESULT defaultLanguage([out, retval] BSTR* language);
     HRESULT setDefaultLanguage([in] BSTR language);
+
+    HRESULT mouseMoveProcessingMode([out, retval] WebKitMouseMoveProcessingMode*);
+    HRESULT setMouseMoveProcessingMode([in] WebKitMouseMoveProcessingMode);
 }

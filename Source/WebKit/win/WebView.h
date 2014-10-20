@@ -1197,6 +1197,9 @@ protected:
     RefPtr<WebCore::Element> m_fullScreenElement;
     OwnPtr<WebCore::FullScreenController> m_fullscreenController;
 #endif
+
+    bool m_paintPending;
+    WebKitMouseMoveProcessingMode m_mouseProcessMode;
 };
 
 #endif

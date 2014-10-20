@@ -421,6 +421,8 @@ WebView::WebView()
 #endif
     , m_nextDisplayIsSynchronous(false)
     , m_lastSetCursor(0)
+    , m_paintPending(false)
+    , m_mouseProcessMode(WebKitMouseMove_Normal)
 {
     if (!pendingDeleteBackingStoreSet)
         pendingDeleteBackingStoreSet = new HashSet<WebView*>();
@@ -827,6 +829,7 @@ void WebView::repaint(const WebCore::IntRect& windowRect, bool contentChanged, b
         return;
     }
 #endif
+    m_paintPending = true;
 
     if (!repaintContentOnly) {
         RECT rect = windowRect;
@@ -1201,6 +1204,8 @@ void WebView::paint(HDC dc, LPARAM options)
     else
         deleteBackingStoreSoon();
 #endif
+
+    m_paintPending = false;
 }
 
 void WebView::paintIntoBackingStore(FrameView* frameView, HDC bitmapDC, const IntRect& dirtyRect, WindowsToPaint windowsToPaint)
@@ -1646,20 +1651,36 @@ bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)
         handled = true;
 #endif
     } else if (message == WM_MOUSEMOVE) {
-        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "WebView: Mouse Move");
-        if (!insideThreshold)
-            globalClickCount = 0;
-        mouseEvent.setClickCount(globalClickCount);
-        handled = m_page->mainFrame()->eventHandler()->mouseMoved(mouseEvent);
-#if !OS(WINCE)
-        if (!m_mouseOutTracker) {
-            m_mouseOutTracker = adoptPtr(new TRACKMOUSEEVENT);
-            m_mouseOutTracker->cbSize = sizeof(TRACKMOUSEEVENT);
-            m_mouseOutTracker->dwFlags = TME_LEAVE;
-            m_mouseOutTracker->hwndTrack = m_viewWindow;
-            ::TrackMouseEvent(m_mouseOutTracker.get());
+        WebKitMouseMoveProcessingMode mode = m_mouseProcessMode;
+
+        if (mode == WebKitMouseMove_SkipWhenPaintPending) {
+            BOOL webViewInvalidated = GetUpdateRect(m_viewWindow, NULL, FALSE);
+            if (!webViewInvalidated && !m_paintPending)
+                mode = WebKitMouseMove_Normal;
         }
+
+        if (mode == WebKitMouseMove_Normal) {
+            char buff[64];
+            _snprintf(buff, 64, "WebView: Mouse Move (%d, %d)", mouseEvent.position().x(), mouseEvent.position().y());
+            PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, buff);
+            if (!insideThreshold)
+                globalClickCount = 0;
+            mouseEvent.setClickCount(globalClickCount);
+            handled = m_page->mainFrame()->eventHandler()->mouseMoved(mouseEvent);
+#if !OS(WINCE)
+            if (!m_mouseOutTracker) {
+                m_mouseOutTracker = adoptPtr(new TRACKMOUSEEVENT);
+                m_mouseOutTracker->cbSize = sizeof(TRACKMOUSEEVENT);
+                m_mouseOutTracker->dwFlags = TME_LEAVE;
+                m_mouseOutTracker->hwndTrack = m_viewWindow;
+                ::TrackMouseEvent(m_mouseOutTracker.get());
+            }
 #endif
+        }
+        else {//if (mode == WebKitMouseMove_SkipWhenPaintPending) {
+            PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "WebView: Skip WM_MOUSEMOVE");
+            handled = true;
+        }
     }
     PERFORMANCE_END(WTF::PerformanceTrace::InputEvent);
     return handled;
@@ -4884,6 +4905,9 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     ASSERT_HR_SUCCESS(hr);
     settings->setTouchEventEmulationEnabled(enabled);
 #endif
+
+    preferences->mouseMoveProcessingMode(&m_mouseProcessMode);
+    ASSERT_HR_SUCCESS(hr);
 
     COMPtr<IWebPreferencesPrivate> prefsPrivate(Query, preferences);
     if (prefsPrivate) {

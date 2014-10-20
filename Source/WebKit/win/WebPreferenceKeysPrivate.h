@@ -172,3 +172,4 @@
 #define WebKitInspectorServerAddressKey "WebKitInspectorServerAddress"
 #define WebKitInspectorURLPreferenceKey "WebKitInspectorURL"
 #define WebKitDefaultLanguageKey "WebKitDefaultLanguageKey"
+#define WebKitMouseMoveProcessingKey "WebKitMouseMoveProcessingKey"

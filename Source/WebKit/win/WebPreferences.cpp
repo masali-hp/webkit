@@ -1967,6 +1967,21 @@ HRESULT WebPreferences::setDefaultLanguage(BSTR language)
     return S_OK;
 }
 
+HRESULT WebPreferences::mouseMoveProcessingMode(WebKitMouseMoveProcessingMode* mode)
+{
+    if (!mode)
+        return E_POINTER;
+
+    *mode = (WebKitMouseMoveProcessingMode)integerValueForKey(STRING(WebKitMouseMoveProcessingKey));
+    return S_OK;
+}
+
+HRESULT WebPreferences::setMouseMoveProcessingMode(WebKitMouseMoveProcessingMode mode)
+{
+    setIntegerValue(STRING(WebKitMouseMoveProcessingKey), mode);
+    return S_OK;
+}
+
 HRESULT WebPreferences::inspectorURL(BSTR *url)
 {
     *url = stringValueForKey(STRING(WebKitInspectorURLPreferenceKey));

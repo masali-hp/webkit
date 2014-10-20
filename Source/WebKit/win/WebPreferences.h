@@ -330,6 +330,9 @@ public:
     virtual HRESULT STDMETHODCALLTYPE defaultLanguage(BSTR* language);
     virtual HRESULT STDMETHODCALLTYPE setDefaultLanguage(BSTR language);
 
+    virtual HRESULT STDMETHODCALLTYPE mouseMoveProcessingMode(WebKitMouseMoveProcessingMode* mode);
+    virtual HRESULT STDMETHODCALLTYPE setMouseMoveProcessingMode(WebKitMouseMoveProcessingMode mode);
+
     // IWebPreferencesPrivate
     virtual HRESULT STDMETHODCALLTYPE setDeveloperExtrasEnabled(
         /* [in] */ BOOL);
