@@ -36,6 +36,23 @@ cpp_quote("#define WebEmbeddedViewBaseURLKey TEXT(\"WebEmbeddedViewBaseURLKey\")
 cpp_quote("#define WebEmbeddedViewContainingElementKey TEXT(\"WebEmbeddedViewContainingElementKey\")")
 cpp_quote("#define WebEmbeddedViewMIMETypeKey TEXT(\"WebEmbeddedViewMIMETypeKey\")")
 
+typedef enum WebMessageSource {
+    WebHTMLMessageSource,
+    WebXMLMessageSource,
+    WebJSMessageSource,
+    WebNetworkMessageSource,
+    WebConsoleAPIMessageSource,
+    WebOtherMessageSource,
+} WebMessageSource;
+
+typedef enum WebMessageLevel {
+    WebTipMessageLevel,
+    WebLogMessageLevel,
+    WebWarningMessageLevel,
+    WebErrorMessageLevel,
+    WebDebugMessageLevel
+} WebMessageLevel;
+
 interface IWebEmbeddedView;
 interface IWebFrame;
 interface IWebGeolocationPolicyListener;
@@ -53,7 +70,7 @@ interface IWebUIDelegatePrivate : IUnknown
     HRESULT unused1();
     HRESULT unused2();
     HRESULT webViewScrolled([in] IWebView* sender);
-    HRESULT webViewAddMessageToConsole([in] IWebView* sender, [in] BSTR message, [in] int lineNumber, [in] BSTR url, [in] BOOL isError);
+    HRESULT webViewAddMessageToConsole([in] IWebView* sender, [in] BSTR message, [in] int lineNumber, [in] BSTR url, [in] WebMessageSource source, [in] WebMessageLevel level);
     HRESULT webViewShouldInterruptJavaScript([in] IWebView* sender, [out, retval] BOOL* result);
     HRESULT webViewReceivedFocus([in] IWebView* sender);
     HRESULT webViewLostFocus([in] IWebView* sender, [in] OLE_HANDLE loseFocusToHWnd);

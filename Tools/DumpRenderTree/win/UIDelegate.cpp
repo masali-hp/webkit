@@ -476,12 +476,13 @@ HRESULT STDMETHODCALLTYPE UIDelegate::runBeforeUnloadConfirmPanelWithMessage(
     return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE UIDelegate::webViewAddMessageToConsole( 
-    /* [in] */ IWebView* sender,
+HRESULT STDMETHODCALLTYPE UIDelegate::webViewAddMessageToConsole(
+    /* [in] */ IWebView *sender,
     /* [in] */ BSTR message,
     /* [in] */ int lineNumber,
     /* [in] */ BSTR url,
-    /* [in] */ BOOL isError)
+    /* [in] */ WebMessageSource source,
+    /* [in] */ WebMessageLevel level)
 {
     wstring newMessage;
     if (message) {

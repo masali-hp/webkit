@@ -192,6 +192,10 @@ HRESULT STDMETHODCALLTYPE WinLauncherWebHost::QueryInterface(REFIID riid, void**
         *ppvObject = static_cast<IWebFrameLoadDelegate*>(this);
     else if (IsEqualGUID(riid, IID_IWebFrameLoadDelegate))
         *ppvObject = static_cast<IWebFrameLoadDelegate*>(this);
+    else if (IsEqualIID(riid, IID_IWebUIDelegate))
+        *ppvObject = static_cast<IWebUIDelegate*>(this);
+    else if (IsEqualIID(riid, IID_IWebUIDelegatePrivate))
+        *ppvObject = static_cast<IWebUIDelegatePrivate*>(this);
     else
         return E_NOINTERFACE;
 
@@ -299,6 +303,32 @@ HRESULT STDMETHODCALLTYPE WinLauncherWebHost::jobDebug(
             dataBuf, needCRLF ? L"\r\n" : L"");
 
     OutputDebugStringW(dstBuf);
+    return S_OK;
+}
+
+HRESULT WinLauncherWebHost::webViewAddMessageToConsole(
+        /* [in] */ IWebView *sender,
+        /* [in] */ BSTR message,
+        /* [in] */ int lineNumber,
+        /* [in] */ BSTR url,
+        /* [in] */ WebMessageSource source,
+        /* [in] */ WebMessageLevel level)
+{
+    wchar_t buff[512];
+    _snwprintf(buff, 512, L"%s (%s): %s, %s, line %d\n",
+        source == WebHTMLMessageSource ? L"HTML" :
+        source == WebXMLMessageSource ? L"XML" :
+        source == WebJSMessageSource ? L"JS" :
+        source == WebNetworkMessageSource ? L"Network" :
+        source == WebConsoleAPIMessageSource ? L"Console" :
+        source == WebOtherMessageSource ? L"Other" : L"???",
+        level == WebTipMessageLevel ? L"tip" :
+        level == WebLogMessageLevel ? L"log" :
+        level == WebWarningMessageLevel ? L"warning" :
+        level == WebErrorMessageLevel ? L"error" :
+        level == WebDebugMessageLevel ? L"debug" : L"???",
+        message, url, lineNumber);
+    OutputDebugStringW(buff);
     return S_OK;
 }
 

@@ -345,12 +345,13 @@ protected:
     virtual HRESULT STDMETHODCALLTYPE webViewScrolled( 
         /* [in] */ IWebView *sender) { return E_NOTIMPL; }
     
-    virtual HRESULT STDMETHODCALLTYPE webViewAddMessageToConsole( 
+    virtual HRESULT STDMETHODCALLTYPE webViewAddMessageToConsole(
         /* [in] */ IWebView *sender,
         /* [in] */ BSTR message,
         /* [in] */ int lineNumber,
         /* [in] */ BSTR url,
-        /* [in] */ BOOL isError);
+        /* [in] */ WebMessageSource source,
+        /* [in] */ WebMessageLevel level);
     
     virtual HRESULT STDMETHODCALLTYPE webViewShouldInterruptJavaScript( 
         /* [in] */ IWebView *sender,
