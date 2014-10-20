@@ -32,7 +32,7 @@
 #include "WebView.h"
 
 #include <shlobj.h>
-#if OS(WINCE)
+#if OS(WINCE) || PLATFORM(HP)
 #include <ole2.h>
 #include <wince/DragDropManager.h>
 #endif
@@ -144,7 +144,7 @@ void WebDragClient::startDrag(DragImageRef image, const IntPoint& imageOrigin, c
             sdi.ptOffset.y = dragPoint.y() - imageOrigin.y();
             if (isLink)
                 sdi.ptOffset.y = b.bmHeight - sdi.ptOffset.y;
-#if OS(WINCE)
+#if OS(WINCE) || PLATFORM(HP)
             WinCE_SetDragImageForDataObject(&sdi, dataObject.get());
 #else
             if(SUCCEEDED(CoCreateInstance(CLSID_DragDropHelper, 0, CLSCTX_INPROC_SERVER,

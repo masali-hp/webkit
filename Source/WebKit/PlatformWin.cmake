@@ -343,7 +343,7 @@ if (ENABLE_DRAG_SUPPORT)
         win/WebCoreSupport/WebDragClient.cpp
         win/WebCoreSupport/WebDragClient.h
     )
-    if (WINOS MATCHES CE)
+    if (WINOS MATCHES CE OR PLATFORM MATCHES HP)
         list(APPEND WebKit_SOURCES
             win/wince/DragDropManager.cpp
         )

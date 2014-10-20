@@ -196,7 +196,7 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/StringConcatenate.h>
 
-#if ENABLE(DRAG_SUPPORT) && OS(WINCE)
+#if ENABLE(DRAG_SUPPORT) && (OS(WINCE) || PLATFORM(HP))
 #include <ole2.h>
 #include <wince/DragDropManager.h>
 #endif
@@ -430,7 +430,7 @@ WebView::WebView()
 
     m_backingStoreSize.cx = m_backingStoreSize.cy = 0;
 
-#if ENABLE(DRAG_SUPPORT) && !OS(WINCE)
+#if ENABLE(DRAG_SUPPORT) && !OS(WINCE) && !PLATFORM(HP)
     CoCreateInstance(CLSID_DragDropHelper, 0, CLSCTX_INPROC_SERVER, IID_IDropTargetHelper,(void**)&m_dropTargetHelper);
 #endif
 
@@ -450,6 +450,11 @@ WebView::WebView()
 #if PLATFORM(HP)
     HPRegisterMemoryDebug(OutputLiveWebViewInfo);
 #endif
+
+    // In http://trac.webkit.org/changeset/140321, when emulate touch events is enabled,
+    // mouse move events are not longer sent if the cursor is not held down.
+    // This prevents m_lastSetCursor from ever being initialized.
+    m_lastSetCursor = ::LoadCursor(0, IDC_ARROW);
 }
 
 WebView::~WebView()
@@ -5362,7 +5367,7 @@ HRESULT STDMETHODCALLTYPE WebView::DragEnter(
 {
     m_dragData = 0;
 
-#if !OS(WINCE)
+#if !OS(WINCE) && !PLATFORM(HP)
     if (m_dropTargetHelper)
         m_dropTargetHelper->DragEnter(m_viewWindow, pDataObject, (POINT*)&pt, *pdwEffect);
 #endif
@@ -5382,7 +5387,7 @@ HRESULT STDMETHODCALLTYPE WebView::DragEnter(
 HRESULT STDMETHODCALLTYPE WebView::DragOver(
         DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
 {
-#if !OS(WINCE)
+#if !OS(WINCE) && !PLATFORM(HP)
     if (m_dropTargetHelper)
         m_dropTargetHelper->DragOver((POINT*)&pt, *pdwEffect);
 #endif
@@ -5402,7 +5407,7 @@ HRESULT STDMETHODCALLTYPE WebView::DragOver(
 
 HRESULT STDMETHODCALLTYPE WebView::DragLeave()
 {
-#if !OS(WINCE)
+#if !OS(WINCE) && !PLATFORM(HP)
     if (m_dropTargetHelper)
         m_dropTargetHelper->DragLeave();
 #endif
@@ -5419,7 +5424,7 @@ HRESULT STDMETHODCALLTYPE WebView::DragLeave()
 HRESULT STDMETHODCALLTYPE WebView::Drop(
         IDataObject* pDataObject, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
 {
-#if !OS(WINCE)
+#if !OS(WINCE) && !PLATFORM(HP)
     if (m_dropTargetHelper)
         m_dropTargetHelper->Drop(pDataObject, (POINT*)&pt, *pdwEffect);
 #endif
