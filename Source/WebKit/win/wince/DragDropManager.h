@@ -18,6 +18,10 @@
 #ifndef _WEBKIT_DRAG_DROP_MANAGER_H
 #define _WEBKIT_DRAG_DROP_MANAGER_H
 
+#include <windows.h>
+#include <ole2.h>
+#include <shlobj.h>
+
 #define RegisterDragDrop WinCE_RegisterDragDrop
 #define RevokeDragDrop   WinCE_RevokeDragDrop
 #define DoDragDrop       WinCE_DoDragDrop
@@ -28,6 +32,8 @@ HRESULT WinCE_RevokeDragDrop(HWND hwnd);
 
 HRESULT WinCE_DoDragDrop(LPDATAOBJECT pDataObj, LPDROPSOURCE pDropSource, DWORD dwOKEffects, LPDWORD pdwEffect);
 
-void WinCE_SetDragImageForDataObject(SHDRAGIMAGE * dragImage, IDataObject * dataObject);
+void WinCE_SetDragImage(SHDRAGIMAGE * dragImage);
+
+void WinCE_PaintDragImage(HDC bitmapDC, IWebViewPrivate * webView, RECT * rect);
 
 #endif

@@ -197,7 +197,6 @@
 #include <wtf/text/StringConcatenate.h>
 
 #if ENABLE(DRAG_SUPPORT) && (OS(WINCE) || PLATFORM(HP))
-#include <ole2.h>
 #include <wince/DragDropManager.h>
 #endif
 
@@ -1254,6 +1253,10 @@ void WebView::paintIntoBackingStore(FrameView* frameView, HDC bitmapDC, const In
         frameView->paint(&gc, dirtyRect);
         if (m_shouldInvertColors)
             gc.fillRect(dirtyRect, Color::white, ColorSpaceDeviceRGB, CompositeDifference);
+
+#if ENABLE(DRAG_SUPPORT) && (OS(WINCE) || PLATFORM(HP))
+        WinCE_PaintDragImage(bitmapDC, this, &rect);
+#endif
 
 #if OS(WINCE) && ENABLE(INSPECTOR)
         // WinCE does not support layered/transparent windows,

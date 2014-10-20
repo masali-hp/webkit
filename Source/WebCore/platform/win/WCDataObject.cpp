@@ -294,11 +294,70 @@ STDMETHODIMP WCDataObject::SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, BO
     return S_OK;
 }
 
+#if OS(WINCE)
+// OleDuplicateData is declared in ole2.h, but the implementation is not provided
+// by the OS.  Odd.  Not the first time we've seen this however.
+#define OleDuplicateData WinCE_OleDuplicateData
+HANDLE WINAPI WinCE_OleDuplicateData(HANDLE hSrc, CLIPFORMAT cfFormat,
+	                          UINT uiFlags)
+{
+    HANDLE hDst = NULL;
+
+    if (!uiFlags) uiFlags = GMEM_MOVEABLE;
+
+    switch (cfFormat)
+    {
+    case CF_PALETTE:
+        {
+            break;
+        }
+    case CF_BITMAP:
+        {
+            break;
+        }
+    default:
+        {
+            SIZE_T size = GlobalSize(hSrc);
+            LPVOID pvSrc = NULL;
+            LPVOID pvDst = NULL;
+
+            /* allocate space for object */
+            if (!size) return NULL;
+            hDst = GlobalAlloc(uiFlags, size);
+            if (!hDst) return NULL;
+
+            /* lock pointers */
+            pvSrc = GlobalLock(hSrc);
+            if (!pvSrc)
+            {
+                GlobalFree(hDst);
+                return NULL;
+            }
+            pvDst = GlobalLock(hDst);
+            if (!pvDst)
+            {
+                GlobalUnlock(hSrc);
+                GlobalFree(hDst);
+                return NULL;
+            }
+            /* copy data */
+            memcpy(pvDst, pvSrc, size);
+
+            /* cleanup */
+            GlobalUnlock(hDst);
+            GlobalUnlock(hSrc);
+        }
+    }
+
+    return hDst;
+}
+
+#endif
+
 void WCDataObject::CopyMedium(STGMEDIUM* pMedDest, STGMEDIUM* pMedSrc, FORMATETC* pFmtSrc)
 {
     switch(pMedSrc->tymed)
     {
-#if !OS(WINCE)
     case TYMED_HGLOBAL:
         pMedDest->hGlobal = (HGLOBAL)OleDuplicateData(pMedSrc->hGlobal,pFmtSrc->cfFormat, 0);
         break;
@@ -314,7 +373,6 @@ void WCDataObject::CopyMedium(STGMEDIUM* pMedDest, STGMEDIUM* pMedSrc, FORMATETC
     case TYMED_FILE:
         pMedSrc->lpszFileName = (LPOLESTR)OleDuplicateData(pMedSrc->lpszFileName,pFmtSrc->cfFormat, 0);
         break;
-#endif
     case TYMED_ISTREAM:
         pMedDest->pstm = pMedSrc->pstm;
         pMedSrc->pstm->AddRef();

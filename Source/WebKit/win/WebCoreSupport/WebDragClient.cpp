@@ -145,7 +145,7 @@ void WebDragClient::startDrag(DragImageRef image, const IntPoint& imageOrigin, c
             if (isLink)
                 sdi.ptOffset.y = b.bmHeight - sdi.ptOffset.y;
 #if OS(WINCE) || PLATFORM(HP)
-            WinCE_SetDragImageForDataObject(&sdi, dataObject.get());
+            WinCE_SetDragImage(&sdi);
 #else
             if(SUCCEEDED(CoCreateInstance(CLSID_DragDropHelper, 0, CLSCTX_INPROC_SERVER,
                 IID_IDragSourceHelper,(LPVOID*)&helper))) {
