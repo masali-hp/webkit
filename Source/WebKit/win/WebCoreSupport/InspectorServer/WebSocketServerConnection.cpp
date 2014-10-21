@@ -83,6 +83,9 @@ void WebSocketServerConnection::shutdownAfterSendOrNow()
 
 void WebSocketServerConnection::sendWebSocketMessage(const String& message)
 {
+    if (!m_socket)
+        return;
+
     CString payload = message.utf8();
     const bool final = true, compress = false, masked = false;
     WebSocketFrame frame(WebSocketFrame::OpCodeText, final, compress, masked, payload.data(), payload.length());
@@ -90,14 +93,15 @@ void WebSocketServerConnection::sendWebSocketMessage(const String& message)
     Vector<char> frameData;
     frame.makeFrameData(frameData);
 
-    if (m_socket) {
-        m_socket->send(frameData.data(), frameData.size());
-        m_server->didSendData((int)m_identifier, frameData.size());
-    }
+    m_socket->send(frameData.data(), frameData.size());
+    m_server->didSendData((int)m_identifier, frameData.size());
 }
 
 void WebSocketServerConnection::sendHTTPResponseHeader(int statusCode, const String& statusText, const HTTPHeaderMap& headerFields)
 {
+    if (!m_socket)
+        return;
+
     StringBuilder builder;
     builder.append("HTTP/1.1 ");
     builder.append(String::number(statusCode));
@@ -118,8 +122,10 @@ void WebSocketServerConnection::sendHTTPResponseHeader(int statusCode, const Str
 
 void WebSocketServerConnection::sendRawData(const char* data, size_t length)
 {
-    m_socket->send(data, length);
-    m_server->didSendData((int)m_identifier, length);
+    if (m_socket) {
+        m_socket->send(data, length);
+        m_server->didSendData((int)m_identifier, length);
+    }
 }
 
 void WebSocketServerConnection::didCloseSocketStream(SocketStreamHandle* socket)
