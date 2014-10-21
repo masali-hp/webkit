@@ -47,6 +47,12 @@
 #include "PlatformGestureEvent.h"
 #endif
 
+#if OS(WINCE)
+static double abs(double x) {
+    return x < 0 ? -x : x;
+}
+#endif
+
 using namespace std;
 
 namespace WebCore {
