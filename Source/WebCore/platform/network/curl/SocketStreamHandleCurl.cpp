@@ -43,20 +43,30 @@
 #include <wtf/RefPtr.h>
 #include <wtf/text/CString.h>
 #include <wtf/CurrentTime.h>
+#include <wtf/PerformanceTrace.h>
 
 const size_t receiveBufferSize = 16384;
 
 double threadStartTime;
 
-/*
-#undef LOG
-#define LOG(channel, fmt, ...) PrintToVSOutput(fmt, __VA_ARGS__)
+#define LOG_CONNECT LOG
 
-static void va_output_debug_string(const char* format, va_list args)
+/*#undef LOG
+#define LOG(channel, ...) va_output_debug_string(__VA_ARGS__)
+
+static void va_output_debug_string(const char* format, ...)
 {
-    size_t size = 1024;
+    va_list args;
+    va_start(args, format);
+#define STATIC_BUF_SIZE 1024
+    size_t size = STATIC_BUF_SIZE;
+    char static_buffer[STATIC_BUF_SIZE];
     do {
-        char* buffer = (char*)malloc(size);
+        char* buffer;
+        if (size == STATIC_BUF_SIZE)
+            buffer = static_buffer;
+        else
+            buffer = (char*)malloc(size);
 
         if (buffer == NULL)
             break;
@@ -64,35 +74,45 @@ static void va_output_debug_string(const char* format, va_list args)
         if (_vsnprintf(buffer, size, format, args) != -1) {
 #if OS(WINCE)
             // WinCE only supports wide chars
-            wchar_t* wideBuffer = (wchar_t*)malloc(size * sizeof(wchar_t));
+            wchar_t* wideBuffer;
+            wchar_t static_wide[STATIC_BUF_SIZE];
+            if (size == STATIC_BUF_SIZE)
+                wideBuffer = static_wide;
+            else
+                wideBuffer = (wchar_t*)malloc(size * sizeof(wchar_t));
             if (wideBuffer == NULL)
                 break;
-            for (unsigned int i = 0; i < size; i++) {
+            for (unsigned int i = 0; i < size; ++i) {
                 if (!(wideBuffer[i] = buffer[i]))
                     break;
             }
             OutputDebugStringW(wideBuffer);
-            free(wideBuffer);
+            if (wideBuffer != static_wide)
+                free(wideBuffer);
 #else
             OutputDebugStringA(buffer);
 #endif
-            free(buffer);
+            if (buffer != static_buffer)
+                free(buffer);
             break;
         }
-
-        free(buffer);
+        if (buffer != static_buffer)
+            free(buffer);
         size *= 2;
     } while (size > 1024);
-}
-
-void PrintToVSOutput(const char* format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    va_output_debug_string(format, args);
     va_end(args);
 }
 */
+
+// uncomment to debug connect/disconnect issues:
+//#undef LOG_CONNECT
+//#if PLATFORM(HP)
+//#define LOG_CONNECT(x, ...) HP_TRACE_WARN(__VA_ARGS__)
+//#else
+//#define LOG_CONNECT(x, ...)
+//#endif
+
+static int socketCount = 0;
 
 namespace WebCore {
 
@@ -105,8 +125,9 @@ SocketStreamHandle::SocketStreamHandle(const KURL& url, SocketStreamHandleClient
     , m_receive_buffer(NULL)
     , m_use_curl_easy_send_recv(false)
 {
+    socketCount++;
     initMainThreadMessagesStatic();
-    LOG(Network, "SocketStreamHandleCurl: new url (%s) websocket, client = %p [%p][thread=%d]\n", url.string().ascii().data(), client, this, GetCurrentThreadId());
+    LOG_CONNECT(Network, "SocketStreamHandleCurl: new url (%s) websocket, client = %p, count=%d [%p][thread=%d]\n", url.string().ascii().data(), client, socketCount, this, GetCurrentThreadId());
     m_curl_error_buffer[0] = '\0';
     if (client)
         client->willOpenSocketStream(this);
@@ -123,8 +144,9 @@ SocketStreamHandle::SocketStreamHandle(int fd, SocketStreamHandleClient* client)
     , m_receive_buffer(NULL)
     , m_use_curl_easy_send_recv(false)
 {
+    socketCount++;
     initMainThreadMessagesStatic();
-    LOG(Network, "SocketStreamHandleCurl: new fd websocket, fd = %d, client = %p [%p][thread=%d]\n", fd, client, this, GetCurrentThreadId());
+    LOG_CONNECT(Network, "SocketStreamHandleCurl: new fd websocket, fd = %d, client = %p, count=%d [%p][thread=%d]\n", fd, client, socketCount, this, GetCurrentThreadId());
     m_curl_error_buffer[0] = '\0';
     if (client)
         client->willOpenSocketStream(this);
@@ -134,7 +156,8 @@ SocketStreamHandle::SocketStreamHandle(int fd, SocketStreamHandleClient* client)
 
 SocketStreamHandle::~SocketStreamHandle()
 {
-    LOG(Network, "SocketStreamHandleCurl: delete [%p][thread=%d]\n", this, GetCurrentThreadId());
+    socketCount--;
+    LOG_CONNECT(Network, "SocketStreamHandleCurl: delete, count=%d [%p][thread=%d]\n", socketCount, this, GetCurrentThreadId());
     setClient(0);
     // if for some reason we weren't closed before being destroyed, ensure we release resources now.
     platformClose();
@@ -190,9 +213,13 @@ bool SocketStreamHandle::connect() {
     if (m_socket == -1) {
         // Curl connect and setup
         const String & proxy = ResourceHandleManager::sharedInstance()->getProxyString();
+
         if (proxy.length()) {
-            curl_easy_setopt(m_curlHandle, CURLOPT_PROXY, proxy.utf8().data());
-            curl_easy_setopt(m_curlHandle, CURLOPT_PROXYTYPE, ResourceHandleManager::sharedInstance()->getProxyType());
+            bool isLocalHttp = (m_url.host() == "localhost" || m_url.host().startsWith("127.0.0.") || m_url.host().startsWith("::1"));
+            if (!isLocalHttp) {
+                curl_easy_setopt(m_curlHandle, CURLOPT_PROXY, proxy.utf8().data());
+                curl_easy_setopt(m_curlHandle, CURLOPT_PROXYTYPE, ResourceHandleManager::sharedInstance()->getProxyType());
+            }
         }
         // curl doesn't understand a ws:// protocol, so switch it to http
         if ( m_url.protocolIs("ws") ) {
@@ -239,7 +266,7 @@ bool SocketStreamHandle::connect() {
 
     m_curl_code = curl_easy_perform(m_curlHandle);
     if ( m_curl_code != CURLE_OK ) {
-        LOG(Network, "SocketStreamHandleCurl: startConnect failed to connect [%p][thread=%d]\n", this, GetCurrentThreadId());
+        LOG_CONNECT(Network, "SocketStreamHandleCurl: startConnect failed to connect [%p][thread=%d]\n", this, GetCurrentThreadId());
         sendMessageToMainThread(DidFail);
         return false;
     }
@@ -247,14 +274,14 @@ bool SocketStreamHandle::connect() {
     if (m_socket == -1) {
         m_curl_code = curl_easy_getinfo(m_curlHandle, CURLINFO_LASTSOCKET, &m_socket);
         if ( m_curl_code != CURLE_OK ) {
-            LOG(Network, "SocketStreamHandleCurl: startConnect failed to get socket from curl [%p][thread=%d]\n", this, GetCurrentThreadId());
+            LOG_CONNECT(Network, "SocketStreamHandleCurl: startConnect failed to get socket from curl [%p][thread=%d]\n", this, GetCurrentThreadId());
             sendMessageToMainThread(DidFail);
             return false;
         }
     }
 
     if (!m_platformCloseRequested) {
-        LOG(Network, "SocketStreamHandleCurl: startConnect success, changing state to open [%p][thread=%d]\n", this, GetCurrentThreadId());
+        LOG_CONNECT(Network, "SocketStreamHandleCurl: startConnect success, changing state to open [%p][thread=%d]\n", this, GetCurrentThreadId());
         m_state = Open;
         sendMessageToMainThread(DidOpen);
         return true;
@@ -283,7 +310,7 @@ int SocketStreamHandle::platformSend(const char* buf, int length)
         bytes_written = ::send(m_socket, buf, length, 0);
         if (bytes_written == -1) {
             int error = WSAGetLastError();
-            LOG(Network, "SocketStreamHandleCurl: platformSend(), error on send (%d) [%p][thread=%d]\n", error, this, GetCurrentThreadId());
+            LOG_CONNECT(Network, "SocketStreamHandleCurl: platformSend(), error on send (%d) [%p][thread=%d]\n", error, this, GetCurrentThreadId());
             if (WSAEWOULDBLOCK == error)
                 bytes_written = 0;
             else
@@ -292,13 +319,13 @@ int SocketStreamHandle::platformSend(const char* buf, int length)
     }
 
     if (m_curl_code != CURLE_OK) {
-        LOG(Network, "SocketStreamHandleCurl: platformSend, error sending data [%p][thread=%d]\n", this, GetCurrentThreadId());
+        LOG_CONNECT(Network, "SocketStreamHandleCurl: platformSend, error sending data [%p][thread=%d]\n", this, GetCurrentThreadId());
         sendMessageToMainThread(DidFail);
         return 0;
     }
 
     if (bytes_written < length) {
-        LOG(Network, "SocketStreamHandleCurl: platformSend(), starting send thread (bytes written=%d) [%p][thread=%d]\n", bytes_written, this, GetCurrentThreadId()); // comment this
+        LOG_CONNECT(Network, "SocketStreamHandleCurl: platformSend(), starting send thread (bytes written=%d) [%p][thread=%d]\n", bytes_written, this, GetCurrentThreadId()); // comment this
         // after we return, SocketStreamHandleBase will buffer up the data.
         // signal our send thread that we have buffered data.
         threadStartTime = WTF::currentTimeMS();
@@ -314,13 +341,13 @@ void SocketStreamHandle::platformClose()
     if (m_platformCloseRequested)
         return;
 
-    LOG(Network, "SocketStreamHandleCurl: platformClose [%p][thread=%d]\n", this, GetCurrentThreadId());
+    LOG_CONNECT(Network, "SocketStreamHandleCurl: platformClose [%p][thread=%d]\n", this, GetCurrentThreadId());
     m_platformCloseRequested = true;
 
     MutexLocker lock(m_close_mutex);
 
     if (m_curlHandle != NULL) {
-        LOG(Network, "SocketStreamHandleCurl: platformClose, closing curl handle at %p [%p][thread=%d]\n", m_curlHandle, this, GetCurrentThreadId());
+        LOG_CONNECT(Network, "SocketStreamHandleCurl: platformClose, closing curl handle at %p [%p][thread=%d]\n", m_curlHandle, this, GetCurrentThreadId());
         curl_easy_cleanup(m_curlHandle);
         m_curlHandle = NULL;
     }
@@ -345,7 +372,7 @@ void SocketStreamHandle::processMessageOnMainThread(StreamMessage msg)
             break;
         case DidFail:
             ASSERT(m_curl_code != CURLE_OK);
-            LOG(Network, "SocketStreamHandleCurl: DidFail, error %d (%s), curl error buffer: %s [%p][thread=%d]\n", m_curl_code, curl_easy_strerror(m_curl_code), m_curl_error_buffer, this, GetCurrentThreadId());
+            LOG_CONNECT(Network, "SocketStreamHandleCurl: DidFail, error %d (%s), curl error buffer: %s [%p][thread=%d]\n", m_curl_code, curl_easy_strerror(m_curl_code), m_curl_error_buffer, this, GetCurrentThreadId());
             if (m_client)
                 m_client->didFailSocketStream(this, SocketStreamError(m_curl_code, m_url.isEmpty() ? String() : m_url.string()));
             break;
@@ -399,7 +426,9 @@ void SocketStreamHandle::didReceiveData() {
     }
     if (m_client && m_state == Open) {
         //LOG(Network, "SocketStreamHandleCurl: didReceiveDataStatic(), received %d bytes [%p][thread=%d]\n", totalSize, this, GetCurrentThreadId()); // comment this
+        PERFORMANCE_START(WTF::PerformanceTrace::WebSocketData);
         m_client->didReceiveSocketStreamData(this, dataBuffer, totalSize);
+        PERFORMANCE_END(WTF::PerformanceTrace::WebSocketData);
     }
     fastFree(dataBuffer);
 }
@@ -425,7 +454,7 @@ void SocketStreamHandle::privateReceive()
         int nread = recv(m_socket, buffer.m_data, receiveBufferSize, 0);
         if (-1 == nread) {
             int error = WSAGetLastError();
-            LOG(Network, "SocketStreamHandleCurl: privateReceive, error on recv (%d) [%p][thread=%d]\n", error, this, GetCurrentThreadId());
+            LOG_CONNECT(Network, "SocketStreamHandleCurl: privateReceive, error on recv (%d) [%p][thread=%d]\n", error, this, GetCurrentThreadId());
             // If we get WOULDBLOCK, then we can't read data now, so go back to the select loop.
             if (WSAEWOULDBLOCK == error)
                 return;
@@ -442,11 +471,11 @@ void SocketStreamHandle::privateReceive()
 
     if (m_curl_code != CURLE_OK) {
         if (m_curl_code == CURLE_UNSUPPORTED_PROTOCOL) {
-            LOG(Network, "SocketStreamHandleCurl: privateReceive, remote side closed connection [%p][thread=%d]\n", this, GetCurrentThreadId());
+            LOG_CONNECT(Network, "SocketStreamHandleCurl: privateReceive, remote side closed connection [%p][thread=%d]\n", this, GetCurrentThreadId());
             sendMessageToMainThread(DidClose);
         }
         else {
-            LOG(Network, "SocketStreamHandleCurl: privateReceive, error receiving data [%p][thread=%d]\n", this, GetCurrentThreadId());
+            LOG_CONNECT(Network, "SocketStreamHandleCurl: privateReceive, error receiving data [%p][thread=%d]\n", this, GetCurrentThreadId());
             sendMessageToMainThread(DidFail);
         }
         return;
@@ -469,6 +498,11 @@ void SocketStreamHandle::recvThreadStart(void * data)
 
 void SocketStreamHandle::runRecvThread()
 {
+    static int runRecvThreadCounter = 0;
+
+    runRecvThreadCounter++;
+    LOG_CONNECT(Network, "SocketStreamHandleCurl: starting runRecvThread, count = %d [%p][thread=%d]\n", runRecvThreadCounter, this, GetCurrentThreadId());
+
     if (connect()) {
         fd_set fdread;
         fd_set fdwrite;
@@ -488,10 +522,10 @@ void SocketStreamHandle::runRecvThread()
             int rc = ::select(m_socket + 1, &fdread, &fdwrite, &fdexcep, NULL);
             if (rc > 0 && !m_platformCloseRequested) {
                 if (FD_ISSET(m_socket, &fdexcep)) {
-                    LOG(Network, "SocketStreamHandleCurl: processActiveJobs, socket exception occured [%p][thread=%d]\n", this, GetCurrentThreadId());
-                    //Should we ASSERT?
-                    //handle->m_curl_code = CURLE_OBSOLETE57; // what error code do we use?
-                    //handle->sendMessageToMainThread(SocketStreamHandle::DidFail);
+                    LOG_CONNECT(Network, "SocketStreamHandleCurl: processActiveJobs, socket exception occured [%p][thread=%d]\n", this, GetCurrentThreadId());
+                    // The remote side probably closed the connection.
+                    m_curl_code = CURLE_UNSUPPORTED_PROTOCOL;
+                    sendMessageToMainThread(DidClose);
                     continue;
                 }
                 if (FD_ISSET(m_socket, &fdread)) {
@@ -500,6 +534,10 @@ void SocketStreamHandle::runRecvThread()
             }
         }
     }
+
+    runRecvThreadCounter--;
+    LOG_CONNECT(Network, "SocketStreamHandleCurl: exiting runRecvThread, count = %d [%p][thread=%d]\n", runRecvThreadCounter, this, GetCurrentThreadId());
+
     sendMessageToMainThread(DidStopRecvLoop);
 }
 
@@ -510,8 +548,11 @@ void SocketStreamHandle::sendThreadStart(void * data)
 
 void SocketStreamHandle::runSendThread()
 {
+    static int sendThreadCounter = 0;
     int threadStartMS = (int)(WTF::currentTimeMS() - threadStartTime);
-    LOG(Network, "SocketStreamHandleCurl: send thread launched in %d MS [%p][thread=%d]\n", threadStartMS, this, GetCurrentThreadId());
+
+    sendThreadCounter++;
+    LOG_CONNECT(Network, "SocketStreamHandleCurl: send thread (count=%d) launched in %d MS [%p][thread=%d]\n", sendThreadCounter, threadStartMS, this, GetCurrentThreadId());
 
     fd_set fdread;
     fd_set fdwrite;
@@ -531,6 +572,8 @@ void SocketStreamHandle::runSendThread()
         }
     }
     sendMessageToMainThread(DidSelectForWrite);
+    sendThreadCounter--;
 }
+
 
 }  // namespace WebCore
