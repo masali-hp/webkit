@@ -22,6 +22,7 @@ rem    echo    -jssharedcore   Build JavaScriptCore as a DLL
     echo    -usewininet          Use wininet ^(instead of CURL^)
     echo    -enablesvg           Enable Scalable Vector Graphics ^(SVG^) support
     echo    -disabledrag         Disable drag and drop support
+    echo    -disablegesture      Disable gesture events
     echo    -disableperf         Disable performance tracing framework
     echo    -disablescroll       Disable smooth scrolling
     echo    -nosmartimagedecode  Disable memory efficient image downsampling
@@ -80,6 +81,7 @@ set ENABLE_DRAG=ON
 set ENABLE_PERFORMANCE_TRACING=ON
 set ENABLE_IMAGE_DECODER_DOWN_SAMPLING=ON
 set ENABLE_SMOOTH_SCROLLING=ON
+set ENABLE_GESTURE_EVENTS=ON
 
 set USE_FPO=1
 
@@ -87,6 +89,66 @@ set CPU_SPECIFIC=
 
 for %%x in (%*) do call :parseargument %%x
 
+goto dobuilds
+
+:parseargument
+@if /I "%1" == "-usecf" (
+    set USE_CF=1
+    set USE_WCHAR_UNICODE=0
+    set USE_ICU_UNICODE=1
+    set THIRD_PARTY_DIR=
+)
+@if /I "%1" == "-disablehp" (
+    set USE_HP=0
+)
+@if /I "%1" == "-disablejit" (
+    set ENABLE_JIT=OFF
+)
+@if /I "%1" == "-skipbuild" (
+    set SKIP_BUILD="YES"
+)
+rem @if /I "%1" == "-staticbuild" (
+rem     set DJSSHARED_CORE=0
+rem     set DWTF_USE_EXPORT_MACROS=0
+rem )
+@if /I "%1" == "-usecache" (
+    set USE_CACHE="YES"
+)
+@if /I "%1" == "-usegdi" (
+    set USE_CAIRO=0
+    set PORT_FLAVOR=WinCE-GDI
+)
+@if /I "%1" == "-usewinceport" (
+    set PORT=WinCE
+)
+@if /I "%1" == "-usewininet" (
+    set USE_WININET=1
+    set USE_CURL=0
+)
+@if /I "%1" == "-enablesvg" (
+    set ENABLE_SVG=ON
+)
+@if /I "%1" == "-disabledrag" (
+    set ENABLE_DRAG=OFF
+)
+@if /I "%1" == "-disableperf" (
+    set ENABLE_PERFORMANCE_TRACING=OFF
+)
+@if /I "%1" == "-nosmartimagedecode" (
+    set ENABLE_IMAGE_DECODER_DOWN_SAMPLING=OFF
+)
+@if /I "%1" == "-useframepointers" (
+    set USE_FPO=0
+)
+@if /I "%1" == "-disablescroll" (
+    set ENABLE_SMOOTH_SCROLLING=OFF
+)
+@if /I "%1" == "-disablegesture" (
+    set ENABLE_GESTURE_EVENTS=OFF
+)
+goto :eof
+
+:dobuilds
 if %ENABLE_JIT% == OFF (
     set ENABLE_LLINT_C_LOOP=ON
     set ENABLE_LLINT=ON
@@ -146,6 +208,7 @@ if %ENABLE_PERFORMANCE_TRACING% == OFF (set BUILD_DIR=%BUILD_DIR%-noperf)
 if %ENABLE_IMAGE_DECODER_DOWN_SAMPLING% == OFF (set BUILD_DIR=%BUILD_DIR%-nodownsample)
 if %USE_FPO% EQU 0 (set BUILD_DIR=%BUILD_DIR%-nofpo)
 if %ENABLE_SMOOTH_SCROLLING% == OFF (set BUILD_DIR=%BUILD_DIR%-nosmoothscroll)
+if %ENABLE_GESTURE_EVENTS% == OFF (set BUILD_DIR=%BUILD_DIR%-nogesture)
 
 if %USE_HP% EQU 1 (
     set PLATFORM=-DPLATFORM=HP
@@ -204,6 +267,7 @@ cmake -G %GENERATOR% ^
  -USE_FPO=%USE_FPO% ^
  -DENABLE_REQUEST_ANIMATION_FRAME=ON ^
  -DENABLE_SMOOTH_SCROLLING=%ENABLE_SMOOTH_SCROLLING% ^
+ -DENABLE_GESTURE_EVENTS=%ENABLE_GESTURE_EVENTS% ^
  %WEBKIT_DIR%
 
 @echo off
@@ -231,61 +295,6 @@ goto :eof
 :buildfail
     echo Build Failure.
     exit /b %ERRORLEVEL%
-
-:parseargument
-@if /I "%1" == "-usecf" (
-    set USE_CF=1
-    set USE_WCHAR_UNICODE=0
-    set USE_ICU_UNICODE=1
-    set THIRD_PARTY_DIR=
-)
-@if /I "%1" == "-disablehp" (
-    set USE_HP=0
-)
-@if /I "%1" == "-disablejit" (
-    set ENABLE_JIT=OFF
-)
-@if /I "%1" == "-skipbuild" (
-    set SKIP_BUILD="YES"
-)
-rem @if /I "%1" == "-staticbuild" (
-rem     set DJSSHARED_CORE=0
-rem     set DWTF_USE_EXPORT_MACROS=0
-rem )
-@if /I "%1" == "-usecache" (
-    set USE_CACHE="YES"
-)
-@if /I "%1" == "-usegdi" (
-    set USE_CAIRO=0
-    set PORT_FLAVOR=WinCE-GDI
-)
-@if /I "%1" == "-usewinceport" (
-    set PORT=WinCE
-)
-@if /I "%1" == "-usewininet" (
-    set USE_WININET=1
-    set USE_CURL=0
-)
-@if /I "%1" == "-enablesvg" (
-    set ENABLE_SVG=ON
-)
-@if /I "%1" == "-disabledrag" (
-    set ENABLE_DRAG=OFF
-)
-@if /I "%1" == "-disableperf" (
-    set ENABLE_PERFORMANCE_TRACING=OFF
-)
-@if /I "%1" == "-nosmartimagedecode" (
-    set ENABLE_IMAGE_DECODER_DOWN_SAMPLING=OFF
-)
-@if /I "%1" == "-useframepointers" (
-    set USE_FPO=0
-)
-@if /I "%1" == "-disablescroll" (
-    set ENABLE_SMOOTH_SCROLLING=OFF
-)
-
-goto :eof
 
 :devenvsetup
 if "%DevEnvDir%" == "" (
