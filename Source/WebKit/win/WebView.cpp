@@ -97,6 +97,7 @@
 #include <WebCore/GeolocationController.h>
 #include <WebCore/GeolocationError.h>
 #include <WebCore/GraphicsContext.h>
+#include <WebCore/HTMLFrameOwnerElement.h>
 #include <WebCore/HTMLMediaElement.h>
 #include <WebCore/HTMLNames.h>
 #include <WebCore/HWndDC.h>
@@ -436,6 +437,10 @@ WebView::WebView()
     , m_gestureInProgress(false)
     , m_mouseEventHandled(false)
     , m_animationTimer(this, &WebView::animationTimerFired)
+    , m_xOverpan(0)
+    , m_yOverpan(0)
+    , m_xOverpanLast(0)
+    , m_yOverpanLast(0)
 #if USE(ACCELERATED_COMPOSITING)
     , m_isAcceleratedCompositing(false)
 #endif
@@ -1282,6 +1287,8 @@ void WebView::paintIntoBackingStore(FrameView* frameView, HDC bitmapDC, const In
         if (m_shouldInvertColors)
             gc.fillRect(dirtyRect, Color::white, ColorSpaceDeviceRGB, CompositeDifference);
 
+        paintOverpanFeedback(&gc, dirtyRect);
+
 #if ENABLE(DRAG_SUPPORT) && (OS(WINCE) || PLATFORM(HP))
         WinCE_PaintDragImage(bitmapDC, this, &rect);
 #endif
@@ -1881,8 +1888,174 @@ void WebView::animationTimerFired(Timer<WebView>*)
             cancelGestureAnimation();
     }
 
+    if (m_overpanElement) {
+        continueTimer |= updateOverpanFeedback(currentTime);
+    }
+
     if (continueTimer)
         m_animationTimer.startOneShot(snapToRange(deltaToNextFrame, kMinimumTimerInterval, kMaximumTimerInterval));
+}
+
+WebCore::IntRect WebView::determineOverpanRect(PassRefPtr<WebCore::Node> node, double percentComplete)
+{
+    FrameView* frameView = 0;
+    if (Frame* coreFrame = core(m_mainFrame))
+        frameView = coreFrame->view();
+
+    if (!frameView)
+        return IntRect();
+
+    RenderObject * renderObject = node->renderer();
+    if (!renderObject || !renderObject->isBox())
+        return IntRect();
+
+    RenderBox * boxObject = toRenderBox(renderObject);
+    WebCore::LayoutRect r = boxObject->visualOverflowRect();
+    bool fixed = boxObject->isRenderView();
+    boxObject->computeAbsoluteRepaintRect(r, fixed);
+    IntRect rect = IntRect(r);
+
+    // If node is part of an iframe, adjust now for the parent
+    // frame(s).
+    WebCore::HTMLFrameOwnerElement * elt = boxObject->document()->ownerElement();
+    if (elt) {
+        boxObject = elt->renderBox();
+        // adjust for scroll position
+        rect = elt->contentFrame()->view()->contentsToRootView(rect);
+        r = LayoutRect(rect);
+
+        // clip to the iframe
+        IntRect clipRect = elt->contentFrame()->view()->windowClipRect();
+        LayoutRect c = LayoutRect(clipRect);
+        r = intersection(r, c);
+        rect = IntRect(r);
+    }
+    else {
+        rect = frameView->contentsToWindow(rect);
+    }
+
+    if (m_yOverpan) {
+        int overpan = m_yOverpan * (1.0 - percentComplete * OVERPAN_REDUCTION);
+        if (OVERPAN_MAX_SIZE && abs(overpan) > OVERPAN_MAX_SIZE) {
+            overpan = overpan > 0 ? OVERPAN_MAX_SIZE : -OVERPAN_MAX_SIZE;
+        }
+        if (overpan > 0) {
+            rect.setY( rect.y() + rect.height() - overpan );
+        }
+        rect.setHeight(abs(overpan));
+    }
+    else if (m_xOverpan) {
+        int overpan = m_xOverpan * (1.0 - percentComplete * OVERPAN_REDUCTION);
+        if (OVERPAN_MAX_SIZE && abs(overpan) > OVERPAN_MAX_SIZE) {
+            overpan = overpan > 0 ? OVERPAN_MAX_SIZE : -OVERPAN_MAX_SIZE;
+        }
+        if (overpan > 0) {
+            rect.setX( rect.x() + rect.width() - overpan );
+        }
+        rect.setWidth(abs(overpan));
+    }
+    return rect;
+}
+
+bool WebView::updateOverpanFeedback(double ctime)
+{
+    if (!m_overpanElement)
+        return false;
+
+    IntRect dirtyRect = m_overpanRect;
+
+    if (m_overpanStartTime == 0) {
+        m_overpanStartTime = ctime;
+        m_overpanPercentComplete = 0;
+        m_overpanRect = determineOverpanRect(m_overpanElement, m_overpanPercentComplete);
+    }
+    else if (ctime - m_overpanStartTime > OVERPAN_START) {
+        m_overpanPercentComplete = (ctime - (m_overpanStartTime + OVERPAN_START)) / OVERPAN_DURATION;
+        m_overpanRect = determineOverpanRect(m_overpanElement, m_overpanPercentComplete);
+    }
+
+    dirtyRect.unite(m_overpanRect);
+    repaint(dirtyRect, true /*contentChanged*/, false /*immediate*/, false /*repaintContentOnly*/);
+
+    // another option: tell the renderer to repaint a subrect (in coordinates relative to the renderer).
+    //m_overpanElement->renderer()->repaintRectangle();
+
+    if (m_overpanPercentComplete >= 1.0 || m_overpanRect.isEmpty()) {
+        m_overpanElement = 0;
+        m_overpanRect = IntRect();
+        return false;
+    }
+    return true;
+}
+
+void WebView::paintOverpanFeedback(WebCore::GraphicsContext* context, const WebCore::IntRect& dirtyRect)
+{
+    if (!m_overpanElement)
+        return;
+
+    IntRect rect = dirtyRect;
+    rect.intersect(m_overpanRect);
+    if (rect.isEmpty() || (m_yOverpan == 0 && m_xOverpan == 0))
+        return;
+
+    FloatPoint p1, p2;
+    if (abs(m_yOverpan) > abs(m_xOverpan)) {
+        p1.setX(m_overpanRect.center().x());
+        p2.setX(p1.x());
+        if (m_yOverpan > 0) {
+            p1.setY(m_overpanRect.y());
+            p2.setY(m_overpanRect.maxY());
+        }
+        else {
+            p1.setY(m_overpanRect.maxY());
+            p2.setY(m_overpanRect.y());
+        }
+    }
+    else {
+        p1.setY(m_overpanRect.center().y());
+        p2.setY(p1.y());
+        if (m_xOverpan > 0) {
+            p1.setX(m_overpanRect.x());
+            p2.setX(m_overpanRect.maxX());
+        }
+        else {
+            p1.setX(m_overpanRect.maxX());
+            p2.setX(m_overpanRect.x());
+        }
+    }
+    RefPtr<Gradient> gradient = Gradient::create(p1, p2);
+    Color color = OVERPAN_COLOR;
+    Color startColor(color.red(), color.green(), color.blue(), 0);
+    Color endColor(color.red(), color.green(), color.blue(), (int)(255 - m_overpanPercentComplete * 255 * OVERPAN_OPACITY_REDUCTION));
+    gradient->addColorStop(0.0f, startColor);
+    gradient->addColorStop(1.0f, endColor);
+    context->setFillGradient(gradient);
+    context->fillRect(rect);
+}
+
+void WebView::showOverpanFeedback(int overpanX, int overpanY, PassRefPtr<WebCore::Node> layer, bool autoScroll)
+{
+    if (m_overpanElement != layer || overpanX * m_xOverpanLast < 0 || overpanY * m_yOverpanLast < 0) {
+        m_xOverpan = 0;
+        m_yOverpan = 0;
+    }
+
+    m_xOverpanLast = overpanX;
+    m_yOverpanLast = overpanY;
+
+    if (autoScroll) {
+        m_xOverpan += overpanX;
+        m_yOverpan += overpanY;
+    }
+    else {
+        m_xOverpan += (int)(overpanX > 0 ? ceil((double)overpanX * OVERPAN_DRAG) : floor((double)overpanX * OVERPAN_DRAG));
+        m_yOverpan += (int)(overpanY > 0 ? ceil((double)overpanY * OVERPAN_DRAG) : floor((double)overpanY * OVERPAN_DRAG));
+    }
+
+    m_overpanElement = layer;
+    m_overpanStartTime = 0;
+    if (!m_animationTimer.isActive())
+        m_animationTimer.startOneShot(0);
 }
 
 bool WebView::scrollNode(PassRefPtr<WebCore::Node> node, const WebCore::IntPoint & distance, bool autoScroll)
@@ -1895,6 +2068,9 @@ bool WebView::scrollNode(PassRefPtr<WebCore::Node> node, const WebCore::IntPoint
     IntPoint scrollOffset = scroller->scrollOrigin() + scroller->scrollPosition();
     IntPoint newScrollOffset = scrollOffset;
 
+    int overpanX = 0;
+    int overpanY = 0;
+
     // We negate here (scrollOffset.x() - distance.x()) since panning up moves the content up,
     // but moves the scrollbar down.
     if (distance.x()) {
@@ -1902,9 +2078,11 @@ bool WebView::scrollNode(PassRefPtr<WebCore::Node> node, const WebCore::IntPoint
         if (maxX > 0) {
             int newX = scrollOffset.x() - distance.x();
             if (newX < 0) {
+                overpanX = newX;
                 newX = 0;
             }
             else if (newX > maxX) {
+                overpanX = newX - maxX;
                 newX = maxX;
             }
             newScrollOffset.setX(newX);
@@ -1915,13 +2093,20 @@ bool WebView::scrollNode(PassRefPtr<WebCore::Node> node, const WebCore::IntPoint
         if (maxY > 0) {
             int newY = scrollOffset.y() - distance.y();
             if (newY < 0) {
+                overpanY = newY;
                 newY = 0;
             }
             else if (newY > maxY) {
+                overpanY = newY - maxY;
                 newY = maxY;
             }
             newScrollOffset.setY(newY);
         }
+    }
+
+    if (overpanX || overpanY) {
+        RefPtr<WebCore::Node> layerNode(layer);
+        showOverpanFeedback(overpanX, overpanY, layerNode, autoScroll);
     }
 
     if (scrollOffset != newScrollOffset) {

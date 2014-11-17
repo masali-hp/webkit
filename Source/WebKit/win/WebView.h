@@ -1106,6 +1106,11 @@ protected:
     void cancelGestureAnimation();
     bool scrollNode(PassRefPtr<WebCore::Node> node, const WebCore::IntPoint & distance, bool autoScroll);
 
+    void showOverpanFeedback(int overpanX, int overpanY, PassRefPtr<WebCore::Node> layer, bool autoScroll);
+    bool updateOverpanFeedback(double ctime);
+    WebCore::IntRect determineOverpanRect(PassRefPtr<WebCore::Node> node, double percentComplete);
+    void paintOverpanFeedback(WebCore::GraphicsContext* context, const WebCore::IntRect& rect);
+
     // PlatformGestureCurveTarget:
     virtual void scrollBy(const WebCore::IntPoint &);
 
@@ -1190,6 +1195,16 @@ protected:
     bool m_mouseEventHandled;
     OwnPtr<WebCore::ActivePlatformGestureAnimation> m_gestureAnimation;
     WebCore::Timer<WebView> m_animationTimer;
+
+    long m_xOverpan;
+    long m_yOverpan;
+    long m_xOverpanLast;
+    long m_yOverpanLast;
+    RefPtr<WebCore::Node> m_overpanElement;
+    double m_overpanStartTime;
+    double m_overpanPercentComplete;
+    WebCore::IntRect m_overpanRect;
+
 
 #if ENABLE(VIDEO)
     OwnPtr<FullscreenVideoController> m_fullScreenVideoController;
