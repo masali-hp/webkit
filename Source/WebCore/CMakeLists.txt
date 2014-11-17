@@ -2615,7 +2615,9 @@ endif ()
 
 if (ENABLE_SMOOTH_SCROLLING)
     list(APPEND WebCore_SOURCES
+        platform/ActivePlatformGestureAnimation.cpp
         platform/ScrollAnimatorNone.cpp
+        platform/TouchpadFlingPlatformGestureCurve.cpp
     )
 endif ()
 

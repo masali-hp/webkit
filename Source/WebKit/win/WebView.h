@@ -39,6 +39,7 @@
 #include <WebCore/RefCountedGDIHandle.h>
 #include <WebCore/SuspendableTimer.h>
 #include <WebCore/WindowMessageListener.h>
+#include <WebCore/PlatformGestureCurveTarget.h>
 #include <wtf/HashSet.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/RefPtr.h>
@@ -66,6 +67,7 @@ namespace WebCore {
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     struct GraphicsDeviceAdapter;
 #endif
+    class ActivePlatformGestureAnimation;
 }
 
 namespace WebCore {
@@ -108,6 +110,7 @@ class WebView
 #if ENABLE(FULLSCREEN_API)
     , WebCore::FullScreenControllerClient
 #endif
+    , WebCore::PlatformGestureCurveTarget
 {
 public:
     static WebView* createInstance();
@@ -1099,6 +1102,12 @@ protected:
     virtual void fullScreenClientForceRepaint();
 #endif
     RefPtr<WebCore::Node> gestureInfoAtPoint(POINTS beginPoint, bool & hitScrollbar, bool & canBeScrolled);
+    void animationTimerFired(WebCore::Timer<WebView>*);
+    void cancelGestureAnimation();
+    bool scrollNode(PassRefPtr<WebCore::Node> node, const WebCore::IntPoint & distance, bool autoScroll);
+
+    // PlatformGestureCurveTarget:
+    virtual void scrollBy(const WebCore::IntPoint &);
 
     ULONG m_refCount;
 #if !ASSERT_DISABLED
@@ -1176,10 +1185,11 @@ protected:
     RefPtr<WebCore::Node> m_gestureTargetNode;
     long m_lastPanX;
     long m_lastPanY;
-#if !USE(SIMULATED_GESTURES)
-    long m_xOverpan;
-    long m_yOverpan;
-#endif
+    double m_gestureStartTime;
+    bool m_gestureInProgress;
+    bool m_mouseEventHandled;
+    OwnPtr<WebCore::ActivePlatformGestureAnimation> m_gestureAnimation;
+    WebCore::Timer<WebView> m_animationTimer;
 
 #if ENABLE(VIDEO)
     OwnPtr<FullscreenVideoController> m_fullScreenVideoController;

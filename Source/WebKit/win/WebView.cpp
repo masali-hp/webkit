@@ -155,6 +155,10 @@
 #define LONG_PTR LONG
 #endif
 
+#include "NativeScrollParameters.h"
+#include <WebCore/ActivePlatformGestureAnimation.h>
+#include <WebCore/TouchpadFlingPlatformGestureCurve.h>
+
 #if USE(CG)
 #include <CoreGraphics/CGContext.h>
 #endif
@@ -226,6 +230,16 @@ static HMODULE accessibilityLib;
 static HashSet<WebView*> *pendingDeleteBackingStoreSet = NULL;
 
 static String webKitVersionString();
+
+template <class T>
+static T snapToRange(T value, T min, T max)
+{
+    if (value < min)
+        return min;
+    else if (value > max)
+        return max;
+    return value;
+}
 
 WebView* kit(Page* page)
 {
@@ -418,10 +432,10 @@ WebView::WebView()
     , m_deleteBackingStoreTimerActive(false)
     , m_lastPanX(0)
     , m_lastPanY(0)
-#if !USE(SIMULATED_GESTURES)
-    , m_xOverpan(0)
-    , m_yOverpan(0)
-#endif
+    , m_gestureStartTime(0)
+    , m_gestureInProgress(false)
+    , m_mouseEventHandled(false)
+    , m_animationTimer(this, &WebView::animationTimerFired)
 #if USE(ACCELERATED_COMPOSITING)
     , m_isAcceleratedCompositing(false)
 #endif
@@ -1587,6 +1601,14 @@ bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)
         return true;
     }
 
+    // Drop mouse move events if either:
+    // 1) A gesture (native scrolling) is in progress
+    // 2) A gesture could begin but has not yet and the time
+    //    since the gesture started is under HOLD_THRESHOLD.
+    if (message == WM_MOUSEMOVE && (m_gestureInProgress ||
+        (m_gestureTargetNode && m_gestureStartTime && WTF::monotonicallyIncreasingTime() - m_gestureStartTime < HOLD_THRESHOLD / 1000.0)))
+        return false;
+
     // Create our event.
     // On WM_MOUSELEAVE we need to create a mouseout event, so we force the position
     // of the event to be at (MINSHORT, MINSHORT).
@@ -1834,6 +1856,87 @@ bool WebView::gestureNotify(WPARAM wParam, LPARAM lParam)
 }
 #endif
 
+void WebView::cancelGestureAnimation()
+{
+    m_gestureAnimation.clear();
+    m_gestureStartTime = 0;
+    m_gestureTargetNode = 0;
+}
+
+void WebView::animationTimerFired(Timer<WebView>*)
+{
+    const double kFrameRate = 60;
+    const double kMinimumTimerInterval = .001;
+    const double kMaximumTimerInterval = 1.0 / kFrameRate;
+
+    double currentTime = WTF::monotonicallyIncreasingTime();
+    double deltaToNextFrame = ceil((currentTime - m_gestureStartTime) * kFrameRate) / kFrameRate - (currentTime - m_gestureStartTime);
+    currentTime += deltaToNextFrame;
+
+    bool continueTimer = false;
+    if (m_gestureAnimation) {
+        if (m_gestureAnimation->animate(currentTime))
+            continueTimer = true;
+        else
+            cancelGestureAnimation();
+    }
+
+    if (continueTimer)
+        m_animationTimer.startOneShot(snapToRange(deltaToNextFrame, kMinimumTimerInterval, kMaximumTimerInterval));
+}
+
+bool WebView::scrollNode(PassRefPtr<WebCore::Node> node, const WebCore::IntPoint & distance, bool autoScroll)
+{
+    WebCore::Node * layer = NULL;
+    ScrollableArea * scroller = findFirstScrollableArea(node, &layer);
+    if (!scroller)
+        return false;
+
+    IntPoint scrollOffset = scroller->scrollOrigin() + scroller->scrollPosition();
+    IntPoint newScrollOffset = scrollOffset;
+
+    // We negate here (scrollOffset.x() - distance.x()) since panning up moves the content up,
+    // but moves the scrollbar down.
+    if (distance.x()) {
+        int maxX = scroller->scrollSize(HorizontalScrollbar);
+        if (maxX > 0) {
+            int newX = scrollOffset.x() - distance.x();
+            if (newX < 0) {
+                newX = 0;
+            }
+            else if (newX > maxX) {
+                newX = maxX;
+            }
+            newScrollOffset.setX(newX);
+        }
+    }
+    if (distance.y()) {
+        int maxY = scroller->scrollSize(VerticalScrollbar);
+        if (maxY > 0) {
+            int newY = scrollOffset.y() - distance.y();
+            if (newY < 0) {
+                newY = 0;
+            }
+            else if (newY > maxY) {
+                newY = maxY;
+            }
+            newScrollOffset.setY(newY);
+        }
+    }
+
+    if (scrollOffset != newScrollOffset) {
+        scroller->scrollToOffsetWithoutAnimation(newScrollOffset);
+        return true;
+    }
+    return false;
+}
+
+void WebView::scrollBy(const WebCore::IntPoint & distance)
+{
+    if (!scrollNode(m_gestureTargetNode, distance, true))
+        cancelGestureAnimation();
+}
+
 bool WebView::gesture(WPARAM wParam, LPARAM lParam) 
 {
     // We want to bail out if we don't have either of these functions
@@ -1848,97 +1951,103 @@ bool WebView::gesture(WPARAM wParam, LPARAM lParam)
     if (!GetGestureInfoPtr()(gestureHandle, reinterpret_cast<PGESTUREINFO>(&gi)))
         return false;
 
-    PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "WebView: Gesture");
+    bool result = false;
+    char buff[64];
     switch (gi.dwID) {
     case GID_BEGIN:
+        _snprintf(buff, 64, "WebView: Gesture GID_BEGIN (%d, %d)", gi.ptsLocation.x, gi.ptsLocation.y);
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, buff);
+        cancelGestureAnimation();
 #if USE(CE_GESTURE_MODEL)
         bool gestureHitScrollbar, gestureCanScroll;
         m_gestureTargetNode = gestureInfoAtPoint(gi.ptsLocation, gestureHitScrollbar, gestureCanScroll);
         if (gestureHitScrollbar || !gestureCanScroll)
             m_gestureTargetNode = 0;
 #endif
+        m_gestureStartTime = WTF::monotonicallyIncreasingTime();
         m_lastPanX = gi.ptsLocation.x;
         m_lastPanY = gi.ptsLocation.y;
         break;
     case GID_END:
-        m_gestureTargetNode = 0;
+        _snprintf(buff, 64, "WebView: Gesture GID_END (%d, %d)", gi.ptsLocation.x, gi.ptsLocation.y);
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, buff);
+        m_gestureInProgress = false;
+        m_mouseEventHandled = false;
         break;
     case GID_PAN: {
+        _snprintf(buff, 64, "WebView: Gesture GID_PAN (%d, %d)", gi.ptsLocation.x, gi.ptsLocation.y);
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, buff);
+        if ((m_mouseEventHandled && !m_gestureInProgress) ||
+            (!m_gestureTargetNode || !m_gestureTargetNode->renderer())) {
+            break;
+        }
+        if (!m_gestureInProgress) {
+            m_gestureInProgress = true;
+            Frame* coreFrame = core(m_mainFrame);
+            if (coreFrame && m_gestureInProgress) {
+                Frame * frameToInvalidate = coreFrame;
+                Document * doc = m_gestureTargetNode.get()->ownerDocument();
+                if (doc && doc->frame())
+                    frameToInvalidate = doc->frame();
+                // Prevent a click from firing.  Calling invalidateClick()
+                // would be lighter weight, but that method is private.
+                frameToInvalidate->eventHandler()->clear();
+            }
+        }
         // Where are the fingers currently?
         long currentX = gi.ptsLocation.x;
         long currentY = gi.ptsLocation.y;
         // How far did we pan in each direction?
         long deltaX = currentX - m_lastPanX;
         long deltaY = currentY - m_lastPanY;
-#if !USE(SIMULATED_GESTURES)
-        // Calculate the overpan for window bounce
-        m_yOverpan -= m_lastPanY - currentY;
-        m_xOverpan -= m_lastPanX - currentX;
-#endif
+
         // Update our class variables with updated values
         m_lastPanX = currentX;
         m_lastPanY = currentY;
 
-        Frame* coreFrame = core(m_mainFrame);
-        if (!coreFrame) {
-            CloseGestureInfoHandlePtr()(gestureHandle);
-            return false;
-        }
-
-        if (!m_gestureTargetNode || !m_gestureTargetNode->renderer())
-            return false;
-
-        // We negate here since panning up moves the content up, but moves the scrollbar down.
-        m_gestureTargetNode->renderer()->enclosingLayer()->scrollByRecursively(IntSize(-deltaX, -deltaY));
-
-#if !OS(WINCE) && !USE(SIMULATED_GESTURES)
-        if (!(UpdatePanningFeedbackPtr() && BeginPanningFeedbackPtr() && EndPanningFeedbackPtr())) {
-            CloseGestureInfoHandlePtr()(gestureHandle);
-            return true;
-        }
-
-        if (gi.dwFlags & GF_BEGIN) {
-            BeginPanningFeedbackPtr()(m_viewWindow);
-            m_yOverpan = 0;
-        } else if (gi.dwFlags & GF_END) {
-            EndPanningFeedbackPtr()(m_viewWindow, true);
-            m_yOverpan = 0;
-        }
-
-        ScrollView* view = coreFrame->view();
-        if (!view) {
-            CloseGestureInfoHandlePtr()(gestureHandle);
-            return true;
-        }
-        Scrollbar* vertScrollbar = view->verticalScrollbar();
-        if (!vertScrollbar) {
-            CloseGestureInfoHandlePtr()(gestureHandle);
-            return true;
-        }
-
-        // FIXME: Support Horizontal Window Bounce. <https://webkit.org/b/28500>.
-        // FIXME: If the user starts panning down after a window bounce has started, the window doesn't bounce back 
-        // until they release their finger. <https://webkit.org/b/28501>.
-        if (vertScrollbar->currentPos() == 0)
-            UpdatePanningFeedbackPtr()(m_viewWindow, 0, m_yOverpan, gi.dwFlags & GF_INERTIA);
-        else if (vertScrollbar->currentPos() >= vertScrollbar->maximum())
-            UpdatePanningFeedbackPtr()(m_viewWindow, 0, m_yOverpan, gi.dwFlags & GF_INERTIA);
-#endif
-
-        CloseGestureInfoHandlePtr()(gestureHandle);
-        PERFORMANCE_END(WTF::PerformanceTrace::InputEvent);
-        return true;
+        scrollNode(m_gestureTargetNode, IntPoint(deltaX, deltaY), false);
+        result = true;
+        break;
     }
+#if USE(CE_GESTURE_MODEL) || (USE(XP_GESTURE_MODEL) && USE(SIMULATED_GESTURES))
+    case GID_SCROLL: {
+        _snprintf(buff, 64, "WebView: Gesture GID_SCROLL v=%d (%d, %d)", GID_SCROLL_VELOCITY(gi.ullArguments), gi.ptsLocation.x, gi.ptsLocation.y);
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, buff);
+        FloatPoint fp;
+        switch (GID_SCROLL_DIRECTION(gi.ullArguments)) {
+            case ARG_SCROLL_DOWN:
+                fp.setY(-GID_SCROLL_VELOCITY(gi.ullArguments));
+                break;
+            case ARG_SCROLL_UP:
+                fp.setY(GID_SCROLL_VELOCITY(gi.ullArguments));
+                break;
+            case ARG_SCROLL_RIGHT:
+                fp.setX(-GID_SCROLL_VELOCITY(gi.ullArguments));
+                break;
+            case ARG_SCROLL_LEFT:
+                fp.setX(GID_SCROLL_VELOCITY(gi.ullArguments));
+                break;
+        }
+        if (m_gestureAnimation)
+            m_gestureAnimation.clear();
+        if (fp.x() != 0 || fp.y() != 0) {
+            m_gestureStartTime = WTF::monotonicallyIncreasingTime();
+            m_gestureAnimation = ActivePlatformGestureAnimation::create(TouchpadFlingPlatformGestureCurve::create(fp), this);
+            if (!m_animationTimer.isActive())
+                m_animationTimer.startOneShot(0);
+        }
+        result = true;
+        break;
+    }
+#endif
     default:
+        _snprintf(buff, 64, "WebView: Gesture gi.dwID = %d", gi.dwID);
+        PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, buff);
         break;
     }
     PERFORMANCE_END(WTF::PerformanceTrace::InputEvent);
-
-    // If we get to this point, the gesture has not been handled. We forward
-    // the call to DefWindowProc by returning false, and we don't need to 
-    // to call CloseGestureInfoHandle. 
-    // http://msdn.microsoft.com/en-us/library/dd353228(VS.85).aspx
-    return false;
+    CloseGestureInfoHandlePtr()(gestureHandle);
+    return result;
 }
 
 bool WebView::mouseWheel(WPARAM wParam, LPARAM lParam, bool isMouseHWheel)
