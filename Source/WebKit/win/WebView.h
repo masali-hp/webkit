@@ -56,6 +56,8 @@
 #include <wtf/hp/HPWebkitMalloc.h>
 #endif
 
+#include "PlatformGestureModel.h"
+
 namespace WebCore {
 #if USE(ACCELERATED_COMPOSITING)
     class CACFLayerTreeHost;
@@ -881,7 +883,9 @@ public:
     bool verticalScroll(WPARAM, LPARAM);
     bool horizontalScroll(WPARAM, LPARAM);
     bool gesture(WPARAM, LPARAM);
+#if USE(XP_GESTURE_MODEL)
     bool gestureNotify(WPARAM, LPARAM);
+#endif
     bool execCommand(WPARAM wParam, LPARAM lParam);
     bool keyDown(WPARAM, LPARAM, bool systemKeyDown = false);
     bool keyUp(WPARAM, LPARAM, bool systemKeyDown = false);
@@ -1094,6 +1098,7 @@ protected:
     virtual void fullScreenClientDidExitFullScreen();
     virtual void fullScreenClientForceRepaint();
 #endif
+    RefPtr<WebCore::Node> gestureInfoAtPoint(POINTS beginPoint, bool & hitScrollbar, bool & canBeScrolled);
 
     ULONG m_refCount;
 #if !ASSERT_DISABLED
@@ -1171,8 +1176,10 @@ protected:
     RefPtr<WebCore::Node> m_gestureTargetNode;
     long m_lastPanX;
     long m_lastPanY;
+#if !USE(SIMULATED_GESTURES)
     long m_xOverpan;
     long m_yOverpan;
+#endif
 
 #if ENABLE(VIDEO)
     OwnPtr<FullscreenVideoController> m_fullScreenVideoController;

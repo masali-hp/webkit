@@ -204,6 +204,9 @@
 #include <wtf/StringExtras.h>
 #endif
 
+#if USE(SIMULATED_GESTURES)
+#include <wince/PlatformGestureSupport.h>
+#else
 // Soft link functions for gestures and panning feedback
 SOFT_LINK_LIBRARY(USER32);
 SOFT_LINK_OPTIONAL(USER32, GetGestureInfo, BOOL, WINAPI, (HGESTUREINFO, PGESTUREINFO));
@@ -213,6 +216,7 @@ SOFT_LINK_LIBRARY(Uxtheme);
 SOFT_LINK_OPTIONAL(Uxtheme, BeginPanningFeedback, BOOL, WINAPI, (HWND));
 SOFT_LINK_OPTIONAL(Uxtheme, EndPanningFeedback, BOOL, WINAPI, (HWND, BOOL));
 SOFT_LINK_OPTIONAL(Uxtheme, UpdatePanningFeedback, BOOL, WINAPI, (HWND, LONG, LONG, BOOL));
+#endif
 
 using namespace WebCore;
 using namespace std;
@@ -414,8 +418,10 @@ WebView::WebView()
     , m_deleteBackingStoreTimerActive(false)
     , m_lastPanX(0)
     , m_lastPanY(0)
+#if !USE(SIMULATED_GESTURES)
     , m_xOverpan(0)
     , m_yOverpan(0)
+#endif
 #if USE(ACCELERATED_COMPOSITING)
     , m_isAcceleratedCompositing(false)
 #endif
@@ -769,6 +775,9 @@ HRESULT STDMETHODCALLTYPE WebView::close()
 #endif
 
     if (m_viewWindow) {
+#if USE(CE_GESTURE_MODEL)
+        DisableGesturesPtr()(m_viewWindow, TGF_GID_PAN | TGF_GID_SCROLL, TGF_SCOPE_WINDOW);
+#endif
         // We can't check IsWindow(m_viewWindow) here, because that will return true even while
         // we're already handling WM_DESTROY. So we check !isBeingDestroyed() instead.
         if (!isBeingDestroyed())
@@ -1686,25 +1695,73 @@ bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)
     return handled;
 }
 
-bool WebView::gestureNotify(WPARAM wParam, LPARAM lParam)
+static WebCore::Node* enclosingLayerNode(WebCore::RenderLayer* layer)
 {
-    GESTURENOTIFYSTRUCT* gn = reinterpret_cast<GESTURENOTIFYSTRUCT*>(lParam);
+    for (RenderObject* r = layer->renderer(); r; r = r->parent()) {
+        if (WebCore::Node* e = r->node())
+            return e;
+    }
+    return 0;
+}
 
+static ScrollableArea* findFirstScrollableArea(PassRefPtr<WebCore::Node> node, WebCore::Node ** scrollableElement = NULL)
+{
+    // We could scroll the parent frame.
+    // We could take direction into account - if we are the bottom of a layer,
+    // bubble up to its parent.
+    if (!node)
+        return NULL;
+
+    RenderLayer * layer = node->renderer()->enclosingLayer();
+    while (layer) {
+        RenderBox* box = layer->renderBox();
+        if (!box)
+            return NULL;
+        if (box->canBeScrolledAndHasScrollableArea()) {
+            // If this layer is a FrameView, return as a FrameView.
+            // For whateve reason the FrameView is a 'scrollable' scroll area
+            // but the RenderLayer is not.
+            RenderObject * renderer = layer->renderer();
+            if (scrollableElement)
+                *scrollableElement = enclosingLayerNode(layer);
+            if (renderer->isRenderView()) {
+                FrameView* view = renderer->view()->frameView();
+                if (view) {
+                    bool canBeScrolled = false;
+                    if (view->canHaveScrollbars()) {
+                        IntSize visibleSize = view->visibleContentRect().size();
+                        IntSize contentsSize = view->contentsSize();
+                        canBeScrolled = contentsSize.height() > visibleSize.height() || contentsSize.width() > visibleSize.width();
+                    }
+                    return canBeScrolled ? view : NULL;
+                }
+            }
+            else if (layer->horizontalScrollbar() || layer->verticalScrollbar()) {
+                return layer;
+            }
+        }
+        layer = layer->parent();
+    }
+    return NULL;
+}
+
+RefPtr<WebCore::Node> WebView::gestureInfoAtPoint(POINTS beginPoint, bool & hitScrollbar, bool & canBeScrolled)
+{
+    hitScrollbar = false;
+    canBeScrolled = false;
+
+    RefPtr<WebCore::Node> node;
     Frame* coreFrame = core(m_mainFrame);
     if (!coreFrame)
-        return false;
+        return node;
 
     ScrollView* view = coreFrame->view();
     if (!view)
-        return false;
+        return node;
 
-    // If we don't have this function, we shouldn't be receiving this message
-    ASSERT(SetGestureConfigPtr());
-
-    bool hitScrollbar = false;
-    POINT gestureBeginPoint = {gn->ptsLocation.x, gn->ptsLocation.y};
-    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::DisallowShadowContent);
-    for (Frame* childFrame = m_page->mainFrame(); childFrame; childFrame = EventHandler::subframeForTargetNode(m_gestureTargetNode.get())) {
+    POINT gestureBeginPoint = {beginPoint.x, beginPoint.y};
+    HitTestRequest request(HitTestRequest::ReadOnly);
+    for (Frame* childFrame = m_page->mainFrame(); childFrame; childFrame = EventHandler::subframeForTargetNode(node.get())) {
         FrameView* frameView = childFrame->view();
         if (!frameView)
             break;
@@ -1717,7 +1774,7 @@ bool WebView::gestureNotify(WPARAM wParam, LPARAM lParam)
 
         HitTestResult result(frameView->screenToContents(gestureBeginPoint));
         layer->hitTest(request, result);
-        m_gestureTargetNode = result.innerNode();
+        node = result.innerNode();
 
         if (!hitScrollbar)
             hitScrollbar = result.scrollbar();
@@ -1730,15 +1787,25 @@ bool WebView::gestureNotify(WPARAM wParam, LPARAM lParam)
         hitScrollbar = view->verticalScrollbar() && (gestureBeginPoint.x > (webViewRect.right - view->verticalScrollbar()->theme()->scrollbarThickness()));  
     }
 
-    bool canBeScrolled = false;
-    if (m_gestureTargetNode) {
-        for (RenderObject* renderer = m_gestureTargetNode->renderer(); renderer; renderer = renderer->parent()) {
-            if (renderer->isBox() && toRenderBox(renderer)->canBeScrolledAndHasScrollableArea()) {
-                canBeScrolled = true;
-                break;
-            }
-        }
+    if (node) {
+        canBeScrolled = findFirstScrollableArea(node) != NULL;
     }
+
+    return node;
+}
+
+#if USE(XP_GESTURE_MODEL)
+bool WebView::gestureNotify(WPARAM wParam, LPARAM lParam)
+{
+    GESTURENOTIFYSTRUCT* gn = reinterpret_cast<GESTURENOTIFYSTRUCT*>(lParam);
+    PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "WebView: GestureNotify");
+
+    // If we don't have this function, we shouldn't be receiving this message
+    ASSERT(SetGestureConfigPtr());
+
+    bool hitScrollbar = false;
+    bool canBeScrolled = false;
+    m_gestureTargetNode = gestureInfoAtPoint(gn->ptsLocation, hitScrollbar, canBeScrolled);
 
     // We always allow two-fingered panning with inertia and a gutter (which limits movement to one
     // direction in most cases).
@@ -1752,6 +1819,7 @@ bool WebView::gestureNotify(WPARAM wParam, LPARAM lParam)
         // Disallow single-fingered vertical panning in this case, too, so we'll fall back to the default
         // behavior (which allows the scrollbar thumb to be dragged, text selections to be made, etc.).
         dwPanBlock |= GC_PAN_WITH_SINGLE_FINGER_VERTICALLY;
+        m_gestureTargetNode = 0;
     } else {
         // The part of the page the gesture is under can be scrolled, and we're not under a scrollbar.
         // Allow single-fingered vertical panning in this case, so the user will be able to pan the page
@@ -1760,8 +1828,11 @@ bool WebView::gestureNotify(WPARAM wParam, LPARAM lParam)
     }
 
     GESTURECONFIG gc = { GID_PAN, dwPanWant, dwPanBlock };
-    return SetGestureConfigPtr()(m_viewWindow, 0, 1, &gc, sizeof(GESTURECONFIG));
+    BOOL result = SetGestureConfigPtr()(m_viewWindow, 0, 1, &gc, sizeof(GESTURECONFIG));
+    PERFORMANCE_END(WTF::PerformanceTrace::InputEvent);
+    return result;
 }
+#endif
 
 bool WebView::gesture(WPARAM wParam, LPARAM lParam) 
 {
@@ -1777,11 +1848,17 @@ bool WebView::gesture(WPARAM wParam, LPARAM lParam)
     if (!GetGestureInfoPtr()(gestureHandle, reinterpret_cast<PGESTUREINFO>(&gi)))
         return false;
 
+    PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, "WebView: Gesture");
     switch (gi.dwID) {
     case GID_BEGIN:
+#if USE(CE_GESTURE_MODEL)
+        bool gestureHitScrollbar, gestureCanScroll;
+        m_gestureTargetNode = gestureInfoAtPoint(gi.ptsLocation, gestureHitScrollbar, gestureCanScroll);
+        if (gestureHitScrollbar || !gestureCanScroll)
+            m_gestureTargetNode = 0;
+#endif
         m_lastPanX = gi.ptsLocation.x;
         m_lastPanY = gi.ptsLocation.y;
-
         break;
     case GID_END:
         m_gestureTargetNode = 0;
@@ -1793,9 +1870,11 @@ bool WebView::gesture(WPARAM wParam, LPARAM lParam)
         // How far did we pan in each direction?
         long deltaX = currentX - m_lastPanX;
         long deltaY = currentY - m_lastPanY;
+#if !USE(SIMULATED_GESTURES)
         // Calculate the overpan for window bounce
         m_yOverpan -= m_lastPanY - currentY;
         m_xOverpan -= m_lastPanX - currentX;
+#endif
         // Update our class variables with updated values
         m_lastPanX = currentX;
         m_lastPanY = currentY;
@@ -1811,7 +1890,8 @@ bool WebView::gesture(WPARAM wParam, LPARAM lParam)
 
         // We negate here since panning up moves the content up, but moves the scrollbar down.
         m_gestureTargetNode->renderer()->enclosingLayer()->scrollByRecursively(IntSize(-deltaX, -deltaY));
-           
+
+#if !OS(WINCE) && !USE(SIMULATED_GESTURES)
         if (!(UpdatePanningFeedbackPtr() && BeginPanningFeedbackPtr() && EndPanningFeedbackPtr())) {
             CloseGestureInfoHandlePtr()(gestureHandle);
             return true;
@@ -1843,13 +1923,16 @@ bool WebView::gesture(WPARAM wParam, LPARAM lParam)
             UpdatePanningFeedbackPtr()(m_viewWindow, 0, m_yOverpan, gi.dwFlags & GF_INERTIA);
         else if (vertScrollbar->currentPos() >= vertScrollbar->maximum())
             UpdatePanningFeedbackPtr()(m_viewWindow, 0, m_yOverpan, gi.dwFlags & GF_INERTIA);
+#endif
 
         CloseGestureInfoHandlePtr()(gestureHandle);
+        PERFORMANCE_END(WTF::PerformanceTrace::InputEvent);
         return true;
     }
     default:
         break;
     }
+    PERFORMANCE_END(WTF::PerformanceTrace::InputEvent);
 
     // If we get to this point, the gesture has not been handled. We forward
     // the call to DefWindowProc by returning false, and we don't need to 
@@ -2306,7 +2389,7 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
     WebView* webView = reinterpret_cast<WebView*>(longPtr);
     WebFrame* mainFrameImpl = webView ? webView->topLevelFrame() : 0;
     if (!mainFrameImpl)
-        return DefWindowProc(hWnd, message, wParam, lParam);
+        return DefWindowProcW(hWnd, message, wParam, lParam);
 
     // We shouldn't be trying to handle any window messages after WM_DESTROY.
     // See <http://webkit.org/b/55054>.
@@ -2358,9 +2441,11 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
             webView->setIsBeingDestroyed();
             webView->close();
             break;
+#if USE(XP_GESTURE_MODEL)
         case WM_GESTURENOTIFY:
             handled = webView->gestureNotify(wParam, lParam);
             break;
+#endif
         case WM_GESTURE:
             handled = webView->gesture(wParam, lParam);
             break;
@@ -2412,7 +2497,7 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
                 webView->sizeChanged(IntSize(LOWORD(lParam), HIWORD(lParam)));
             break;
         case WM_SHOWWINDOW:
-            lResult = DefWindowProc(hWnd, message, wParam, lParam);
+            lResult = DefWindowProcW(hWnd, message, wParam, lParam);
             if (wParam == 0) {
                 // The window is being hidden (e.g., because we switched tabs).
                 // Null out our backing store.
@@ -2596,9 +2681,12 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
             break;
     }
 
-    if (!handled)
-        lResult = DefWindowProc(hWnd, message, wParam, lParam);
-    
+#if USE(SIMULATED_GESTURES)
+        lResult = DefWindowProc_Proxy(WebViewWndProc, hWnd, message, wParam, lParam);
+#else
+        lResult = DefWindowProcW(hWnd, message, wParam, lParam);
+#endif
+
     // Let the client know whether we consider this message handled.
     return (message == WM_KEYDOWN || message == WM_SYSKEYDOWN || message == WM_KEYUP || message == WM_SYSKEYUP) ? !handled : lResult;
 }
@@ -2833,6 +2921,9 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
         frame.left, frame.top, frame.right - frame.left, frame.bottom - frame.top, parentHwnd, 0, gInstance, 0);
     ASSERT(::IsWindow(m_viewWindow));
 
+#if USE(CE_GESTURE_MODEL)
+    EnableGesturesPtr()(m_viewWindow, TGF_GID_PAN | TGF_GID_SCROLL, TGF_SCOPE_WINDOW);
+#endif
     if (shouldInitializeTrackPointHack()) {
         // If we detected a registry key belonging to a TrackPoint driver, then create fake trackpoint
         // scrollbars, so the WebView will receive WM_VSCROLL and WM_HSCROLL messages. We create one

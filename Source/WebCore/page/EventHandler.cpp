@@ -752,20 +752,23 @@ bool EventHandler::handleMouseDraggedEvent(const MouseEventWithHitTestResults& e
 
     m_mouseDownMayStartDrag = false;
 
-    if (m_mouseDownMayStartAutoscroll && !panScrollInProgress()) {
+    if (m_mouseDownMayStartAutoscroll && !panScrollInProgress()
+        && m_selectionInitiationState != HaveNotStartedSelection) {
         m_autoscrollController->startAutoscrollForSelection(renderer);
         m_mouseDownMayStartAutoscroll = false;
     }
 
-    if (m_selectionInitiationState != ExtendedSelection) {
-        HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent);
-        HitTestResult result(m_mouseDownPos);
-        m_frame->document()->renderView()->hitTest(request, result);
+    if (m_mouseDownMayStartSelect) {
+        if (m_selectionInitiationState != ExtendedSelection) {
+            HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent);
+            HitTestResult result(m_mouseDownPos);
+            m_frame->document()->renderView()->hitTest(request, result);
 
-        updateSelectionForMouseDrag(result);
+            updateSelectionForMouseDrag(result);
+        }
+        updateSelectionForMouseDrag(event.hitTestResult());
     }
-    updateSelectionForMouseDrag(event.hitTestResult());
-    return true;
+    return m_autoscrollController->autoscrollInProgress() || m_selectionInitiationState != HaveNotStartedSelection;
 }
     
 bool EventHandler::eventMayStartDrag(const PlatformMouseEvent& event) const

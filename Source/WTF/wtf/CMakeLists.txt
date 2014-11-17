@@ -42,6 +42,7 @@ set(WTF_HEADERS
     HexNumber.h
     ListHashSet.h
     Locker.h
+    LRUPriorityQueue.h
     MD5.h
     MainThread.h
     MathExtras.h

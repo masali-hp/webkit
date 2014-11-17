@@ -350,6 +350,15 @@ if (ENABLE_DRAG_SUPPORT)
     endif ()
 endif ()
 
+if (ENABLE_GESTURE_EVENTS)
+    list(APPEND WebKit_INCLUDES
+        win/wince/PlatformGestureSupport.h
+    )
+    list(APPEND WebKit_SOURCES
+        win/wince/DefWindowProc.cpp
+    )
+endif ()
+
 # Generate autoversion.h
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBKIT_DIR}/autoversion.h

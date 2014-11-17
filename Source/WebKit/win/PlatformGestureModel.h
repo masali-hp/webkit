@@ -1,0 +1,19 @@
+#pragma once
+
+#ifndef WTF_USE_SIMULATED_GESTURES
+#define WTF_USE_SIMULATED_GESTURES 1
+#endif
+
+#ifndef WTF_USE_CE_GESTURE_MODEL
+#define WTF_USE_CE_GESTURE_MODEL 1
+#endif
+#ifndef WTF_USE_XP_GESTURE_MODEL
+#define WTF_USE_XP_GESTURE_MODEL 0
+#endif
+
+#if USE(CE_GESTURE_MODEL) && USE(XP_GESTURE_MODEL)
+#error CE_GESTURE_MODEL and XP_GESTURE_MODEL are both defined
+#endif
+#if !USE(CE_GESTURE_MODEL) && !USE(XP_GESTURE_MODEL)
+#error Neither CE_GESTURE_MODEL or XP_GESTURE_MODEL is defined
+#endif
