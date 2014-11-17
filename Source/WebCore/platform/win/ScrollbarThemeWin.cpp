@@ -25,6 +25,10 @@
 
 #include "config.h"
 #include "ScrollbarThemeWin.h"
+#if PLATFORM(HP)
+#include "ScrollbarThemeOpus.h"
+#include "ScrollbarThemeWindjammer.h"
+#endif
 
 #include "GraphicsContext.h"
 #include "LocalWindowsContext.h"
@@ -65,6 +69,10 @@ namespace WebCore {
 static HANDLE scrollbarTheme;
 static bool runningVista;
 
+#if PLATFORM(HP)
+static HPScrollbarTheme s_theme = OpusTheme;
+#endif
+
 // FIXME:  Refactor the soft-linking code so that it can be shared with RenderThemeWin
 SOFT_LINK_LIBRARY(uxtheme)
 SOFT_LINK(uxtheme, OpenThemeData, HANDLE, WINAPI, (HWND hwnd, LPCWSTR pszClassList), (hwnd, pszClassList))
@@ -89,8 +97,29 @@ static void checkAndInitScrollbarTheme()
 #if !USE(SAFARI_THEME)
 ScrollbarTheme* ScrollbarTheme::nativeTheme()
 {
-    static ScrollbarThemeWin winTheme;
-    return &winTheme;
+    switch (s_theme) {
+#if PLATFORM(HP)
+       case WindjammerTheme: {
+            static ScrollbarThemeWindjammer wjTheme;
+            return &wjTheme;
+        }
+        case OpusTheme: {
+            static ScrollbarThemeOpus opusTheme;
+            return &opusTheme;
+        }
+#endif
+        default: {
+            static ScrollbarThemeWin winTheme;
+            return &winTheme;
+        }
+    }
+}
+#endif
+
+#if PLATFORM(HP)
+void ScrollbarThemeWin::setTheme(HPScrollbarTheme theme)
+{
+    s_theme = theme;
 }
 #endif
 

@@ -142,4 +142,10 @@ void ScrollAnimator::notifyPositionChanged(const FloatSize& delta)
     m_scrollableArea->setScrollOffsetFromAnimation(IntPoint(m_currentPosX, m_currentPosY));
 }
 
+bool ScrollAnimator::shouldScrollbarParticipateInHitTesting(Scrollbar* scrollbar)
+{
+    // overlay scrollbars are invisible to hit detection
+    return !scrollbar->isOverlayScrollbar();
+}
+
 } // namespace WebCore

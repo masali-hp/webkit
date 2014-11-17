@@ -159,6 +159,7 @@
 #include "NativeScrollParameters.h"
 #include <WebCore/ActivePlatformGestureAnimation.h>
 #include <WebCore/TouchpadFlingPlatformGestureCurve.h>
+#include <WebCore/ScrollbarThemeOpus.h>
 
 #if USE(CG)
 #include <CoreGraphics/CGContext.h>
@@ -441,6 +442,7 @@ WebView::WebView()
     , m_yOverpan(0)
     , m_xOverpanLast(0)
     , m_yOverpanLast(0)
+    , m_fadingScrollbar(0)
 #if USE(ACCELERATED_COMPOSITING)
     , m_isAcceleratedCompositing(false)
 #endif
@@ -1892,6 +1894,10 @@ void WebView::animationTimerFired(Timer<WebView>*)
         continueTimer |= updateOverpanFeedback(currentTime);
     }
 
+    if (m_fadingScrollbar) {
+        continueTimer |= updateFadingScrollbar(currentTime);
+    }
+
     if (continueTimer)
         m_animationTimer.startOneShot(snapToRange(deltaToNextFrame, kMinimumTimerInterval, kMaximumTimerInterval));
 }
@@ -2058,6 +2064,54 @@ void WebView::showOverpanFeedback(int overpanX, int overpanY, PassRefPtr<WebCore
         m_animationTimer.startOneShot(0);
 }
 
+void WebView::scrollbarWillUpdate(Scrollbar* scrollbar)
+{
+    if (!scrollbar)
+        return;
+
+    WebCore::ScrollbarTheme * theme = scrollbar->theme();
+    if (!theme->usesOverlayScrollbars())
+        return;
+
+    // Hide any prior visible scrollbar:
+    if (m_fadingScrollbar && m_fadingScrollbar != scrollbar)
+        ScrollbarThemeOpus::setThumbOpacity(m_fadingScrollbar, 0);
+
+    // Make the scrollbar visible:
+    ScrollbarThemeOpus::setThumbOpacity(scrollbar, 255);
+    m_fadingScrollbar = scrollbar;
+}
+
+bool WebView::updateFadingScrollbar(double ctime)
+{
+    // Don't start fading the scrollbar until the gesture has
+    // ended and the scroll has stopped animating.
+    if (m_gestureInProgress || m_gestureAnimation)
+        return true;
+
+    if (!m_scrollbarFadeStartTime) {
+        m_scrollbarFadeStartTime = ctime;
+    }
+
+    double progress = (ctime - m_scrollbarFadeStartTime) / 0.35;
+    int opacity = 255 * progress;
+    if (opacity > 255)
+        opacity = 255;
+    opacity = 255 - opacity;
+    bool continueAnimation = ScrollbarThemeOpus::setThumbOpacity(m_fadingScrollbar, opacity);
+
+    if (continueAnimation) {
+        m_fadingScrollbar->invalidate();
+        continueAnimation = (opacity > 0);
+    }
+
+    if (!continueAnimation) {
+        m_fadingScrollbar = 0;
+    }
+
+    return continueAnimation;
+}
+
 bool WebView::scrollNode(PassRefPtr<WebCore::Node> node, const WebCore::IntPoint & distance, bool autoScroll)
 {
     WebCore::Node * layer = NULL;
@@ -2105,11 +2159,22 @@ bool WebView::scrollNode(PassRefPtr<WebCore::Node> node, const WebCore::IntPoint
     }
 
     if (overpanX || overpanY) {
-        RefPtr<WebCore::Node> layerNode(layer);
-        showOverpanFeedback(overpanX, overpanY, layerNode, autoScroll);
+        // only show overpan for overlay scrollbars
+        if (overpanX && (!scroller->horizontalScrollbar() || !scroller->horizontalScrollbar()->isOverlayScrollbar()))
+            overpanX = 0;
+        if (overpanY && (!scroller->verticalScrollbar() || !scroller->verticalScrollbar()->isOverlayScrollbar()))
+            overpanY = 0;
+        if (overpanX || overpanY) {
+            RefPtr<WebCore::Node> layerNode(layer);
+            showOverpanFeedback(overpanX, overpanY, layerNode, autoScroll);
+        }
     }
 
     if (scrollOffset != newScrollOffset) {
+        if (scrollOffset.y() != newScrollOffset.y())
+            scrollbarWillUpdate(scroller->verticalScrollbar());
+        else if (scrollOffset.x() != newScrollOffset.x())
+            scrollbarWillUpdate(scroller->horizontalScrollbar());
         scroller->scrollToOffsetWithoutAnimation(newScrollOffset);
         return true;
     }
@@ -2158,6 +2223,13 @@ bool WebView::gesture(WPARAM wParam, LPARAM lParam)
         PERFORMANCE_START(WTF::PerformanceTrace::InputEvent, buff);
         m_gestureInProgress = false;
         m_mouseEventHandled = false;
+        // Now that the gesture has ended the
+        // fading scrollbar can start fading.
+        if (m_fadingScrollbar) {
+            m_scrollbarFadeStartTime = 0;
+            if (!m_animationTimer.isActive())
+                m_animationTimer.startOneShot(0);
+        }
         break;
     case GID_PAN: {
         _snprintf(buff, 64, "WebView: Gesture GID_PAN (%d, %d)", gi.ptsLocation.x, gi.ptsLocation.y);

@@ -86,7 +86,9 @@ list(APPEND WebCore_SOURCES
     platform/win/PlatformScreenWin.cpp
     platform/win/RunLoopWin.cpp
     platform/win/SSLKeyGeneratorWin.cpp
+    platform/win/ScrollbarThemeOpus.cpp
     platform/win/ScrollbarThemeWin.cpp
+    platform/win/ScrollbarThemeWindjammer.cpp
     platform/win/SearchPopupMenuWin.cpp
     platform/win/SharedBufferWin.cpp
     platform/win/SharedTimerWin.cpp

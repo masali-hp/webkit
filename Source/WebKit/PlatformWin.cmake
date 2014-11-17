@@ -169,6 +169,7 @@ list(APPEND WebKit_SOURCES
     win/MarshallingHelpers.cpp
     win/WebKitClassFactory.cpp
     win/WebKitDLL.cpp
+    win/WebKit.resources/WebKit.rc
 )
 
 if (ENABLE_ACCESSIBILITY)

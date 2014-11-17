@@ -41,6 +41,25 @@ IDR_FS_VIDEO_EXIT_FULLSCREEN     PNG                     "fsVideoExitFullscreen.
 IDR_FS_VIDEO_PAUSE               PNG                     "fsVideoPause.png"
 IDR_FS_VIDEO_PLAY                PNG                     "fsVideoPlay.png"
 
+IDR_WJ_SCROLL_UP_UP              PNG                     "WJImages\\35x35ArrowUpUp.png"
+IDR_WJ_SCROLL_UP_DN              PNG                     "WJImages\\35x35ArrowUpDn.png"
+IDR_WJ_SCROLL_UP_DIS             PNG                     "WJImages\\35x35ArrowUpDis.png"
+IDR_WJ_SCROLL_DN_UP              PNG                     "WJImages\\35x35ArrowDnUp.png"
+IDR_WJ_SCROLL_DN_DN              PNG                     "WJImages\\35x35ArrowDnDn.png"
+IDR_WJ_SCROLL_DN_DIS             PNG                     "WJImages\\35x35ArrowDnDis.png"
+IDR_WJ_SCROLL_EAST_UP            PNG                     "WJImages\\ScrollEastUp.png"
+IDR_WJ_SCROLL_EAST_DN            PNG                     "WJImages\\ScrollEastDn.png"
+IDR_WJ_SCROLL_EAST_DIS           PNG                     "WJImages\\ScrollEastDis.png"
+IDR_WJ_SCROLL_WEST_UP            PNG                     "WJImages\\ScrollWestUp.png"
+IDR_WJ_SCROLL_WEST_DN            PNG                     "WJImages\\ScrollWestDn.png"
+IDR_WJ_SCROLL_WEST_DIS           PNG                     "WJImages\\ScrollWestDis.png"
+IDR_WJ_THUMB_LEFT                PNG                     "WJImages\\HorizontalScrollThumbLeft.png"
+IDR_WJ_THUMB_RIGHT               PNG                     "WJImages\\HorizontalScrollThumbRight.png"
+IDR_WJ_THUMB_TOP                 PNG                     "WJImages\\VerticalScrollThumbTop.png"
+IDR_WJ_THUMB_BOTTOM              PNG                     "WJImages\\VerticalScrollThumbBottom.png"
+IDR_WJ_4LINE_TRACK_CAP_H         PNG                     "WJImages\\4LineTrackCapHorizontal.png"
+IDR_WJ_4LINE_TRACK_CAP_V         PNG                     "WJImages\\4LineTrackCapVertical.png"
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // STRINGTABLE

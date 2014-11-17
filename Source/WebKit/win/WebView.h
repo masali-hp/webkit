@@ -72,6 +72,7 @@ namespace WebCore {
 
 namespace WebCore {
     class HistoryItem;
+    class Scrollbar;
 }
 
 class FullscreenVideoController;
@@ -1111,6 +1112,9 @@ protected:
     WebCore::IntRect determineOverpanRect(PassRefPtr<WebCore::Node> node, double percentComplete);
     void paintOverpanFeedback(WebCore::GraphicsContext* context, const WebCore::IntRect& rect);
 
+    void scrollbarWillUpdate(WebCore::Scrollbar* scrollbar);
+    bool updateFadingScrollbar(double ctime);
+
     // PlatformGestureCurveTarget:
     virtual void scrollBy(const WebCore::IntPoint &);
 
@@ -1205,6 +1209,8 @@ protected:
     double m_overpanPercentComplete;
     WebCore::IntRect m_overpanRect;
 
+    double m_scrollbarFadeStartTime;
+    WebCore::Scrollbar * m_fadingScrollbar;
 
 #if ENABLE(VIDEO)
     OwnPtr<FullscreenVideoController> m_fullScreenVideoController;

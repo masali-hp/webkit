@@ -23,35 +23,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ScrollbarThemeWin_h
-#define ScrollbarThemeWin_h
+#ifndef ScrollbarThemeOpus_h
+#define ScrollbarThemeOpus_h
 
 #include "ScrollbarThemeComposite.h"
 
 namespace WebCore {
 
-#if PLATFORM(HP)
-enum HPScrollbarTheme {
-    NativeWindowsTheme,
-    WindjammerTheme,
-    OpusTheme
-};
-#endif
-
-class ScrollbarThemeWin : public ScrollbarThemeComposite {
+class ScrollbarThemeOpus : public ScrollbarThemeComposite {
 public:
-    ScrollbarThemeWin();
-    virtual ~ScrollbarThemeWin();
+    ScrollbarThemeOpus();
+    virtual ~ScrollbarThemeOpus();
 
     virtual int scrollbarThickness(ScrollbarControlSize = RegularScrollbar);
-
-    virtual void themeChanged();
-    
-    virtual bool invalidateOnMouseEnterExit();
-
-#if PLATFORM(HP)
-    static void setTheme(HPScrollbarTheme);
-#endif
+    virtual bool usesOverlayScrollbars() const { return true; }
+    virtual void registerScrollbar(ScrollbarThemeClient*);
+    virtual void unregisterScrollbar(ScrollbarThemeClient*);
+    static bool setThumbOpacity(ScrollbarThemeClient*, int opacity);
 
 protected:
     virtual bool hasButtons(ScrollbarThemeClient*) { return true; }
@@ -64,9 +52,6 @@ protected:
     virtual bool shouldCenterOnThumb(ScrollbarThemeClient*, const PlatformMouseEvent&);
     virtual bool shouldSnapBackToDragOrigin(ScrollbarThemeClient*, const PlatformMouseEvent&);
 
-    virtual void paintTrackBackground(GraphicsContext*, ScrollbarThemeClient*, const IntRect&);
-    virtual void paintTrackPiece(GraphicsContext*, ScrollbarThemeClient*, const IntRect&, ScrollbarPart);
-    virtual void paintButton(GraphicsContext*, ScrollbarThemeClient*, const IntRect&, ScrollbarPart);
     virtual void paintThumb(GraphicsContext*, ScrollbarThemeClient*, const IntRect&);
 };
 

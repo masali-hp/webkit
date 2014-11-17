@@ -30,6 +30,25 @@
 #define IDR_FS_VIDEO_PLAY               26
 #define IDC_STATIC                      -1
 
+#define IDR_WJ_SCROLL_UP_UP             27
+#define IDR_WJ_SCROLL_UP_DN             28
+#define IDR_WJ_SCROLL_UP_DIS            29
+#define IDR_WJ_SCROLL_DN_UP             30
+#define IDR_WJ_SCROLL_DN_DN             31
+#define IDR_WJ_SCROLL_DN_DIS            32
+#define IDR_WJ_SCROLL_EAST_UP           33
+#define IDR_WJ_SCROLL_EAST_DN           34
+#define IDR_WJ_SCROLL_EAST_DIS          35
+#define IDR_WJ_SCROLL_WEST_UP           36
+#define IDR_WJ_SCROLL_WEST_DN           37
+#define IDR_WJ_SCROLL_WEST_DIS          38
+#define IDR_WJ_THUMB_LEFT               39
+#define IDR_WJ_THUMB_RIGHT              40
+#define IDR_WJ_THUMB_TOP                41
+#define IDR_WJ_THUMB_BOTTOM             42
+#define IDR_WJ_4LINE_TRACK_CAP_H        43
+#define IDR_WJ_4LINE_TRACK_CAP_V        44
+
 #define BUILD_NUMBER                    1
 
 // Next default values for new objects

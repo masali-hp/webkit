@@ -202,6 +202,44 @@ PassRefPtr<WebCore::SharedBuffer> loadResourceIntoBuffer(const char* name)
         idr = IDR_FS_VIDEO_PAUSE;
     else if (!strcmp(name, "fsVideoPlay"))
         idr = IDR_FS_VIDEO_PLAY;
+#if PLATFORM(HP)
+    else if (!strcmp(name, "wj_scroll_up_up"))
+        idr = IDR_WJ_SCROLL_UP_UP;
+    else if (!strcmp(name, "wj_scroll_up_dn"))
+        idr = IDR_WJ_SCROLL_UP_DN;
+    else if (!strcmp(name, "wj_scroll_up_dis"))
+        idr = IDR_WJ_SCROLL_UP_DIS;
+    else if (!strcmp(name, "wj_scroll_dn_up"))
+        idr = IDR_WJ_SCROLL_DN_UP;
+    else if (!strcmp(name, "wj_scroll_dn_dn"))
+        idr = IDR_WJ_SCROLL_DN_DN;
+    else if (!strcmp(name, "wj_scroll_dn_dis"))
+        idr = IDR_WJ_SCROLL_DN_DIS;
+    else if (!strcmp(name, "wj_scroll_left_up"))
+        idr = IDR_WJ_SCROLL_WEST_UP;
+    else if (!strcmp(name, "wj_scroll_left_dn"))
+        idr = IDR_WJ_SCROLL_WEST_DN;
+    else if (!strcmp(name, "wj_scroll_left_dis"))
+        idr = IDR_WJ_SCROLL_WEST_DIS;
+    else if (!strcmp(name, "wj_scroll_right_up"))
+        idr = IDR_WJ_SCROLL_EAST_UP;
+    else if (!strcmp(name, "wj_scroll_right_dn"))
+        idr = IDR_WJ_SCROLL_EAST_DN;
+    else if (!strcmp(name, "wj_scroll_right_dis"))
+        idr = IDR_WJ_SCROLL_EAST_DIS;
+    else if (!strcmp(name, "wj_scroll_thumb_left"))
+        idr = IDR_WJ_THUMB_LEFT;
+    else if (!strcmp(name, "wj_scroll_thumb_right"))
+        idr = IDR_WJ_THUMB_RIGHT;
+    else if (!strcmp(name, "wj_scroll_thumb_top"))
+        idr = IDR_WJ_THUMB_TOP;
+    else if (!strcmp(name, "wj_scroll_thumb_bottom"))
+        idr = IDR_WJ_THUMB_BOTTOM;
+    else if (!strcmp(name, "wj_scroll_track_4line_h"))
+        idr = IDR_WJ_4LINE_TRACK_CAP_H;
+    else if (!strcmp(name, "wj_scroll_track_4line_v"))
+        idr = IDR_WJ_4LINE_TRACK_CAP_V;
+#endif
     else
         return 0;
 
